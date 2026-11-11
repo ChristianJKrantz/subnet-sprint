@@ -8,7 +8,7 @@ Practice binary conversion, prefix ↔ subnet mask, ANDing, full subnet charts, 
 
 Works in any modern browser on desktop, tablet or phone. No install, no account, no tracking.
 
-![Desktop view: a subnet chart question with the scratchpad open](docs/desktop.png)
+![Desktop view: a subnet chart question, with the mask and IP octets written in binary on the scratchpad](docs/desktop.png)
 
 ---
 
@@ -48,7 +48,7 @@ On phones, the tools open from a bottom bar as a half-height panel, so the quest
 
 <p>
   <img src="docs/phone-question.png" alt="Phone: question view" width="250">
-  <img src="docs/phone-scratchpad.png" alt="Phone: scratchpad open under the question" width="250">
+  <img src="docs/phone-scratchpad.png" alt="Phone: scratchpad open under the question, with the mask and IP octets written in binary" width="250">
   <img src="docs/phone-calculator.png" alt="Phone: calculator" width="250">
 </p>
 
