@@ -4,7 +4,7 @@
 
 Practice binary conversion, prefix ↔ subnet mask, ANDing, full subnet charts, and the host/network formulas. Every question is randomly generated, every answer comes with a worked solution, and it has a built-in scratchpad, calculator and step-by-step guide, so you don't need pen and paper.
 
-### ▶ [Play it here](https://christiankrantz11.github.io/subnet-sprint/)
+### ▶ [Play it here](https://christianjkrantz.github.io/subnet-sprint/)
 
 Works in any modern browser on desktop, tablet or phone. No install, no account, no tracking.
 
