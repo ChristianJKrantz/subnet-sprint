@@ -102,7 +102,7 @@ Plain HTML, CSS and JavaScript in a single file, with fonts from Google Fonts ([
 
 ## About
 
-Made by **Christian Krantz** as a study aid for the network addressing unit of the AAS Networking & Cybersecurity program at State Technical College of Missouri, and for CompTIA Network+ prep.
+Made by **Christian Krantz** as a study aid for the network addressing unit of the AAS Networking & Cybersecurity program at State Technical College of Missouri.
 
 ## License
 
