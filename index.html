@@ -1,0 +1,820 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Subnet Sprint — Network Addressing Study Game</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0d1117; --panel:#151b24; --panel2:#1b2330; --line:#2a3443; --text:#e6edf3; --muted:#8b98a9;
+  --accent:#3fb6a8; --accent2:#5aa9ff; --good:#3fb950; --bad:#f2545b; --warn:#e3b341; --net:#5aa9ff; --host:#e3b341;
+  --mono:'JetBrains Mono',ui-monospace,Menlo,Consolas,monospace;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--text);font-family:Inter,system-ui,sans-serif;line-height:1.45;-webkit-text-size-adjust:100%}
+button{font:inherit;color:inherit;cursor:pointer;touch-action:manipulation}
+[hidden]{display:none!important}
+.mono{font-family:var(--mono)}
+
+/* ---------- layout ---------- */
+.app{max-width:1400px;margin:0 auto;display:grid;grid-template-columns:minmax(0,1fr) 400px;gap:20px;padding:20px}
+.game{min-width:0}
+header{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:14px;margin-bottom:16px}
+h1{margin:0;font-size:28px;font-weight:800;letter-spacing:-.02em}
+h1 span{color:var(--accent)}
+.sub{color:var(--muted);font-size:14px;margin-top:2px}
+.stats{display:grid;grid-template-columns:repeat(4,auto);gap:8px}
+.stat{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:6px 12px;min-width:72px;text-align:center}
+.stat b{display:block;font-size:20px;font-family:var(--mono)}
+.stat small{color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.06em}
+.bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between;margin-bottom:12px}
+.tabs{display:flex;flex-wrap:wrap;gap:6px}
+.tab{background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:7px 13px;font-size:14px;font-weight:600;color:var(--muted);white-space:nowrap}
+.tab:hover{color:var(--text)}
+.tab.on{background:var(--accent);border-color:var(--accent);color:#06221f}
+.tab .ct{font-family:var(--mono);font-size:11px;opacity:.8;margin-left:4px}
+.tab:disabled{opacity:.4;cursor:not-allowed}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:999px;overflow:hidden}
+.seg button{background:var(--panel);border:0;padding:6px 12px;font-size:13px;color:var(--muted)}
+.seg button.on{background:var(--panel2);color:var(--text);box-shadow:inset 0 -2px 0 var(--accent2)}
+.btn{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:9px 16px;font-weight:600;font-size:14px}
+.btn:hover{border-color:var(--muted)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#06221f}
+.btn.primary:hover{filter:brightness(1.08)}
+.btn.timed{background:transparent;border-color:var(--warn);color:var(--warn)}
+.btn.small{padding:6px 10px;font-size:13px;border-radius:8px}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.kbd{font-family:var(--mono);font-size:12px;border:1px solid var(--line);border-bottom-width:2px;border-radius:5px;padding:1px 5px;color:var(--muted)}
+.btn.primary .kbd{color:#06221f;border-color:#06221f66}
+
+/* ---------- question card ---------- */
+.card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:22px}
+.qhead{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:8px}
+.qtype{font-size:12px;text-transform:uppercase;letter-spacing:.09em;color:var(--accent);font-weight:700}
+.timer{font-family:var(--mono);font-weight:700;color:var(--warn);font-size:18px}
+.prompt{font-size:20px;font-weight:500;margin:4px 0 18px;overflow-wrap:anywhere}
+.prompt b{font-family:var(--mono);color:var(--accent2);font-weight:700}
+.prompt .big{font-size:30px}
+.fields{display:grid;gap:12px}
+.field{display:grid;grid-template-columns:190px 1fr;gap:12px;align-items:center}
+.field label{color:var(--muted);font-size:14px;font-weight:600}
+.field input{width:100%;max-width:300px;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-family:var(--mono);font-size:17px;color:var(--text);outline:none}
+.field input:focus{border-color:var(--accent2);box-shadow:0 0 0 3px #5aa9ff22}
+.field.ok input{border-color:var(--good);background:#3fb95012}
+.field.no input{border-color:var(--bad);background:#f2545b12}
+.fix{font-family:var(--mono);font-size:14px;color:var(--good);margin-left:10px}
+.inrow{display:flex;align-items:center;flex-wrap:wrap;gap:4px 0}
+.bits{display:grid;grid-template-columns:repeat(8,48px);gap:6px}
+.bitcol{display:flex;flex-direction:column;align-items:center;gap:4px;min-width:0}
+.bitcol small{font-family:var(--mono);color:var(--muted);font-size:12px}
+.bit{width:100%;height:52px;border-radius:10px;border:1px solid var(--line);background:var(--bg);font-family:var(--mono);font-size:24px;font-weight:700;color:var(--muted)}
+.bit.on{background:var(--accent2);border-color:var(--accent2);color:#071a33}
+.field.ok .bit{outline:2px solid var(--good)} .field.no .bit{outline:2px solid #f2545b66}
+.actions{display:flex;gap:8px;margin-top:20px;flex-wrap:wrap}
+.feedback{margin-top:18px;padding:12px 14px;border-radius:10px;font-weight:600;display:none}
+.feedback.good{display:block;background:#3fb9501a;border:1px solid #3fb95055;color:#7ee28a}
+.feedback.bad{display:block;background:#f2545b1a;border:1px solid #f2545b55;color:#ff9a9f}
+.hintbox{margin-top:14px;padding:10px 14px;border-left:3px solid var(--warn);background:#e3b34110;border-radius:6px;font-size:15px}
+.hintbox button{margin-top:8px}
+.work{margin-top:16px;border-top:1px dashed var(--line);padding-top:14px;display:none}
+.work h3{margin:0 0 8px;font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+.work p{margin:8px 0}
+pre.binblock{font-family:var(--mono);background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:12px 14px;overflow-x:auto;font-size:15px;line-height:1.7;margin:8px 0}
+.n{color:var(--net)} .h{color:var(--host)} .dim{color:#56606e} .g{color:var(--good)}
+.tscroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+table{border-collapse:collapse;width:100%;font-size:14px;margin:8px 0}
+th,td{border-bottom:1px solid var(--line);padding:6px 8px;text-align:left;white-space:nowrap}
+th{color:var(--muted);font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.05em}
+td{font-family:var(--mono)}
+tr.me td{background:#3fb6a81a;color:#9ef0e4}
+.ptable td,.ptable th{text-align:center;padding:6px 4px}
+.ptable td.on{background:var(--accent2);color:#071a33;font-weight:700}
+.foot{color:var(--muted);font-size:13px;margin-top:12px}
+
+/* ---------- tools panel ---------- */
+.tools{position:sticky;top:20px;height:calc(100vh - 40px);background:var(--panel);border:1px solid var(--line);border-radius:16px;display:flex;flex-direction:column;overflow:hidden}
+.tools-head{border-bottom:1px solid var(--line);padding:10px 10px 0}
+.miniQ{display:none}
+.ttabs{display:flex;gap:4px}
+.ttab{flex:1;background:transparent;border:0;border-bottom:2px solid transparent;padding:8px 4px 10px;font-weight:600;font-size:14px;color:var(--muted)}
+.ttab.on{color:var(--text);border-bottom-color:var(--accent)}
+.tclose,.tsize,.thead-title,.grab-btn{display:none}
+.tpane{flex:1;min-height:0;overflow:auto;padding:14px}
+#t-scratch{display:flex;flex-direction:column;gap:10px;overflow:hidden}
+.ptools{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.swatch{width:28px;height:28px;border-radius:50%;border:2px solid var(--line);padding:0}
+.swatch.on{border-color:var(--text);box-shadow:0 0 0 2px var(--bg) inset}
+.ptools .sep{width:1px;height:22px;background:var(--line);margin:0 2px}
+.ptools .btn.on{border-color:var(--accent2);color:var(--accent2)}
+.padwrap{position:relative;flex:1;min-height:220px;border:1px solid var(--line);border-radius:12px;background:var(--bg);overflow:hidden}
+.padwrap canvas{position:absolute;inset:0;width:100%;height:100%}
+#ink{touch-action:none;cursor:crosshair}
+#scratchText{flex:1;min-height:220px;width:100%;resize:none;background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:12px;color:var(--text);font-family:var(--mono);font-size:16px;line-height:1.6;outline:none}
+#scratchText:focus{border-color:var(--accent2)}
+.chk{display:flex;align-items:center;gap:6px;color:var(--muted);font-size:13px;user-select:none}
+
+/* calculator */
+.calc{display:flex;flex-direction:column;gap:10px;max-width:420px;margin:0 auto}
+.cdisp{background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:10px 12px}
+.cdisp input{width:100%;background:transparent;border:0;outline:none;color:var(--text);font-family:var(--mono);font-size:24px;text-align:right}
+.cdisp .prev{font-family:var(--mono);color:var(--muted);text-align:right;min-height:22px;font-size:15px}
+.ckeys{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
+.ckeys button{background:var(--panel2);border:1px solid var(--line);border-radius:10px;height:50px;font-family:var(--mono);font-size:18px;font-weight:600}
+.ckeys button:active{transform:scale(.97)}
+.ckeys .op{color:var(--accent2)}
+.ckeys .fn{color:var(--warn);font-size:15px}
+.ckeys .eq{background:var(--accent);border-color:var(--accent);color:#06221f;grid-column:span 2}
+.ckeys .zero{grid-column:span 2}
+.ckeys .clr{color:var(--bad)}
+.chist{font-family:var(--mono);font-size:14px;color:var(--muted)}
+.chist div{padding:5px 8px;border-bottom:1px solid var(--line);cursor:pointer;display:flex;justify-content:space-between;gap:10px}
+.chist div:hover{color:var(--text)}
+.chist b{color:var(--text)}
+.ctip{color:var(--muted);font-size:13px}
+
+/* guide */
+.guide details{border:1px solid var(--line);border-radius:12px;margin-bottom:10px;background:var(--panel2);scroll-margin-top:8px}
+.guide summary{cursor:pointer;padding:12px 14px;font-weight:700;list-style:none;display:flex;justify-content:space-between;gap:8px}
+.guide summary::-webkit-details-marker{display:none}
+.guide summary::after{content:'+';color:var(--muted);font-weight:400}
+.guide details[open] summary::after{content:'–'}
+.guide .gbody{padding:0 14px 14px;font-size:15px}
+.guide ol{padding-left:22px;margin:6px 0}
+.guide li{margin:8px 0}
+.guide p{margin:8px 0}
+.guide .ex{background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin:10px 0;font-size:14px}
+.guide .ex h4{margin:0 0 6px;font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--accent)}
+.guide .warn{border-left:3px solid var(--warn);padding-left:10px}
+.guide pre{font-family:var(--mono);font-size:13px;margin:6px 0;overflow-x:auto;line-height:1.6}
+.gmono{font-family:var(--mono);color:var(--accent2)}
+.guide td{white-space:normal;font-size:13px}
+.guide .dim{color:#9aa7b8;font-size:14px}
+.guide ol .dim{display:inline-block;margin-top:2px;padding:1px 8px;background:var(--bg);border-radius:6px;font-family:var(--mono);font-size:13px}
+
+/* mobile dock */
+.dock{display:none}
+
+/* overlay */
+.overlay{position:fixed;inset:0;background:#000a;display:none;align-items:center;justify-content:center;padding:20px;z-index:50}
+.overlay.on{display:flex}
+.modal{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:28px;max-width:420px;width:100%;text-align:center}
+.modal h2{margin:0 0 6px}
+.modal .huge{font-size:56px;font-weight:800;font-family:var(--mono);color:var(--accent)}
+.modal .btn{margin:4px}
+
+/* ---------- tablet & phone: tools become a bottom sheet ---------- */
+@media (max-width:1099px){
+  .app{grid-template-columns:1fr;padding:16px 16px calc(var(--dock-h,110px) + 28px)}
+  .tools{position:fixed;left:0;right:0;top:auto;bottom:var(--dock-h,110px);height:46vh;height:46dvh;border-radius:18px 18px 0 0;border-bottom:0;z-index:30;transform:translateY(calc(100% + 90px));transition:transform .25s ease,height .22s ease;box-shadow:0 -10px 40px #000a;max-width:760px;margin:0 auto}
+  .tools.open{transform:none}
+  .tools-head{padding:8px 12px 0;position:relative}
+  .ttabs{display:none!important}
+  .tools-head{border-bottom:1px solid var(--line)}
+  .tools-head .grab{width:40px;height:4px;border-radius:2px;background:var(--line);margin:0 auto 8px}
+  .tools.big{height:calc(100vh - 140px);height:calc(100dvh - 140px)}
+  .tools-head{min-height:46px}
+  .thead-title{display:block;font-weight:700;font-size:14px;padding:2px 90px 10px 2px}
+  .tools.big .thead-title{display:none}
+  .miniQ{display:none;font-size:14px;color:var(--muted);padding:2px 90px 10px 2px;overflow-wrap:anywhere}
+  .tools.big .miniQ{display:block}
+  .grab-btn{display:block;width:100%;background:transparent;border:0;padding:0 0 6px;cursor:ns-resize}
+  .tsize{display:flex;position:absolute;top:14px;right:48px;align-items:center;gap:4px;background:var(--panel2);border:1px solid var(--line);border-radius:999px;height:32px;padding:0 11px;font-size:13px;font-weight:600;color:var(--text)}
+  .tsize .ic{font-size:14px;line-height:1}
+  body.sheet-open .app{padding-bottom:calc(46dvh + var(--dock-h,110px) + 28px)}
+  .miniQ b{font-family:var(--mono);color:var(--accent2);font-size:15px}
+  .miniQ .big{font-size:15px}
+  .trow{display:flex;align-items:center;gap:6px}
+  .tclose{display:block;position:absolute;top:14px;right:8px;background:var(--panel2);border:1px solid var(--line);border-radius:50%;width:32px;height:32px;font-size:15px;color:var(--muted);padding:0}
+  .dock{display:flex;position:fixed;left:0;right:0;bottom:0;z-index:40;background:#0d1117f2;backdrop-filter:blur(8px);border-top:1px solid var(--line);padding:6px 8px calc(6px + env(safe-area-inset-bottom));gap:6px;justify-content:center}
+  .dock button{flex:1;max-width:220px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:8px 4px;font-weight:600;font-size:14px;display:flex;flex-direction:column;align-items:center;gap:1px}
+  .dock button span{font-size:18px;line-height:1}
+  .dock button.on{border-color:var(--accent);color:var(--accent)}
+  .tools{padding-bottom:0}
+}
+@media (max-width:640px){
+  .app{padding:12px 12px calc(var(--dock-h,110px) + 28px)}
+  header{gap:10px;margin-bottom:12px}
+  h1{font-size:24px}
+  .sub{font-size:13px}
+  .stats{grid-template-columns:repeat(4,1fr);width:100%;gap:6px}
+  .stat{min-width:0;padding:5px 4px}
+  .stat b{font-size:17px}
+  .stat small{font-size:10px}
+  .tabs{flex-wrap:nowrap;overflow-x:auto;width:100%;padding-bottom:4px;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+  .tabs::-webkit-scrollbar{display:none}
+  .bar .seg{flex:1}
+  .bar .seg button{flex:1;padding:7px 6px;font-size:12px}
+  .btn.timed{width:100%}
+  .card{padding:16px;border-radius:14px}
+  .prompt{font-size:17px}
+  .prompt .big{font-size:22px}
+  .field{grid-template-columns:1fr;gap:5px}
+  .field input{max-width:none;font-size:17px;padding:11px 12px}
+  .fix{display:block;margin:4px 0 0;width:100%}
+  .bits{grid-template-columns:repeat(8,1fr);gap:4px;width:100%}
+  .bit{height:46px;font-size:20px;border-radius:8px}
+  .bitcol small{font-size:10px}
+  .actions{display:grid;grid-template-columns:1fr 1fr}
+  .actions #checkBtn{grid-column:1/-1;padding:13px}
+  pre.binblock{font-size:11.5px;padding:10px}
+  table{font-size:12.5px}
+  th,td{padding:5px 6px}
+  .work{font-size:15px}
+  .ckeys button{height:48px}
+  .tpane{padding:10px 12px}
+  #t-scratch{gap:8px}
+  .swatch{width:26px;height:26px}
+  .ptools{gap:5px}
+  .ptools .btn.small{padding:5px 8px;font-size:12.5px}
+  .ptools .seg button{padding:5px 10px}
+  .padwrap{min-height:120px}
+  #scratchText{min-height:120px}
+}
+@media (hover:none){ .kbd,.keytip{display:none} }
+@media (max-width:1099px){ .keytip{display:none} }
+</style>
+</head>
+<body>
+<div class="app">
+<main class="game">
+  <header>
+    <div>
+      <h1>Subnet <span>Sprint</span></h1>
+      <div class="sub">Network Addressing practice — binary, masks, ANDing, subnet charts &amp; formulas</div>
+    </div>
+    <div class="stats">
+      <div class="stat"><b id="sScore">0</b><small>Score</small></div>
+      <div class="stat"><b id="sStreak">0</b><small>Streak</small></div>
+      <div class="stat"><b id="sBest">0</b><small>Best</small></div>
+      <div class="stat"><b id="sAcc">–</b><small>Accuracy</small></div>
+    </div>
+  </header>
+
+  <div class="bar"><div class="tabs" id="tabs"></div></div>
+  <div class="bar">
+    <div class="seg" id="level">
+      <button data-l="core" class="on" title="Prefixes /24 to /30 — subnetting in the last octet, like your notes">Last octet (/24–/30)</button>
+      <button data-l="stretch" title="Prefixes /16 to /30 — subnet boundaries can land in the 3rd octet">Stretch (/16–/30)</button>
+    </div>
+    <button class="btn timed" id="timedBtn">⏱ 2-minute challenge</button>
+  </div>
+
+  <div class="card">
+    <div class="qhead"><div class="qtype" id="qtype"></div><div class="timer" id="timer"></div></div>
+    <div class="prompt" id="prompt"></div>
+    <div class="fields" id="fields"></div>
+    <div class="hintbox" id="hint" hidden></div>
+    <div class="actions">
+      <button class="btn primary" id="checkBtn">Check <span class="kbd">Enter</span></button>
+      <button class="btn" id="hintBtn">Hint (½ points)</button>
+      <button class="btn" id="skipBtn">Skip</button>
+    </div>
+    <div class="feedback" id="feedback"></div>
+    <div class="work" id="work"></div>
+  </div>
+  <div class="foot">Use the <b>Scratchpad</b> to do your work, the <b>Calculator</b> for the math, and the <b>Guide</b> for step-by-step directions. <span class="keytip">In Binary mode, keys <span class="kbd">1</span>–<span class="kbd">8</span> flip bits.</span></div>
+</main>
+
+<aside class="tools" id="tools">
+  <div class="tools-head">
+    <button class="grab-btn" id="grabBtn" aria-label="Resize tools panel"><div class="grab"></div></button>
+    <div class="thead-title" id="theadTitle">Scratchpad</div>
+    <div class="miniQ" id="miniQ"></div>
+    <button class="tsize" id="tsize" aria-label="Make panel bigger"><span class="ic">⤢</span><span id="tsizeLbl">Bigger</span></button>
+    <div class="trow">
+      <div class="ttabs" style="flex:1">
+        <button class="ttab on" data-t="scratch">✏️ Scratchpad</button>
+        <button class="ttab" data-t="calc">🧮 Calculator</button>
+        <button class="ttab" data-t="guide">📋 Guide</button>
+      </div>
+      <button class="tclose" id="tclose" aria-label="Close tools">✕</button>
+    </div>
+  </div>
+
+  <!-- Scratchpad -->
+  <section class="tpane" id="t-scratch">
+    <div class="ptools">
+      <div class="seg" id="padMode"><button data-p="draw" class="on">Draw</button><button data-p="type">Type</button></div>
+      <label class="chk"><input type="checkbox" id="autoClear" checked> Auto-clear on next question</label>
+    </div>
+    <div id="drawUI" style="display:contents">
+      <div class="ptools">
+        <button class="swatch on" data-c="#e6edf3" style="background:#e6edf3" aria-label="White pen"></button>
+        <button class="swatch" data-c="#5aa9ff" style="background:#5aa9ff" aria-label="Blue pen"></button>
+        <button class="swatch" data-c="#e3b341" style="background:#e3b341" aria-label="Yellow pen"></button>
+        <button class="swatch" data-c="#3fb950" style="background:#3fb950" aria-label="Green pen"></button>
+        <span class="sep"></span>
+        <button class="btn small" id="eraser">Erase</button>
+        <button class="btn small" id="undo">Undo</button>
+        <button class="btn small" id="clearPad">Clear</button>
+        <button class="btn small on" id="guideToggle" title="Show the 128…1 bit columns behind your writing">Grid</button>
+      </div>
+      <div class="padwrap" id="padwrap"><canvas id="grid"></canvas><canvas id="ink"></canvas></div>
+    </div>
+    <div id="typeUI" hidden style="flex:1;display:flex;flex-direction:column;gap:8px;min-height:0">
+      <div class="ptools">
+        <button class="btn small" id="insBits">+ Bit header</button>
+        <button class="btn small" id="insChart">+ Chart template</button>
+        <button class="btn small" id="clearText">Clear</button>
+      </div>
+      <textarea id="scratchText" spellcheck="false" autocapitalize="off" autocomplete="off" placeholder="Type your work here…&#10;&#10;e.g.&#10;/26 → 255.255.255.192&#10;inc = 256 − 192 = 64&#10;subnets: 0 64 128 192"></textarea>
+    </div>
+  </section>
+
+  <!-- Calculator -->
+  <section class="tpane" id="t-calc" hidden>
+    <div class="calc">
+      <div class="cdisp">
+        <div class="prev" id="cprev"></div>
+        <input id="cin" inputmode="none" autocomplete="off" spellcheck="false" aria-label="Calculator input" placeholder="0">
+      </div>
+      <div class="ckeys" id="ckeys">
+        <button class="clr" data-k="C">C</button><button class="fn" data-k="BS">⌫</button><button class="op" data-k="(">(</button><button class="op" data-k=")">)</button><button class="op" data-k="÷">÷</button>
+        <button data-k="7">7</button><button data-k="8">8</button><button data-k="9">9</button><button class="op" data-k="×">×</button><button class="fn" data-k="2^">2ˣ</button>
+        <button data-k="4">4</button><button data-k="5">5</button><button data-k="6">6</button><button class="op" data-k="−">−</button><button class="fn" data-k="^">xʸ</button>
+        <button data-k="1">1</button><button data-k="2">2</button><button data-k="3">3</button><button class="op" data-k="+">+</button><button class="fn" data-k="ANS">Ans</button>
+        <button class="zero" data-k="0">0</button><button data-k=".">.</button><button class="eq" data-k="=">=</button>
+      </div>
+      <div class="ctip">Handy ones: <span class="gmono">256−192</span> (increment), <span class="gmono">2^6−2</span> (usable hosts), <span class="gmono">128+64+32</span> (mask octet). Tap a history line to reuse it.</div>
+      <div class="chist" id="chist"></div>
+    </div>
+  </section>
+
+  <!-- Guide -->
+  <section class="tpane guide" id="t-guide" hidden>
+    <details id="g-chart" open>
+      <summary>Subnet Chart — step by step</summary>
+      <div class="gbody">
+        <p>Use this for any "fill in the chart" question. Example: <span class="gmono">172.16.62.68/26</span></p>
+        <ol>
+          <li><b>Turn the prefix into a mask.</b> The prefix is how many 1s there are. Every 8 ones = <span class="gmono">255</span>. Leftover ones go in the next octet, adding from the left: 1→128, 2→192, 3→224, 4→240, 5→248, 6→252, 7→254.<br><span class="dim">/26 = 8+8+8+2 → 255.255.255.192</span></li>
+          <li><b>Copy the 255 octets.</b> Wherever the mask is 255, the IP copies straight down into every answer. Find the <b>interesting octet</b>: the one that isn't 255 or 0. That's the only octet you work on.<br><span class="dim">Answers all start 172.16.62. — only work on the .68</span></li>
+          <li><b>Find the increment.</b> Increment = <span class="gmono">256 − interesting octet</span>. (It's also the place value of the last 1 bit in the mask.)<br><span class="dim">256 − 192 = 64</span></li>
+          <li><b>List the subnets.</b> Start at 0 and keep adding the increment. Stop before 256.<br><span class="dim">0, 64, 128, 192</span></li>
+          <li><b>Round down.</b> Find the subnet your IP falls in: the one at or just below the IP's number.<br><span class="dim">68 is past 64 but not at 128 → subnet .64</span></li>
+          <li><b>Fill in the chart.</b>
+            <div class="tscroll"><table>
+              <tr><th>Box</th><th>How</th><th>Example</th></tr>
+              <tr><td>Network</td><td style="font-family:inherit">the rounded-down subnet</td><td>.64</td></tr>
+              <tr><td>Broadcast</td><td style="font-family:inherit">next subnet − 1</td><td>128−1 = .127</td></tr>
+              <tr><td>Gateway</td><td style="font-family:inherit">network + 1</td><td>.65</td></tr>
+              <tr><td>Last usable</td><td style="font-family:inherit">broadcast − 1</td><td>.126</td></tr>
+              <tr><td>Usable hosts</td><td style="font-family:inherit">2<sup>h</sup> − 2, h = 32 − prefix</td><td>2⁶−2 = 62</td></tr>
+            </table></div>
+          </li>
+        </ol>
+        <div class="ex"><h4>Answer</h4>Network <b>172.16.62.64</b> · Gateway <b>.65</b> · Last usable <b>.126</b> · Broadcast <b>.127</b> · <b>62</b> hosts</div>
+        <p class="dim">Steps 3 and 4 do most of the work. Once you have the increment and the subnet list, the rest is just +1 and −1.</p>
+      </div>
+    </details>
+
+    <details id="g-and">
+      <summary>ANDing — finding the network address</summary>
+      <div class="gbody">
+        <p>Example: <span class="gmono">10.103.166.35</span> with mask <span class="gmono">255.255.255.252</span> (/30)</p>
+        <ol>
+          <li><b>Copy the 255 octets.</b> Anything under a 255 copies straight down; anything under a 0 becomes 0.<br><span class="dim">→ 10.103.166.___</span></li>
+          <li><b>Convert the interesting octet of both the IP and the mask to binary.</b> (See "Binary" below.)<br><span class="dim">35 = 00100011 · 252 = 11111100</span></li>
+          <li><b>AND them column by column.</b> The result is 1 only where <u>both</u> are 1. Anything over a 0 becomes 0.
+<pre>IP    00100011  (35)
+Mask  11111100  (252)
+      --------
+AND   00100000  (32)</pre></li>
+          <li><b>Convert back to decimal</b> and put it in the blank.<br><span class="dim">→ 10.103.166.32</span></li>
+        </ol>
+        <div class="ex"><h4>Shortcut to check your answer</h4>Increment = 256 − 252 = 4. Subnets go …28, <b>32</b>, 36… 35 rounds down to <b>32</b>. ANDing and rounding down always give the same answer.</div>
+      </div>
+    </details>
+
+    <details id="g-round">
+      <summary>The "round down" rule</summary>
+      <div class="gbody">
+        <p>The network is always the subnet number <b>at or below</b> your IP: round down to the nearest multiple of the increment.</p>
+        <p>This works because each subnet runs from its own number up to just before the next one. With increment 4: <span class="gmono">.32</span> covers .32–.35 and <span class="gmono">.36</span> covers .36–.39, so .35 can only be in .32.</p>
+        <p class="warn"><b>Lands exactly on a subnet number?</b> Then that <i>is</i> the network. Nothing rounds down. That address is the network address itself, so a host can't use it.</p>
+      </div>
+    </details>
+
+    <details id="g-bin">
+      <summary>Binary ↔ decimal</summary>
+      <div class="gbody">
+        <div class="tscroll"><table class="ptable"><tr><th>2⁷</th><th>2⁶</th><th>2⁵</th><th>2⁴</th><th>2³</th><th>2²</th><th>2¹</th><th>2⁰</th></tr>
+        <tr><td>128</td><td>64</td><td>32</td><td>16</td><td>8</td><td>4</td><td>2</td><td>1</td></tr></table></div>
+        <p><b>Decimal → binary</b> (subtract method):</p>
+        <ol>
+          <li>Start at 128.</li>
+          <li>If your number is <b>≥</b> that place value, write <b>1</b> and subtract it. Otherwise write <b>0</b>.</li>
+          <li>Move to the next place value (64, 32, …) and repeat until you've done all 8.</li>
+        </ol>
+        <div class="ex"><h4>Example: 35</h4>128? no 0 · 64? no 0 · 32? yes 1 (35−32=3) · 16 0 · 8 0 · 4 0 · 2? yes 1 (3−2=1) · 1? yes 1 → <b>00100011</b></div>
+        <p><b>Binary → decimal:</b> add up the place values wherever there's a 1.</p>
+        <div class="ex"><h4>Example: 11000000</h4>128 + 64 = <b>192</b></div>
+      </div>
+    </details>
+
+    <details id="g-mask">
+      <summary>Prefix ↔ mask</summary>
+      <div class="gbody">
+        <p><b>Prefix → mask:</b> write that many 1s, then 0s to fill 32 bits. Each full octet of 1s = 255, each full octet of 0s = 0. The partial octet comes from the list below.</p>
+        <p><b>Mask → prefix:</b> each 255 = 8. Then add the 1s in the partial octet.</p>
+        <div class="tscroll"><table>
+          <tr><th>1s in octet</th><th>Binary</th><th>Value</th><th>Increment</th></tr>
+          <tbody id="partRows"></tbody>
+        </table></div>
+        <div class="ex"><h4>Examples</h4>/27 = 8+8+8+3 → 255.255.255.<b>224</b><br>255.255.240.0 → 8+8+4 = <b>/20</b></div>
+      </div>
+    </details>
+
+    <details id="g-form">
+      <summary>Formulas</summary>
+      <div class="gbody">
+        <ol>
+          <li><b>Usable hosts per subnet</b> = 2<sup>h</sup> − 2, where h = host bits = 32 − prefix. (You lose the network and broadcast addresses.)<br><span class="dim">/27 → h = 5 → 32 − 2 = 30</span></li>
+          <li><b>Number of subnets</b> = 2<sup>n</sup>, where n = bits borrowed. The new prefix = old prefix + n.<br><span class="dim">/24 borrow 3 → 2³ = 8 subnets, /27</span></li>
+          <li><b>"I need X hosts"</b>: find the smallest h where 2<sup>h</sup> − 2 ≥ X. Prefix = 32 − h.<br><span class="dim">50 hosts → 2⁵−2 = 30 ✗, 2⁶−2 = 62 ✓ → /26</span></li>
+          <li><b>"I need N subnets"</b>: find the smallest n where 2<sup>n</sup> ≥ N. Add n to the prefix.<br><span class="dim">5 subnets from /24 → 2²=4 ✗, 2³=8 ✓ → borrow 3 → /27</span></li>
+          <li><b>Network increment</b> = 256 − the interesting mask octet.<br><span class="dim">255.255.255.240 → 256 − 240 = 16</span></li>
+        </ol>
+        <div class="ex"><h4>Powers of 2</h4><span class="mono">2¹=2 · 2²=4 · 2³=8 · 2⁴=16 · 2⁵=32 · 2⁶=64 · 2⁷=128 · 2⁸=256 · 2⁹=512 · 2¹⁰=1024</span></div>
+      </div>
+    </details>
+
+    <details id="g-stretch">
+      <summary>Stretch mode (prefixes under /24)</summary>
+      <div class="gbody">
+        <p>Same steps, but the interesting octet moves left. Rule: <b>every octet after the interesting one becomes 0</b> for the network and <b>255</b> for the broadcast.</p>
+        <div class="ex"><h4>Example: 172.16.62.68/22</h4>
+          Mask 255.255.<b>252</b>.0 → interesting octet is the 3rd<br>
+          Increment 256 − 252 = 4 → subnets 0, 4, … 56, <b>60</b>, 64…<br>
+          62 rounds down to 60 → Network <b>172.16.60.0</b><br>
+          Next subnet is .64, so Broadcast = <b>172.16.63.255</b><br>
+          Gateway <b>172.16.60.1</b> · Last usable <b>172.16.63.254</b> · 2¹⁰−2 = <b>1022</b> hosts</div>
+      </div>
+    </details>
+
+    <details id="g-table">
+      <summary>Last-octet mask table (/24–/30)</summary>
+      <div class="gbody">
+        <div class="tscroll"><table>
+          <tr><th>Prefix</th><th>Mask</th><th>Inc</th><th>Hosts</th><th>Subnets*</th></tr>
+          <tbody id="cheatRows"></tbody>
+        </table></div>
+        <p class="dim">*How many subnets you get by splitting a /24.</p>
+      </div>
+    </details>
+  </section>
+</aside>
+
+<nav class="dock" id="dock">
+  <button data-t="scratch"><span>✏️</span>Scratchpad</button>
+  <button data-t="calc"><span>🧮</span>Calculator</button>
+  <button data-t="guide"><span>📋</span>Guide</button>
+</nav>
+</div>
+
+<div class="overlay" id="overlay">
+  <div class="modal">
+    <h2>Time!</h2>
+    <div class="huge" id="tScore">0</div>
+    <div id="tLine" style="color:var(--muted);margin-bottom:18px"></div>
+    <button class="btn primary" id="tAgain">Play again</button>
+    <button class="btn" id="tClose">Back to practice</button>
+  </div>
+</div>
+
+<script>
+(function(){
+const $=s=>document.querySelector(s);
+const $$=s=>[...document.querySelectorAll(s)];
+const R=(a,b)=>Math.floor(Math.random()*(b-a+1))+a;
+const pick=a=>a[R(0,a.length-1)];
+const maskOf=p=>p===0?0:((0xFFFFFFFF<<(32-p))>>>0);
+const oct=(n,i)=>(n>>>(24-8*i))&255;
+const ipStr=n=>[0,1,2,3].map(i=>oct(n,i)).join('.');
+const bin8=v=>v.toString(2).padStart(8,'0');
+function parseIP(s){const m=String(s).trim().match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);if(!m)return null;const o=m.slice(1).map(Number);if(o.some(x=>x>255))return null;return((o[0]<<24)|(o[1]<<16)|(o[2]<<8)|o[3])>>>0;}
+function randIP(){const t=R(0,2);if(t===0)return parseIP(`192.168.${R(0,255)}.${R(1,254)}`);if(t===1)return parseIP(`10.${R(0,255)}.${R(0,255)}.${R(1,254)}`);return parseIP(`172.${R(16,31)}.${R(0,255)}.${R(1,254)}`);}
+const isDesktop=()=>window.matchMedia('(min-width:1100px)').matches;
+
+function binColored(n,p,dimHost){
+  let out='';
+  for(let i=0;i<32;i++){if(i>0&&i%8===0)out+='.';const b=(n>>>(31-i))&1;out+=`<span class="${i<p?'n':(dimHost?'dim':'h')}">${b}</span>`;}
+  return out;
+}
+const store={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v);}catch(e){return d;}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}}};
+
+const MODES=[{id:'mixed',name:'Mixed'},{id:'binary',name:'Binary'},{id:'prefix',name:'Prefix ↔ Mask'},{id:'anding',name:'ANDing'},{id:'detective',name:'Subnet Chart'},{id:'formulas',name:'Formulas'}];
+const GUIDE_FOR={binary:'g-bin',prefix:'g-mask',anding:'g-and',detective:'g-chart',formulas:'g-form'};
+const state={mode:'mixed',level:'core',score:0,streak:0,best:store.get('ss_best',0),right:0,tried:0,per:{},q:null,checked:false,hinted:false,timed:null};
+MODES.forEach(m=>state.per[m.id]={r:0,t:0});
+const randPrefix=()=>state.level==='core'?R(24,30):R(16,30);
+
+/* ---------------- explanations ---------------- */
+function explainBin(v){
+  const vals=[128,64,32,16,8,4,2,1];const b=bin8(v);const on=vals.filter((x,i)=>b[i]==='1');
+  return `<div class="tscroll"><table class="ptable"><tr>${vals.map(x=>`<th>${x}</th>`).join('')}</tr><tr>${[...b].map(c=>`<td class="${c==='1'?'on':''}">${c}</td>`).join('')}</tr></table></div>
+  <p>${on.length?`<span class="mono">${on.join(' + ')} = <b class="g">${v}</b></span>`:'No bits on, so the value is <b class="g">0</b>.'}</p>
+  <p class="dim">Method: start at 128. If what's left is ≥ the place value, turn that bit on and subtract it; otherwise leave it 0. Move right.</p>`;
+}
+function explainMask(p){
+  const m=maskOf(p);const io=Math.min(3,Math.floor(p/8));
+  let s=`<pre class="binblock">${binColored(m,p)}
+= ${ipStr(m)}</pre><p><span class="n">${p} network bits (1s)</span> and <span class="h">${32-p} host bits (0s)</span>.</p>`;
+  if(p%8!==0){const v=oct(m,io);const on=[128,64,32,16,8,4,2,1].slice(0,p%8);
+    s+=`<p>Full octets of 1s are 255. The partial octet has ${p%8} bit${p%8>1?'s':''} on: <span class="mono">${on.join(' + ')} = <b class="g">${v}</b></span>.</p>`;}
+  else s+=`<p>The prefix lands exactly on an octet boundary, so every octet is either 255 or 0.</p>`;
+  return s;
+}
+function explainAnd(ip,p){
+  const m=maskOf(p),net=(ip&m)>>>0;const io=Math.min(3,Math.floor(p/8));
+  let s=`<pre class="binblock">IP   ${binColored(ip,p)}
+     ${ipStr(ip)}
+Mask ${binColored(m,p)}
+     ${ipStr(m)}
+     ${'-'.repeat(35)}
+AND  ${binColored(net,p,true)}
+     <b class="g">${ipStr(net)}</b></pre>
+  <p>Wherever the mask has a 0 (host bits), the result is 0. Wherever the mask has a 1, the IP bit passes through unchanged.</p>`;
+  if(p%8!==0){const a=oct(ip,io),b=oct(m,io);const inc=256-b;
+    s+=`<p><b>Shortcut:</b> octets under a 255 copy straight down, octets under a 0 become 0. Only octet ${io+1} needs real work: <span class="mono">${bin8(a)} (${a}) AND ${bin8(b)} (${b}) = ${bin8(a&b)} (<b class="g">${a&b}</b>)</span>.</p>
+    <p><b>Check:</b> increment = 256 − ${b} = ${inc}. ${a} rounds down to the nearest multiple of ${inc} → <b class="g">${a&b}</b>.</p>`;}
+  return s;
+}
+function explainSubnet(ip,p){
+  const m=maskOf(p),net=(ip&m)>>>0,size=2**(32-p),bc=(net+size-1)>>>0,h=32-p;
+  const io=Math.floor((p-1)/8);const mv=oct(m,io);const inc=256-mv;const ipo=oct(ip,io),neto=oct(net,io);
+  let s=`<p><b>1. Mask:</b> /${p} = <span class="mono">${ipStr(m)}</span> → ${p} network bits, ${h} host bits.</p>
+  <pre class="binblock">IP   ${binColored(ip,p)}
+Mask ${binColored(m,p)}</pre>
+  <p><b>2. Interesting octet:</b> octet ${io+1} (mask ${mv}). ${io>0?`Octets before it copy straight down.`:''}</p>
+  <p><b>3. Increment:</b> 256 − ${mv} = <b class="mono">${inc}</b>. Subnets in that octet go 0, ${inc}, ${inc*2}${inc*3<256?', '+inc*3:''}…</p>
+  <p><b>4. Round down:</b> the IP's octet ${io+1} is ${ipo}, which rounds down to <b class="mono">${neto}</b>${io<3?'; every octet after it becomes 0':''}.</p>
+  <p><b>5. Usable hosts:</b> <span class="mono">2<sup>${h}</sup> − 2 = ${(size-2).toLocaleString()}</span></p>`;
+  const rows=[];const start=Math.max(0,net-size*2);
+  for(let k=0;k<5;k++){const n=start+size*k;if(n>0xFFFFFFFF)break;const pre=(n&maskOf(io*8))>>>0,mine=(net&maskOf(io*8))>>>0;if(io>0&&pre!==mine)continue;rows.push(n>>>0);}
+  s+=`<p><b>6. Network chart</b> (around your IP):</p><div class="tscroll"><table><tr><th>Subnet</th><th>Usable range</th><th>Broadcast</th></tr>${rows.map(n=>{const b=(n+size-1)>>>0;return `<tr class="${n===net?'me':''}"><td>${ipStr(n)}</td><td>${ipStr(n+1)} – ${ipStr(b-1)}</td><td>${ipStr(b)}</td></tr>`;}).join('')}</table></div>
+  <p><b>Result:</b> Network <b class="g mono">${ipStr(net)}</b>, gateway <b class="g mono">${ipStr(net+1)}</b>, last usable <b class="g mono">${ipStr(bc-1)}</b>, broadcast <b class="g mono">${ipStr(bc)}</b> (next subnet − 1).</p>`;
+  return s;
+}
+
+/* ---------------- generators ---------------- */
+const GEN={
+  binary(){
+    const v=Math.random()<0.4?pick([128,192,224,240,248,252,254,255,0,168,10,172]):R(0,255);
+    if(Math.random()<0.5) return {mode:'binary',title:'Binary · decimal → binary',prompt:`Flip on the bits that make <b class="big">${v}</b>`,
+      fields:[{type:'bits',label:'Octet',answer:bin8(v)}],hint:'Start at 128 and move right: if the value left is ≥ the place value, turn it on and subtract.',explain:explainBin(v)};
+    return {mode:'binary',title:'Binary · binary → decimal',prompt:`What is <b class="big">${bin8(v)}</b> in decimal?`,
+      fields:[{type:'num',label:'Decimal value',answer:v}],hint:'Add the place values (128 64 32 16 8 4 2 1) for every bit that is 1.',explain:explainBin(v)};
+  },
+  prefix(){
+    const p=state.level==='core'?(Math.random()<0.8?R(24,30):pick([8,16])):R(8,30);const m=maskOf(p);
+    if(Math.random()<0.5) return {mode:'prefix',title:'Prefix → mask',prompt:`Write the dotted-decimal subnet mask for <b class="big">/${p}</b>`,
+      fields:[{type:'ip',label:'Subnet mask',answer:m}],hint:`/${p} means ${p} ones followed by ${32-p} zeros. Every full octet of ones is 255.`,explain:explainMask(p)};
+    return {mode:'prefix',title:'Mask → prefix',prompt:`What prefix length is <b class="big">${ipStr(m)}</b>?`,
+      fields:[{type:'prefix',label:'Prefix (e.g. /26)',answer:p}],hint:'Count the 1 bits: each 255 is 8 bits, then add the 1s in the last non-zero octet.',explain:explainMask(p)};
+  },
+  anding(){
+    const p=randPrefix(),ip=randIP(),m=maskOf(p);
+    return {mode:'anding',title:'ANDing',prompt:`IP <b>${ipStr(ip)}</b> with mask <b>${ipStr(m)}</b> (/${p}).<br>What is the network address?`,
+      fields:[{type:'ip',label:'Network address',answer:(ip&m)>>>0}],
+      hint:'Copy the octets under 255. In the octet where the mask isn’t 255 or 0, write both numbers in binary and AND them: 1 only where both are 1.',explain:explainAnd(ip,p)};
+  },
+  detective(){
+    const p=randPrefix(),ip=randIP(),m=maskOf(p),net=(ip&m)>>>0,size=2**(32-p),bc=(net+size-1)>>>0;
+    return {mode:'detective',title:'Subnet chart',prompt:`Fill in the network chart for <b class="big">${ipStr(ip)}/${p}</b>`,
+      fields:[{type:'ip',label:'Subnet (network)',answer:net},{type:'ip',label:'Default gateway (1st usable)',answer:(net+1)>>>0},{type:'ip',label:'Last usable',answer:(bc-1)>>>0},{type:'ip',label:'Broadcast',answer:bc},{type:'num',label:'Usable hosts',answer:size-2}],
+      hint:`Mask is ${ipStr(m)}. Increment = 256 − the octet that isn’t 255 or 0. List the subnets (0, inc, 2×inc…) and round the IP down to one of them.`,explain:explainSubnet(ip,p)};
+  },
+  formulas(){
+    const core=state.level==='core';const t=R(0,4);
+    if(t===0){const p=core?R(24,30):R(16,30),h=32-p;
+      return {mode:'formulas',title:'Host formula',prompt:`How many <u>usable</u> host addresses are in each <b class="big">/${p}</b> subnet?`,
+        fields:[{type:'num',label:'Usable hosts',answer:2**h-2}],hint:`Host bits h = 32 − ${p}. Usable = 2^h − 2.`,
+        explain:`<p>h = 32 − ${p} = <b>${h}</b> host bits.</p><p class="mono">2<sup>${h}</sup> − 2 = ${(2**h).toLocaleString()} − 2 = <b class="g">${(2**h-2).toLocaleString()}</b></p><p class="dim">You subtract 2 because the first address is the network address and the last is the broadcast.</p>`};}
+    if(t===1){const n=R(1,6),base=core?24:pick([16,24]),ip=parseIP(base===24?`192.168.${R(0,255)}.0`:`172.${R(16,31)}.0.0`);
+      return {mode:'formulas',title:'Network formula',prompt:`You take <b>${ipStr(ip)}/${base}</b> and borrow <b class="big">${n}</b> host bit${n>1?'s':''}. How many subnets do you get?`,
+        fields:[{type:'num',label:'Subnets',answer:2**n},{type:'prefix',label:'New prefix',answer:base+n}],hint:'Networks = 2^n, where n is bits borrowed. The new prefix grows by n.',
+        explain:`<p class="mono">2<sup>${n}</sup> = <b class="g">${2**n}</b> subnets</p><p>New prefix = /${base} + ${n} = <b class="g">/${base+n}</b> (${ipStr(maskOf(base+n))}). More network bits → more networks, fewer hosts each.</p>`};}
+    if(t===2){const H=core?R(3,120):R(3,4000);let h=2;while(2**h-2<H)h++;const p=32-h;
+      return {mode:'formulas',title:'Size for hosts',prompt:`A department needs <b class="big">${H}</b> hosts. What's the smallest subnet that fits? (Give the prefix.)`,
+        fields:[{type:'prefix',label:'Prefix',answer:p}],hint:'Find the smallest h where 2^h − 2 ≥ the hosts needed. Prefix = 32 − h.',
+        explain:`<p>Try host-bit counts until 2<sup>h</sup> − 2 covers ${H}:</p><p class="mono">${h>2?`h=${h-1}: 2<sup>${h-1}</sup>−2 = ${2**(h-1)-2} ✗ too small<br>`:''}h=${h}: 2<sup>${h}</sup>−2 = ${2**h-2} ✓</p><p>Prefix = 32 − ${h} = <b class="g">/${p}</b> (mask ${ipStr(maskOf(p))}).</p>`};}
+    if(t===3){const N=R(2,core?60:200);let n=1;while(2**n<N)n++;const base=n>6?16:(core?24:pick([16,24]));const p=base+n;
+      return {mode:'formulas',title:'Size for networks',prompt:`You need <b class="big">${N}</b> subnets out of a <b>/${base}</b>. How many bits do you borrow, and what's the new mask?`,
+        fields:[{type:'num',label:'Bits borrowed',answer:n},{type:'ip',label:'New subnet mask',answer:maskOf(p)}],hint:'Find the smallest n where 2^n ≥ the networks needed. Add n to the prefix.',
+        explain:`<p class="mono">${n>1?`n=${n-1}: 2<sup>${n-1}</sup> = ${2**(n-1)} ✗<br>`:''}n=${n}: 2<sup>${n}</sup> = ${2**n} ✓</p><p>Borrow <b class="g">${n}</b> bits → /${base} + ${n} = /${p} = <b class="g mono">${ipStr(maskOf(p))}</b>.</p>`};}
+    let p=core?R(25,30):R(17,30);if(p===24)p=R(25,30);const m=maskOf(p);const io=Math.floor((p-1)/8);const mv=oct(m,io);
+    return {mode:'formulas',title:'Network increment',prompt:`What is the network increment for <b class="big">${ipStr(m)}</b>?`,
+      fields:[{type:'num',label:'Increment',answer:256-mv}],hint:'256 minus the octet that isn’t 255 or 0.',
+      explain:`<p>Interesting octet (octet ${io+1}) = ${mv} = <span class="mono">${bin8(mv)}</span>. The last 1 bit sits in the <b>${256-mv}</b> position.</p><p class="mono">256 − ${mv} = <b class="g">${256-mv}</b></p><p>So subnets go 0, ${256-mv}, ${2*(256-mv)}${3*(256-mv)<256?', '+3*(256-mv):''}… in octet ${io+1}.</p>`};
+  }
+};
+
+/* ---------------- game rendering ---------------- */
+function renderTabs(){
+  $('#tabs').innerHTML=MODES.map(m=>{const c=state.per[m.id];return `<button class="tab ${state.mode===m.id?'on':''}" data-m="${m.id}" ${state.timed?'disabled':''}>${m.name}${c.t?`<span class="ct">${c.r}/${c.t}</span>`:''}</button>`;}).join('');
+  $$('#tabs .tab').forEach(b=>b.onclick=()=>{state.mode=b.dataset.m;renderTabs();next();});
+}
+function renderStats(){
+  $('#sScore').textContent=state.score;$('#sStreak').textContent=state.streak;$('#sBest').textContent=state.best;
+  $('#sAcc').textContent=state.tried?Math.round(100*state.right/state.tried)+'%':'–';
+}
+function fieldHTML(f,i){
+  if(f.type==='bits'){const vals=[128,64,32,16,8,4,2,1];
+    return `<div class="field" data-i="${i}"><label>${f.label}</label><div><div class="bits">${vals.map((v,k)=>`<div class="bitcol"><small>${v}</small><button class="bit" data-k="${k}">0</button></div>`).join('')}</div><div class="fix"></div></div></div>`;}
+  const ph=f.type==='ip'?'e.g. 192.168.4.0':f.type==='prefix'?'/26':'number';
+  const im=f.type==='num'?'numeric':'decimal';
+  return `<div class="field" data-i="${i}"><label for="f${i}">${f.label}</label><div class="inrow"><input id="f${i}" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" inputmode="${im}" enterkeyhint="${i<state.q.fields.length-1?'next':'done'}" placeholder="${ph}"><span class="fix"></span></div></div>`;
+}
+function next(){
+  const mode=state.timed||state.mode==='mixed'?pick(['binary','prefix','anding','detective','formulas']):state.mode;
+  const q=GEN[mode]();state.q=q;state.checked=false;state.hinted=false;
+  $('#qtype').textContent=q.title;$('#prompt').innerHTML=q.prompt;$('#miniQ').innerHTML=q.prompt.replace(/<br>/g,' ');
+  $('#fields').innerHTML=q.fields.map(fieldHTML).join('');
+  $$('#fields .bit').forEach(b=>b.onclick=()=>{if(state.checked)return;b.classList.toggle('on');b.textContent=b.classList.contains('on')?'1':'0';});
+  $('#hint').hidden=true;$('#feedback').className='feedback';$('#work').style.display='none';
+  $('#checkBtn').innerHTML='Check <span class="kbd">Enter</span>';$('#hintBtn').disabled=false;
+  if($('#autoClear').checked){strokes=[];redrawInk();$('#scratchText').value='';}
+  const first=$('#fields input');if(first&&isDesktop())first.focus();
+}
+function readField(f,el){if(f.type==='bits')return $$(`.field[data-i="${el.dataset.i}"] .bit`).map(b=>b.classList.contains('on')?'1':'0').join('');return el.querySelector('input').value;}
+function isRight(f,v){
+  if(f.type==='bits')return v===f.answer;
+  if(f.type==='ip')return parseIP(v)===f.answer;
+  if(f.type==='prefix'){const m=String(v).trim().replace(/^\//,'');return /^\d+$/.test(m)&&Number(m)===f.answer;}
+  const s=String(v).replace(/[,\s]/g,'');return /^\d+$/.test(s)&&Number(s)===f.answer;
+}
+const show=f=>f.type==='ip'?ipStr(f.answer):f.type==='prefix'?'/'+f.answer:f.type==='bits'?f.answer:Number(f.answer).toLocaleString();
+function check(){
+  if(state.checked){next();if(!isDesktop())$('.card').scrollIntoView({block:'start',behavior:'smooth'});return;}
+  const q=state.q;let all=true;
+  q.fields.forEach((f,i)=>{const el=$(`.field[data-i="${i}"]`);const ok=isRight(f,readField(f,el));
+    el.classList.add(ok?'ok':'no');if(!ok){all=false;el.querySelector('.fix').textContent='→ '+show(f);}
+    el.querySelectorAll('input').forEach(x=>{x.readOnly=true;x.blur();});});
+  state.checked=true;state.tried++;state.per[q.mode].t++;const mixed=state.mode==='mixed'||state.timed;if(mixed)state.per.mixed.t++;
+  if(all){const pts=state.hinted?5:10;state.score+=pts;state.right++;state.per[q.mode].r++;if(mixed)state.per.mixed.r++;
+    state.streak++;if(state.streak>state.best){state.best=state.streak;store.set('ss_best',state.best);}
+    $('#feedback').className='feedback good';$('#feedback').textContent=pick(['Correct!','Nailed it.','Clean.','Exactly right.','Yep — that’s it.'])+` +${pts}${state.streak>2?`  ·  🔥 ${state.streak} in a row`:''}`;
+    if(state.timed)state.timed.right++;
+  } else {state.streak=0;$('#feedback').className='feedback bad';$('#feedback').textContent='Not quite — the correct answers are shown in green. Here’s the work:';}
+  if(state.timed)state.timed.tried++;
+  $('#work').innerHTML='<h3>Show the work</h3>'+q.explain;$('#work').style.display=all&&state.timed?'none':'block';
+  $('#checkBtn').innerHTML='Next <span class="kbd">Enter</span>';$('#hintBtn').disabled=true;
+  renderStats();renderTabs();
+  if(!isDesktop())$('#feedback').scrollIntoView({block:'nearest',behavior:'smooth'});else $('#checkBtn').focus();
+}
+$('#checkBtn').onclick=check;
+$('#hintBtn').onclick=()=>{if(state.checked)return;state.hinted=true;
+  const h=$('#hint');h.innerHTML=`💡 ${state.q.hint}<br><button class="btn small" id="hintGuide">Open the step-by-step guide →</button>`;h.hidden=false;
+  $('#hintGuide').onclick=()=>openTool('guide',GUIDE_FOR[state.q.mode]);};
+$('#skipBtn').onclick=()=>{if(!state.checked){state.streak=0;renderStats();}next();};
+$('#fields').addEventListener('keydown',e=>{
+  if(e.key==='Enter'&&e.target.classList.contains('bit')){e.preventDefault();check();return;}
+  if(/^[1-8]$/.test(e.key)&&e.target.classList.contains('bit')&&!state.checked){e.preventDefault();const b=$(`.bit[data-k="${Number(e.key)-1}"]`);if(b)b.click();return;}
+  if(e.key!=='Enter'||e.target.tagName!=='INPUT')return;e.preventDefault();
+  const ins=$$('#fields input');const i=ins.indexOf(e.target);
+  if(!state.checked&&!isDesktop()&&i<ins.length-1){ins[i+1].focus();return;}
+  check();
+});
+document.addEventListener('keydown',e=>{
+  if($('#overlay').classList.contains('on'))return;
+  if(e.target.closest&&(e.target.closest('.tools')||e.target.closest('#fields')))return;
+  if(e.target.tagName==='TEXTAREA'||e.target.tagName==='INPUT')return;
+  if(e.key==='Enter'&&!e.target.closest('summary')&&!e.target.closest('button')){e.preventDefault();check();return;}
+  if(/^[1-8]$/.test(e.key)&&!state.checked){const b=$(`.bit[data-k="${Number(e.key)-1}"]`);if(b)b.click();}
+});
+$$('#level button').forEach(b=>b.onclick=()=>{state.level=b.dataset.l;$$('#level button').forEach(x=>x.classList.toggle('on',x===b));next();});
+
+/* ---------------- timed challenge ---------------- */
+let tick=null;
+function startTimed(){
+  state.timed={end:Date.now()+120000,right:0,tried:0,startScore:state.score};$('#overlay').classList.remove('on');
+  $('#timedBtn').disabled=true;renderTabs();next();
+  clearInterval(tick);tick=setInterval(()=>{const left=Math.max(0,state.timed.end-Date.now());
+    $('#timer').textContent=`⏱ ${Math.floor(left/60000)}:${String(Math.floor(left/1000)%60).padStart(2,'0')}`;if(left<=0)endTimed();},250);
+}
+function endTimed(){
+  clearInterval(tick);const t=state.timed;state.timed=null;$('#timer').textContent='';$('#timedBtn').disabled=false;
+  const pts=state.score-t.startScore;const best=store.get('ss_tbest',0);if(pts>best)store.set('ss_tbest',pts);
+  $('#tScore').textContent=pts;$('#tLine').innerHTML=`${t.right} correct out of ${t.tried} answered<br>${pts>best?'🏆 New personal best!':`Personal best: ${best}`}`;
+  $('#overlay').classList.add('on');renderTabs();
+}
+$('#timedBtn').onclick=startTimed;$('#tAgain').onclick=startTimed;
+$('#tClose').onclick=()=>{$('#overlay').classList.remove('on');next();};
+
+/* ---------------- tools panel ---------------- */
+const tools=$('#tools');
+function openTool(name,sec){
+  $$('.ttab').forEach(b=>b.classList.toggle('on',b.dataset.t===name));
+  $$('.tpane').forEach(p=>p.hidden=p.id!=='t-'+name);
+  const wasOpen=tools.classList.contains('open');
+  tools.classList.add('open');tools.dataset.cur=name;$('#theadTitle').textContent=TOOL_NAMES[name];
+  if(!isDesktop()){document.body.classList.add('sheet-open');if(!wasOpen&&!sec)showCard();}
+  $$('#dock button').forEach(b=>b.classList.toggle('on',b.dataset.t===name));
+  if(name==='scratch')requestAnimationFrame(sizePad);
+  if(sec){const d=document.getElementById(sec);if(d){d.open=true;setTimeout(()=>d.scrollIntoView({block:'start',behavior:'smooth'}),260);}}
+}
+const TOOL_NAMES={scratch:'✏️ Scratchpad',calc:'🧮 Calculator',guide:'📋 Guide'};
+function setBig(big){tools.classList.toggle('big',big);store.set('ss_big',big);$('#tsizeLbl').textContent=big?'Smaller':'Bigger';
+  $('#tsize .ic').textContent=big?'⤡':'⤢';$('#tsize').setAttribute('aria-label',big?'Make panel smaller':'Make panel bigger');
+  if(tools.dataset.cur==='scratch')setTimeout(sizePad,240);}
+$('#tsize').onclick=()=>setBig(!tools.classList.contains('big'));
+$('#grabBtn').onclick=()=>setBig(!tools.classList.contains('big'));
+setBig(store.get('ss_big',false));
+function showCard(){if(isDesktop())return;const c=$('.card');const y=c.getBoundingClientRect().top+window.scrollY-8;window.scrollTo({top:y,behavior:'smooth'});}
+function closeTools(){tools.classList.remove('open');document.body.classList.remove('sheet-open');$$('#dock button').forEach(b=>b.classList.remove('on'));if(document.activeElement)document.activeElement.blur();}
+$$('.ttab').forEach(b=>b.onclick=()=>openTool(b.dataset.t));
+$$('#dock button').forEach(b=>b.onclick=()=>{if(tools.classList.contains('open')&&tools.dataset.cur===b.dataset.t)closeTools();else openTool(b.dataset.t);});
+$('#tclose').onclick=closeTools;
+tools.dataset.cur='scratch';
+
+/* ---------------- scratchpad ---------------- */
+const ink=$('#ink'),gridC=$('#grid'),ictx=ink.getContext('2d'),gctx=gridC.getContext('2d');
+let strokes=[],cur=null,penColor='#e6edf3',erasing=false,showGrid=store.get('ss_grid',true);
+$('#guideToggle').classList.toggle('on',showGrid);
+function sizePad(){
+  const r=$('#padwrap').getBoundingClientRect();if(!r.width||!r.height)return;const d=window.devicePixelRatio||1;
+  [ink,gridC].forEach(c=>{c.width=Math.round(r.width*d);c.height=Math.round(r.height*d);c.getContext('2d').setTransform(d,0,0,d,0,0);});
+  drawGrid();redrawInk();
+}
+function drawGrid(){
+  const r=$('#padwrap').getBoundingClientRect();gctx.clearRect(0,0,r.width,r.height);if(!showGrid)return;
+  const vals=[128,64,32,16,8,4,2,1];const w=r.width/8;
+  gctx.font='600 12px "JetBrains Mono", monospace';gctx.textAlign='center';gctx.textBaseline='top';
+  vals.forEach((v,i)=>{gctx.fillStyle='#4b5869';gctx.fillText(v,w*i+w/2,8);
+    if(i>0){gctx.strokeStyle='#1f2835';gctx.lineWidth=1;gctx.beginPath();gctx.moveTo(Math.round(w*i)+.5,4);gctx.lineTo(Math.round(w*i)+.5,r.height-4);gctx.stroke();}});
+  gctx.strokeStyle='#26303e';gctx.beginPath();gctx.moveTo(4,28.5);gctx.lineTo(r.width-4,28.5);gctx.stroke();
+}
+function drawStroke(s,from){
+  ictx.globalCompositeOperation=s.erase?'destination-out':'source-over';
+  ictx.strokeStyle=s.color;ictx.fillStyle=s.color;ictx.lineWidth=s.w;ictx.lineCap='round';ictx.lineJoin='round';
+  const pts=s.pts;if(pts.length===1){ictx.beginPath();ictx.arc(pts[0][0],pts[0][1],s.w/2,0,Math.PI*2);ictx.fill();return;}
+  ictx.beginPath();const st=Math.max(0,(from||0)-1);ictx.moveTo(pts[st][0],pts[st][1]);
+  for(let i=st+1;i<pts.length;i++)ictx.lineTo(pts[i][0],pts[i][1]);ictx.stroke();
+}
+function redrawInk(){const r=$('#padwrap').getBoundingClientRect();ictx.globalCompositeOperation='source-over';ictx.clearRect(0,0,r.width,r.height);strokes.forEach(s=>drawStroke(s));}
+function pos(e){const r=ink.getBoundingClientRect();return[e.clientX-r.left,e.clientY-r.top];}
+ink.addEventListener('pointerdown',e=>{e.preventDefault();ink.setPointerCapture(e.pointerId);
+  cur={color:penColor,w:erasing?22:(e.pointerType==='pen'?2.2:2.8),erase:erasing,pts:[pos(e)]};drawStroke(cur);});
+ink.addEventListener('pointermove',e=>{if(!cur)return;const evs=e.getCoalescedEvents?e.getCoalescedEvents():[e];const n=cur.pts.length;evs.forEach(ev=>cur.pts.push(pos(ev)));drawStroke(cur,n);});
+const endStroke=()=>{if(cur){strokes.push(cur);cur=null;}};
+ink.addEventListener('pointerup',endStroke);ink.addEventListener('pointercancel',endStroke);
+$$('.swatch').forEach(b=>b.onclick=()=>{penColor=b.dataset.c;erasing=false;$('#eraser').classList.remove('on');$$('.swatch').forEach(x=>x.classList.toggle('on',x===b));});
+$('#eraser').onclick=()=>{erasing=!erasing;$('#eraser').classList.toggle('on',erasing);};
+$('#undo').onclick=()=>{strokes.pop();redrawInk();};
+$('#clearPad').onclick=()=>{strokes=[];redrawInk();};
+$('#guideToggle').onclick=()=>{showGrid=!showGrid;store.set('ss_grid',showGrid);$('#guideToggle').classList.toggle('on',showGrid);drawGrid();};
+new ResizeObserver(()=>sizePad()).observe($('#padwrap'));
+$$('#padMode button').forEach(b=>b.onclick=()=>{const t=b.dataset.p==='type';$$('#padMode button').forEach(x=>x.classList.toggle('on',x===b));
+  $('#drawUI').hidden=t;$('#typeUI').hidden=!t;if(!t)requestAnimationFrame(sizePad);});
+function insertText(txt){const ta=$('#scratchText');const s=ta.selectionStart??ta.value.length;const pre=ta.value.slice(0,s),post=ta.value.slice(ta.selectionEnd??s);
+  const lead=pre&&!pre.endsWith('\n')?'\n':'';ta.value=pre+lead+txt+post;const c=(pre+lead+txt).length;ta.focus();ta.setSelectionRange(c,c);}
+$('#insBits').onclick=()=>insertText('128 64 32 16  8  4  2  1\n  _  _  _  _  _  _  _  _\n');
+$('#insChart').onclick=()=>insertText('Mask: \nIncrement: 256 − ___ = \nSubnets: 0, \nNetwork: \nGateway: \nLast usable: \nBroadcast: \nHosts: 2^__ − 2 = \n');
+$('#clearText').onclick=()=>{$('#scratchText').value='';};
+
+/* ---------------- calculator ---------------- */
+let lastAns=0;const hist=[];
+function evalExpr(src){
+  const s=src.replace(/×/g,'*').replace(/÷/g,'/').replace(/−/g,'-').replace(/Ans/gi,String(lastAns)).replace(/\s+/g,'');
+  if(!s)return null;const toks=s.match(/\d+\.?\d*|\.\d+|[-+*/^()]/g);if(!toks||toks.join('')!==s)return NaN;let i=0;
+  const peek=()=>toks[i];
+  function expr(){let v=term();while(peek()==='+'||peek()==='-'){const o=toks[i++];const r=term();v=o==='+'?v+r:v-r;}return v;}
+  function term(){let v=unary();while(peek()==='*'||peek()==='/'||peek()==='('){const o=peek()==='('?'*':toks[i++];const r=unary();v=o==='*'?v*r:v/r;}return v;}
+  function unary(){if(peek()==='-'){i++;return -unary();}if(peek()==='+'){i++;return unary();}return power();}
+  function power(){const b=prim();if(peek()==='^'){i++;return Math.pow(b,unary());}return b;}
+  function prim(){const t=toks[i++];if(t==='('){const v=expr();if(toks[i]===')')i++;return v;}if(t!==undefined&&/^[\d.]/.test(t))return parseFloat(t);throw 0;}
+  try{const v=expr();if(i!==toks.length)return NaN;return v;}catch(e){return NaN;}
+}
+const fmt=v=>Number.isInteger(v)?String(v):String(parseFloat(v.toPrecision(10)));
+const cin=$('#cin'),cprev=$('#cprev');
+function preview(){const v=evalExpr(cin.value);cprev.textContent=v==null||isNaN(v)||!isFinite(v)?'':'= '+fmt(v);}
+function calcEquals(){const v=evalExpr(cin.value);if(v==null)return;if(isNaN(v)||!isFinite(v)){cprev.textContent='Error';return;}
+  const r=fmt(v);hist.unshift({e:cin.value,r});if(hist.length>8)hist.pop();lastAns=v;cprev.textContent=cin.value+' =';cin.value=r;renderHist();}
+function renderHist(){$('#chist').innerHTML=hist.map((h,i)=>`<div data-i="${i}"><span>${h.e.replace(/</g,'&lt;')}</span><b>${h.r}</b></div>`).join('');
+  $$('#chist div').forEach(d=>d.onclick=()=>{cin.value=hist[d.dataset.i].e;preview();});}
+function press(k){
+  if(k==='C'){cin.value='';cprev.textContent='';return;}
+  if(k==='BS'){cin.value=cin.value.slice(0,-1);preview();return;}
+  if(k==='='){calcEquals();return;}
+  if(k==='ANS'){cin.value+='Ans';preview();return;}
+  cin.value+=k;preview();
+}
+$$('#ckeys button').forEach(b=>b.onclick=()=>press(b.dataset.k));
+cin.addEventListener('input',preview);
+cin.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key==='='){e.preventDefault();calcEquals();}else if(e.key==='Escape'){press('C');}});
+
+/* ---------------- guide tables ---------------- */
+$('#cheatRows').innerHTML=[24,25,26,27,28,29,30].map(p=>{const v=oct(maskOf(p),3);return `<tr><td>/${p}</td><td>${ipStr(maskOf(p))}</td><td>${256-v}</td><td>${2**(32-p)-2}</td><td>${2**(p-24)}</td></tr>`;}).join('');
+$('#partRows').innerHTML=[1,2,3,4,5,6,7,8].map(n=>{const v=(0xFF00>>n)&255;return `<tr><td>${n}</td><td>${bin8(v)}</td><td>${v}</td><td>${n===8?'—':256-v}</td></tr>`;}).join('');
+
+const setDockH=()=>{const d=$('#dock');const h=d.offsetHeight;if(h)document.documentElement.style.setProperty('--dock-h',h+'px');};
+new ResizeObserver(setDockH).observe($('#dock'),{box:'border-box'});setTimeout(setDockH,500);window.addEventListener('resize',setDockH);setDockH();
+renderTabs();renderStats();next();
+if(isDesktop())openTool('scratch');
+})();
+</script>
+</body>
+</html>
