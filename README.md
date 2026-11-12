@@ -98,7 +98,7 @@ python tests/test_ui.py
 
 ## Built with
 
-Plain HTML, CSS and JavaScript in a single file, with fonts from Google Fonts ([Inter](https://fonts.google.com/specimen/Inter), [JetBrains Mono](https://fonts.google.com/specimen/JetBrains+Mono)). Best streak and challenge scores are saved only in your own browser.
+HTML, CSS and JavaScript in a single file, with fonts from Google Fonts ([Inter](https://fonts.google.com/specimen/Inter), [JetBrains Mono](https://fonts.google.com/specimen/JetBrains+Mono)). Best streak and challenge scores are saved only in your own browser.
 
 ## About
 
