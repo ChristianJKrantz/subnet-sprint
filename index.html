@@ -7,6 +7,11 @@
 <meta name="description" content="A study game for IPv4 subnetting: binary, masks, ANDing, subnet charts and formulas, with feedback on exactly what you got wrong.">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Subnet Sprint">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#0d1117">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://christianjkrantz.github.io/subnet-sprint/">
@@ -35,7 +40,14 @@ button{font:inherit;color:inherit;cursor:pointer;touch-action:manipulation}
 .app{max-width:1400px;margin:0 auto;display:grid;grid-template-columns:minmax(0,1fr) 400px;gap:20px;padding:20px}
 .game{min-width:0}
 header{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:14px;margin-bottom:16px}
-h1{margin:0;font-size:28px;font-weight:800;letter-spacing:-.02em}
+h1{margin:0;font-size:28px;font-weight:800;letter-spacing:-.02em;display:flex;align-items:center;flex-wrap:wrap;gap:4px 12px}
+.install{font:600 13px Inter,system-ui,sans-serif;letter-spacing:0;color:var(--accent);background:transparent;border:1px solid var(--accent);border-radius:999px;padding:5px 12px;cursor:pointer}
+.install:hover{background:#3fb6a81a}
+.iospop{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:60;width:min(92vw,380px);background:var(--panel2);border:1px solid var(--line);border-radius:14px;padding:14px 16px;box-shadow:0 20px 60px #000a;font-size:15px;line-height:1.5}
+.iospop b{color:var(--accent)}.iospop .row{display:flex;justify-content:flex-end;margin-top:10px}
+.toast{position:fixed;left:50%;top:16px;transform:translateX(-50%);z-index:60;background:var(--panel2);border:1px solid var(--accent);color:var(--text);border-radius:999px;padding:8px 16px;font-size:14px;box-shadow:0 10px 30px #0008;animation:tin .3s}
+@keyframes tin{from{opacity:0;transform:translate(-50%,-8px)}}
+@media (display-mode:standalone){.install{display:none!important}}
 h1 span{color:var(--accent)}
 .sub{color:var(--muted);font-size:14px;margin-top:2px}
 .stats{display:grid;grid-template-columns:repeat(4,auto);gap:8px}
@@ -283,7 +295,7 @@ tr.me td{background:#3fb6a81a;color:#9ef0e4}
 <main class="game">
   <header>
     <div>
-      <h1>Subnet <span>Sprint</span></h1>
+      <h1>Subnet <span>Sprint</span><button class="install" id="installBtn" hidden>⤓ Install app</button></h1>
       <div class="sub">Network Addressing practice — binary, masks, ANDing, subnet charts &amp; formulas</div>
     </div>
     <div class="stats">
@@ -1198,6 +1210,30 @@ const setDockH=()=>{const d=$('#dock');const h=d.offsetHeight;if(h)document.docu
 new ResizeObserver(setDockH).observe($('#dock'),{box:'border-box'});setTimeout(setDockH,500);window.addEventListener('resize',setDockH);setDockH();
 renderTabs();renderStats();next();
 if(isDesktop())openTool('scratch');
+
+/* ---------------- install + offline ---------------- */
+(function(){
+  const btn=$('#installBtn');let deferred=null;
+  const standalone=window.matchMedia&&matchMedia('(display-mode: standalone)').matches||navigator.standalone===true;
+  const ios=/iphone|ipad|ipod/i.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+  const toast=t=>{const d=document.createElement('div');d.className='toast';d.textContent=t;document.body.appendChild(d);setTimeout(()=>d.remove(),3200);};
+  window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferred=e;if(!standalone)btn.hidden=false;});
+  window.addEventListener('appinstalled',()=>{btn.hidden=true;deferred=null;toast('Installed. Open Subnet Sprint from your home screen or app list.');});
+  if(ios&&!standalone)btn.hidden=false;
+  btn.onclick=async()=>{
+    if(deferred){deferred.prompt();await deferred.userChoice.catch(()=>{});deferred=null;btn.hidden=true;return;}
+    if($('.iospop'))return;
+    const p=document.createElement('div');p.className='iospop';
+    p.innerHTML=`<div>To install on iPhone or iPad, open this page in <b>Safari</b>, tap the <b>Share</b> button <span aria-hidden="true">(□↑)</span>, then <b>Add to Home Screen</b>.</div><div class="row"><button class="btn small">Got it</button></div>`;
+    p.querySelector('button').onclick=()=>p.remove();document.body.appendChild(p);};
+  if('serviceWorker' in navigator&&(location.protocol==='https:'||location.hostname==='localhost'||location.hostname==='127.0.0.1')){
+    const first=!navigator.serviceWorker.controller;
+    navigator.serviceWorker.register('sw.js').then(reg=>{
+      if(first)navigator.serviceWorker.ready.then(()=>{if(!store.get('ss_offline_told',false)){store.set('ss_offline_told',true);toast('Saved for offline use ✓');}});
+    }).catch(()=>{});
+  }
+})();
+
 /* hooks for the automated tests */
 window.SS={walkSteps,GEN,state,WEAK,getWeak:()=>weak,pickWeak,next,check,show,isRight,parseIP,R,netCtx,diagNet,diagChart,diagHosts,diagBits,diagBinDec,diagMask,diagPrefix,diagNetworks,diagNewPrefix,diagSizeHosts,diagBits4Nets,diagNewMask,diagIncrement};
 })();

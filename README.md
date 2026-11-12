@@ -73,6 +73,14 @@ On phones, the tools open from a bottom bar as a half-height panel, so the quest
 
 ---
 
+## Install it and use it offline
+Subnet Sprint works as an app. Install it once and it opens full screen from its own icon, and keeps working with no internet connection.
+
+- **iPhone / iPad:** open the site in Safari, tap **Share**, then **Add to Home Screen**. (The **Install app** button next to the title shows these steps.)
+- **Android / Chrome / Edge:** tap **Install app** next to the title, or use the browser's install option.
+
+A service worker saves a copy of the game on your device on your first visit. Online, you always get the newest version (and the saved copy is refreshed); offline, the saved copy loads instead. Your scores and weak spots are stored on the device either way.
+
 ## How subnetting works (quick version)
 
 Using `172.16.62.68/26`:
@@ -102,6 +110,7 @@ The `tests/` folder has two [Playwright](https://playwright.dev/python/) scripts
 - **`test_ui.py`** runs 87 checks of every control: hints, scoring, streaks, timed challenge, scratchpad drawing/erasing/undo, typed notes, calculator, guide, keyboard shortcuts, the phone layout and bottom panel, and running with browser storage blocked.
 - **`test_feedback.py`** feeds in 45 common mistakes and checks each gets the matching explanation, then answers 15,000 random questions with junk and near-miss input to make sure feedback appears for every wrong box and never for a right one.
 - **`test_practice.py`** runs 80 full walkthroughs at both levels (with deliberate wrong steps), checks that mistakes are logged to the right weak spot, that the Weak spots tab drills them, that right answers shrink them, and that the walkthrough fits a phone screen.
+- **`test_offline.py`** serves the site locally, loads it once, cuts the network, and plays a full question offline. It also checks that a new version is picked up when back online, and that the install button works on Chrome and gives iPhone directions.
 
 ```bash
 pip install playwright
@@ -110,6 +119,7 @@ python tests/test_answers.py      # N=200 python tests/test_answers.py for a lon
 python tests/test_ui.py
 python tests/test_feedback.py
 python tests/test_practice.py
+python tests/test_offline.py
 ```
 
 ## Built with
