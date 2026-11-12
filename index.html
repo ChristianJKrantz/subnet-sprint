@@ -4,6 +4,19 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Subnet Sprint — Network Addressing Study Game</title>
+<meta name="description" content="A study game for IPv4 subnetting: binary, masks, ANDing, subnet charts and formulas, with feedback on exactly what you got wrong.">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="theme-color" content="#0d1117">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://christianjkrantz.github.io/subnet-sprint/">
+<meta property="og:title" content="Subnet Sprint: IPv4 subnetting study game">
+<meta property="og:description" content="A study game for IPv4 subnetting: binary, masks, ANDing, subnet charts and formulas, with feedback on exactly what you got wrong.">
+<meta property="og:image" content="https://christianjkrantz.github.io/subnet-sprint/docs/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Subnet Sprint: a subnet chart with one wrong box and feedback explaining the mistake">
+<meta name="twitter:card" content="summary_large_image">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
@@ -81,6 +94,26 @@ h1 span{color:var(--accent)}
 .work{margin-top:16px;border-top:1px dashed var(--line);padding-top:14px;display:none}
 .work h3{margin:0 0 8px;font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
 .work p{margin:8px 0}
+.weakbox{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px 16px;margin-bottom:14px}
+.wk-h{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.wk-row{display:grid;grid-template-columns:minmax(0,1fr) 110px auto;gap:10px;align-items:center;padding:5px 6px;border-radius:8px;font-size:14px}
+.wk-row.now{background:var(--panel2);box-shadow:inset 3px 0 0 var(--accent)}
+.wk-bar{height:8px;border-radius:5px;background:var(--bg);overflow:hidden}.wk-bar i{display:block;height:100%;background:var(--warn);border-radius:5px}
+.wk-row small{color:var(--muted);white-space:nowrap}
+.weakbox .dim{color:var(--muted);font-size:13px;margin:8px 0 0}
+.drill{text-transform:none;letter-spacing:0;color:var(--warn);font-weight:600}
+.wk-chip{display:inline-block;margin-top:8px;font-size:12px;color:var(--warn);border:1px solid #e3b34155;border-radius:999px;padding:2px 9px}
+@media (max-width:600px){.wk-row{grid-template-columns:minmax(0,1fr) 60px;}.wk-row small{grid-column:1/-1;margin-top:-4px}}
+.walk{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin:12px 0}
+.wk-title{font-weight:700;margin-bottom:6px}.wk-title small{color:var(--muted);font-weight:500}
+.walk ol{margin:0;padding-left:22px;display:flex;flex-direction:column;gap:10px}
+.walk li{line-height:1.5}.walk li.wok{color:var(--muted)}.walk li.wok .wans{display:block;margin-top:2px}
+.walk li.wdone-all{list-style:'★ ';color:var(--text)}
+.wrow{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+.winp{flex:1;min-width:150px;max-width:240px;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:8px 10px;font-family:var(--mono);font-size:16px;color:var(--text);outline:none}
+.winp:focus{border-color:var(--accent2)}
+.wmsg{margin-top:6px;color:#ffb3b6;font-size:14px}.wmsg:empty{display:none}
+.shake{animation:shk .25s}@keyframes shk{25%{transform:translateX(-4px)}75%{transform:translateX(4px)}}
 .coach{display:flex;flex-direction:column;gap:10px;margin-bottom:12px}
 .ci{border:1px solid #f2545b40;border-left:3px solid var(--bad,#f2545b);border-radius:10px;padding:10px 12px;background:#f2545b0d}
 .ci .ch{display:flex;flex-wrap:wrap;justify-content:space-between;gap:4px 12px;font-size:14px}
@@ -226,6 +259,7 @@ tr.me td{background:#3fb6a81a;color:#9ef0e4}
   .bitcol small{font-size:10px}
   .actions{display:grid;grid-template-columns:1fr 1fr}
   .actions #checkBtn{grid-column:1/-1;padding:13px}
+  .actions #walkBtn{grid-column:1/-1}
   pre.binblock{font-size:11.5px;padding:10px}
   table{font-size:12.5px}
   th,td{padding:5px 6px}
@@ -269,14 +303,17 @@ tr.me td{background:#3fb6a81a;color:#9ef0e4}
     <button class="btn timed" id="timedBtn">⏱ 2-minute challenge</button>
   </div>
 
+  <div class="weakbox" id="weakbox" hidden></div>
   <div class="card">
     <div class="qhead"><div class="qtype" id="qtype"></div><div class="timer" id="timer"></div></div>
     <div class="prompt" id="prompt"></div>
     <div class="fields" id="fields"></div>
     <div class="hintbox" id="hint" hidden></div>
+    <div class="walk" id="walk" hidden></div>
     <div class="actions">
       <button class="btn primary" id="checkBtn">Check <span class="kbd">Enter</span></button>
       <button class="btn" id="hintBtn">Hint (½ points)</button>
+      <button class="btn" id="walkBtn" hidden>Walk me through it</button>
       <button class="btn" id="skipBtn">Skip</button>
     </div>
     <div class="feedback" id="feedback"></div>
@@ -513,7 +550,7 @@ function binColored(n,p,dimHost){
 }
 const store={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v);}catch(e){return d;}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}}};
 
-const MODES=[{id:'mixed',name:'Mixed'},{id:'binary',name:'Binary'},{id:'prefix',name:'Prefix ↔ Mask'},{id:'anding',name:'ANDing'},{id:'detective',name:'Subnet Chart'},{id:'formulas',name:'Formulas'}];
+const MODES=[{id:'mixed',name:'Mixed'},{id:'binary',name:'Binary'},{id:'prefix',name:'Prefix ↔ Mask'},{id:'anding',name:'ANDing'},{id:'detective',name:'Subnet Chart'},{id:'formulas',name:'Formulas'},{id:'weak',name:'Weak spots'}];
 const GUIDE_FOR={binary:'g-bin',prefix:'g-mask',anding:'g-and',detective:'g-chart',formulas:'g-form'};
 const state={mode:'mixed',level:'core',score:0,streak:0,best:store.get('ss_best',0),right:0,tried:0,per:{},q:null,checked:false,hinted:false,timed:null};
 MODES.forEach(m=>state.per[m.id]={r:0,t:0});
@@ -570,6 +607,7 @@ Mask ${binColored(m,p)}</pre>
 /* ---------------- tailored feedback ---------------- */
 /* Each diag function gets the raw text the student typed for each field and returns,
    per field, null (correct) or HTML explaining that specific mistake. */
+const T=(tag,html)=>Object.assign(new String(html),{tag});
 const M=s=>`<span class="mono">${s}</span>`;
 const G=s=>`<b class="g mono">${s}</b>`;
 const isBlank=v=>String(v).trim()==='';
@@ -593,34 +631,35 @@ function netCtx(ip,p){
   return {m,net,size,bc,io,mv,inc,ipo,neto,h:32-p};
 }
 function blocksAround(c,uo){
-  const lo=Math.max(0,Math.min(c.neto,uo)-c.inc),hi=Math.min(256-c.inc,Math.max(c.neto,uo)+c.inc);const a=[];
-  for(let x=lo;x<=hi;x+=c.inc)a.push(x===c.neto?`<b>${x}</b>`:x);return a.join(', ');
+  let lo=Math.max(0,Math.min(c.neto,uo)-c.inc),hi=Math.min(256-c.inc,Math.max(c.neto,uo)+c.inc);
+  if((hi-lo)/c.inc>6){lo=Math.max(0,c.neto-c.inc);hi=Math.min(256-c.inc,c.neto+2*c.inc);}
+  const a=[];for(let x=lo;x<=hi;x+=c.inc)a.push(x===c.neto?`<b>${x}</b>`:x);return (lo>0?'… ':'')+a.join(', ')+(hi<256-c.inc?' …':'');
 }
 function diagNet(ip,p,u,isAnd){
   const c=netCtx(ip,p);const o=c.io+1;const later=c.io<3?` Every octet after octet ${o} becomes 0.`:'';
-  if(u===ip)return `That’s the IP address you were given, not its network. The network address is where the IP’s block starts: round octet ${o} (${c.ipo}) down to a multiple of ${c.inc} → ${c.neto}.${later}`;
+  if(u===ip)return T('copied_ip',`That’s the IP address you were given, not its network. The network address is where the IP’s block starts: round octet ${o} (${c.ipo}) down to a multiple of ${c.inc} → ${c.neto}.${later}`);
   for(let k=0;k<c.io;k++)if(oct(u,k)!==oct(ip,k))
-    return `Octet ${k+1} should be ${oct(ip,k)}, not ${oct(u,k)}. The mask is 255 there, so that octet copies straight down from the IP unchanged.`;
+    return T('copy_octets',`Octet ${k+1} should be ${oct(ip,k)}, not ${oct(u,k)}. The mask is 255 there, so that octet copies straight down from the IP unchanged.`);
   const uo=oct(u,c.io);const laterBad=[1,2,3].filter(k=>k>c.io&&oct(u,k)!==0);
   if(uo===c.neto&&laterBad.length)
-    return `Octet ${o} (${c.neto}) is right, but octet${laterBad.length>1?'s':''} ${laterBad.map(k=>k+1).join(' and ')} must be 0. The mask is 0 in those octets, and anything ANDed with 0 is 0.`;
+    return T('zero_octets',`Octet ${o} (${c.neto}) is right, but octet${laterBad.length>1?'s':''} ${laterBad.map(k=>k+1).join(' and ')} must be 0. The mask is 0 in those octets, and anything ANDed with 0 is 0.`);
   const tail=laterBad.length?` Also, octets after octet ${o} should be 0.`:'';
   if(isAnd&&c.mv!==255){
-    if(uo===(c.ipo|c.mv))return `It looks like you ORed the octet instead of ANDing it. AND gives 1 only where <i>both</i> bits are 1:<br>${M(`${bin8(c.ipo)} (${c.ipo})<br>${bin8(c.mv)} (${c.mv})<br>${bin8(c.neto)} → ${c.neto}`)}`;
-    if(uo===c.mv)return `${uo} is the mask’s octet, copied down. You need ${c.ipo} AND ${c.mv}: ${M(bin8(c.ipo)+' AND '+bin8(c.mv)+' = '+bin8(c.neto))} = ${c.neto}.${tail}`;
+    if(uo===(c.ipo|c.mv))return T('or_and',`It looks like you ORed the octet instead of ANDing it. AND gives 1 only where <i>both</i> bits are 1:<br>${M(`${bin8(c.ipo)} (${c.ipo})<br>${bin8(c.mv)} (${c.mv})<br>${bin8(c.neto)} → ${c.neto}`)}`);
+    if(uo===c.mv)return T('or_and',`${uo} is the mask’s octet, copied down. You need ${c.ipo} AND ${c.mv}: ${M(bin8(c.ipo)+' AND '+bin8(c.mv)+' = '+bin8(c.neto))} = ${c.neto}.${tail}`);
   }
   if(uo%c.inc===0){
-    if(uo===c.neto+c.inc)return `You rounded up. ${c.ipo} sits in the block ${c.neto}–${c.neto+c.inc-1}; ${uo} is where the <i>next</i> block starts. Always round down: the network is never higher than the IP.${tail}`;
-    if(uo>c.ipo)return `${uo} is a real subnet boundary, but it’s above ${c.ipo}, and the network can never be higher than the IP. Count up by ${c.inc}: ${blocksAround(c,uo)}. ${c.ipo} falls in ${c.neto}.${tail}`;
-    return `${uo} is a real subnet, but ${c.ipo} isn’t in it: that block only runs ${uo}–${uo+c.inc-1}. Keep counting by ${c.inc}: ${blocksAround(c,uo)}. ${c.ipo} falls in ${c.neto}.${tail}`;
+    if(uo===c.neto+c.inc)return T('round_up',`You rounded up. ${c.ipo} sits in the block ${c.neto}–${c.neto+c.inc-1}; ${uo} is where the <i>next</i> block starts. Always round down: the network is never higher than the IP.${tail}`);
+    if(uo>c.ipo)return T('round_up',`${uo} is a real subnet boundary, but it’s above ${c.ipo}, and the network can never be higher than the IP. Count up by ${c.inc}: ${blocksAround(c,uo)}. ${c.ipo} falls in ${c.neto}.${tail}`);
+    return T('wrong_block',`${uo} is a real subnet, but ${c.ipo} isn’t in it: that block only runs ${uo}–${uo+c.inc-1}. Keep counting by ${c.inc}: ${blocksAround(c,uo)}. ${c.ipo} falls in ${c.neto}.${tail}`);
   }
   // a different prefix's network
   for(const q of [p-1,p+1,p-2,p+2,p-8,p+8]){if(q<1||q>31)continue;
     if(u===((ip&maskOf(q))>>>0)&&u!==c.net)
-      return `That’s the network you’d get with a /${q} mask (${M(ipStr(maskOf(q)))}). This problem is /${p} = ${M(ipStr(c.m))}: the interesting octet is ${o} with mask ${c.mv}, so the increment is 256 − ${c.mv} = ${c.inc}.`;}
-  if(c.mv>0&&c.mv<255&&uo===Math.floor(c.ipo/c.mv)*c.mv)return `It looks like you used ${c.mv} (the mask octet) as the increment. Increment = 256 − ${c.mv} = ${c.inc}, so ${c.ipo} rounds down to ${c.neto}.${tail}`;
-  const i2=255-c.mv;if(i2>1&&uo===Math.floor(c.ipo/i2)*i2)return `It looks like you used 255 − ${c.mv} = ${i2} as the increment. It’s 256 − ${c.mv} = ${c.inc}, so ${c.ipo} rounds down to ${c.neto}.${tail}`;
-  return `${uo} isn’t a multiple of ${c.inc}, so it can’t be a /${p} network address. With mask ${c.mv} in octet ${o}, the increment is 256 − ${c.mv} = ${c.inc}. Subnets go ${blocksAround(c,uo)}, and ${c.ipo} rounds down to ${c.neto}.${tail}`;
+      return T('wrong_inc',`That’s the network you’d get with a /${q} mask (${M(ipStr(maskOf(q)))}). This problem is /${p} = ${M(ipStr(c.m))}: the interesting octet is ${o} with mask ${c.mv}, so the increment is 256 − ${c.mv} = ${c.inc}.`);}
+  if(c.mv>0&&c.mv<255&&uo===Math.floor(c.ipo/c.mv)*c.mv)return T('wrong_inc',`It looks like you used ${c.mv} (the mask octet) as the increment. Increment = 256 − ${c.mv} = ${c.inc}, so ${c.ipo} rounds down to ${c.neto}.${tail}`);
+  const i2=255-c.mv;if(i2>1&&uo===Math.floor(c.ipo/i2)*i2)return T('wrong_inc',`It looks like you used 255 − ${c.mv} = ${i2} as the increment. It’s 256 − ${c.mv} = ${c.inc}, so ${c.ipo} rounds down to ${c.neto}.${tail}`);
+  return T('wrong_inc',`${uo} isn’t a multiple of ${c.inc}, so it can’t be a /${p} network address. With mask ${c.mv} in octet ${o}, the increment is 256 − ${c.mv} = ${c.inc}. Subnets go ${blocksAround(c,uo)}, and ${c.ipo} rounds down to ${c.neto}.${tail}`);
 }
 
 /* --- subnet chart --- */
@@ -641,32 +680,32 @@ function diagChart(ip,p,vals){
     const x=u[i];if(x==null){out.push(badEntry(vals[i],'ip')+' '+how[i]);continue;}
     const j=ans.indexOf(x);
     if(j>=0&&j!==i){
-      out.push(u[j]===ans[i]?`You swapped the <b>${nm[i]}</b> and <b>${nm[j]}</b> boxes. ${M(ipStr(x))} is ${what[j]}. ${how[i]}`
-        :`${M(ipStr(x))} is ${what[j]}, so it goes in the <b>${nm[j]}</b> box. ${how[i]}`);continue;}
+      out.push(u[j]===ans[i]?T('swap',`You swapped the <b>${nm[i]}</b> and <b>${nm[j]}</b> boxes. ${M(ipStr(x))} is ${what[j]}. ${how[i]}`)
+        :T('swap',`${M(ipStr(x))} is ${what[j]}, so it goes in the <b>${nm[j]}</b> box. ${how[i]}`));continue;}
     let msg=null;const un=u[0],ub=u[3];
     if(i===0)msg=diagNet(ip,p,x,false);
     if(i===1){
       if(un!=null&&!right[0]&&x===((un+1)>>>0))msg=`This is network + 1 for the network you wrote (${M(ipStr(un))}), so your method here is right. Only the network is off. With the correct network, the gateway is ${G(ipStr(ans[1]))}.`;
-      else if(x===ip)msg=`That’s the IP from the question. The gateway is the first usable address in its subnet: network + 1 = ${G(ipStr(ans[1]))}.`;
-      else if(x===((c.net+2)>>>0))msg=`Off by one. The gateway is network <b>+ 1</b>: ${M(ipStr(c.net))} + 1 = ${G(ipStr(ans[1]))}.`;
-      else if(x===((c.net-1)>>>0))msg=`That’s one <i>below</i> the network, which belongs to the previous subnet. The gateway is network + 1 = ${G(ipStr(ans[1]))}.`;
+      else if(x===ip)msg=T('copied_ip',`That’s the IP from the question. The gateway is the first usable address in its subnet: network + 1 = ${G(ipStr(ans[1]))}.`);
+      else if(x===((c.net+2)>>>0))msg=T('off_by_one',`Off by one. The gateway is network <b>+ 1</b>: ${M(ipStr(c.net))} + 1 = ${G(ipStr(ans[1]))}.`);
+      else if(x===((c.net-1)>>>0))msg=T('off_by_one',`That’s one <i>below</i> the network, which belongs to the previous subnet. The gateway is network + 1 = ${G(ipStr(ans[1]))}.`);
     }
     if(i===2){
       if(ub!=null&&!right[3]&&x===((ub-1)>>>0))msg=`This is broadcast − 1 for the broadcast you wrote (${M(ipStr(ub))}), so your method here is right. Only the broadcast is off. With the correct broadcast, the last usable is ${G(ipStr(ans[2]))}.`;
-      else if(x===nextNet)msg=`That’s the next subnet’s network address. Count back from it: − 1 is the broadcast (${M(ipStr(c.bc))}), − 2 is the last usable, ${G(ipStr(ans[2]))}.`;
-      else if(x===((c.bc-2)>>>0))msg=`Off by one. The last usable is broadcast <b>− 1</b>: ${M(ipStr(c.bc))} − 1 = ${G(ipStr(ans[2]))}.`;
-      else if(oct(x,3)===254)msg=`The last usable only ends in .254 when the broadcast ends in .255 <i>and</i> the octets before it match. Here the broadcast is ${M(ipStr(c.bc))}, so the last usable is ${G(ipStr(ans[2]))}.`;
+      else if(x===nextNet)msg=T('next_subnet',`That’s the next subnet’s network address. Count back from it: − 1 is the broadcast (${M(ipStr(c.bc))}), − 2 is the last usable, ${G(ipStr(ans[2]))}.`);
+      else if(x===((c.bc-2)>>>0))msg=T('off_by_one',`Off by one. The last usable is broadcast <b>− 1</b>: ${M(ipStr(c.bc))} − 1 = ${G(ipStr(ans[2]))}.`);
+      else if(oct(x,3)===254)msg=T('assume_255',`The last usable only ends in .254 when the broadcast ends in .255 <i>and</i> the octets before it match. Here the broadcast is ${M(ipStr(c.bc))}, so the last usable is ${G(ipStr(ans[2]))}.`);
     }
     if(i===3){
       if(un!=null&&!right[0]&&x===((un+c.size-1)>>>0))msg=`This is the right broadcast for the network you wrote (${M(ipStr(un))}), so your method here is right. Only the network is off. With the correct network, the broadcast is ${G(ipStr(c.bc))}.`;
-      else if(x===nextNet)msg=`That’s the <i>next</i> subnet’s network address. The broadcast is the address just before it: ${M(ipStr(nextNet))} − 1 = ${G(ipStr(c.bc))}.`;
-      else if(x===((c.bc+1)>>>0)||x===((c.bc-2)>>>0))msg=`Off by one. Broadcast = next subnet − 1 = ${M(ipStr(nextNet))} − 1 = ${G(ipStr(c.bc))}.`;
-      else if(oct(x,3)===255&&c.io===3)msg=`A broadcast only ends in .255 for the last subnet in the octet. Here the increment is ${c.inc}, so this block ends just before the next subnet, ${M(ipStr(nextNet))}. The broadcast is ${G(ipStr(c.bc))}.`;
+      else if(x===nextNet)msg=T('next_subnet',`That’s the <i>next</i> subnet’s network address. The broadcast is the address just before it: ${M(ipStr(nextNet))} − 1 = ${G(ipStr(c.bc))}.`);
+      else if(x===((c.bc+1)>>>0)||x===((c.bc-2)>>>0))msg=T('off_by_one',`Off by one. Broadcast = next subnet − 1 = ${M(ipStr(nextNet))} − 1 = ${G(ipStr(c.bc))}.`);
+      else if(oct(x,3)===255&&c.io===3)msg=T('assume_255',`A broadcast only ends in .255 for the last subnet in the octet. Here the increment is ${c.inc}, so this block ends just before the next subnet, ${M(ipStr(nextNet))}. The broadcast is ${G(ipStr(c.bc))}.`);
       else{for(const q of [p-1,p+1,p-2,p+2]){if(q<1||q>31)continue;const n2=(ip&maskOf(q))>>>0;
-        if(x===((n2+2**(32-q)-1)>>>0)){msg=`That’s the broadcast for a /${q}, not a /${p}. With /${p} the block is ${c.size.toLocaleString()} addresses (increment ${c.inc}), so the broadcast is ${G(ipStr(c.bc))}.`;break;}}}
-      if(!msg&&c.io<3&&oct(x,c.io)===oct(c.bc,c.io)&&oct(x,3)!==255)msg=`Octet ${c.io+1} is right, but every octet after it should be 255 in a broadcast (all host bits on): ${G(ipStr(c.bc))}.`;
+        if(x===((n2+2**(32-q)-1)>>>0)){msg=T('wrong_inc',`That’s the broadcast for a /${q}, not a /${p}. With /${p} the block is ${c.size.toLocaleString()} addresses (increment ${c.inc}), so the broadcast is ${G(ipStr(c.bc))}.`);break;}}}
+      if(!msg&&c.io<3&&oct(x,c.io)===oct(c.bc,c.io)&&oct(x,3)!==255)msg=T('fill_255',`Octet ${c.io+1} is right, but every octet after it should be 255 in a broadcast (all host bits on): ${G(ipStr(c.bc))}.`);
     }
-    out.push(msg||`${M(ipStr(x))} isn’t right. ${how[i]}`);
+    out.push(msg||T('chart_misc',`${M(ipStr(x))} isn’t right. ${how[i]}`));
   }
   out.push(diagHosts(32-p,vals[4],true));
   return out;
@@ -675,38 +714,38 @@ function diagHosts(h,v,inChart){
   const ans=2**h-2;const u=toNum(v);if(u===ans)return null;
   const how=`Host bits h = 32 − ${32-h} = ${h}, so usable hosts = 2<sup>${h}</sup> − 2 = ${G(ans.toLocaleString())}.`;
   if(u==null)return badEntry(v,'num')+' '+how;
-  if(u===2**h)return `You forgot to subtract 2. A /${32-h} has ${(2**h).toLocaleString()} addresses, but the first is the network address and the last is the broadcast, so ${G(ans.toLocaleString())} are usable.`;
-  if(u===2**h-1)return `Subtract 2, not 1: both the network address <i>and</i> the broadcast are unusable. 2<sup>${h}</sup> − 2 = ${G(ans.toLocaleString())}.`;
-  if(u===h)return `${h} is the number of host <i>bits</i>. The number of hosts is 2<sup>${h}</sup> − 2 = ${G(ans.toLocaleString())}.`;
-  if(h>=2&&u===2**(h-1)-2)return `That’s 2<sup>${h-1}</sup> − 2. You used one host bit too few; h = 32 − ${32-h} = ${h}, so it’s 2<sup>${h}</sup> − 2 = ${G(ans.toLocaleString())}.`;
-  if(u===2**(h+1)-2)return `That’s 2<sup>${h+1}</sup> − 2. You used one host bit too many; h = 32 − ${32-h} = ${h}, so it’s 2<sup>${h}</sup> − 2 = ${G(ans.toLocaleString())}.`;
-  if(u===2**(32-h)-2||u===2**(32-h))return `You used the network bits (${32-h}) as the exponent. Hosts come from the <i>host</i> bits: 32 − ${32-h} = ${h}, so 2<sup>${h}</sup> − 2 = ${G(ans.toLocaleString())}.`;
-  if(u===2*h-2||u===2*h)return `2<sup>${h}</sup> means 2 multiplied by itself ${h} times, not 2 × ${h}. 2<sup>${h}</sup> = ${(2**h).toLocaleString()}, minus 2 = ${G(ans.toLocaleString())}.`;
-  if(inChart&&h<=8&&u===2**h-3)return `Usable hosts is 2<sup>h</sup> − 2 = ${G(ans.toLocaleString())}. Don’t also subtract the gateway: it’s a usable host address.`;
-  return `${u.toLocaleString()} isn’t right. ${how}`;
+  if(u===2**h)return T('minus2',`You forgot to subtract 2. A /${32-h} has ${(2**h).toLocaleString()} addresses, but the first is the network address and the last is the broadcast, so ${G(ans.toLocaleString())} are usable.`);
+  if(u===2**h-1)return T('minus2',`Subtract 2, not 1: both the network address <i>and</i> the broadcast are unusable. 2<sup>${h}</sup> − 2 = ${G(ans.toLocaleString())}.`);
+  if(u===h)return T('host_bits',`${h} is the number of host <i>bits</i>. The number of hosts is 2<sup>${h}</sup> − 2 = ${G(ans.toLocaleString())}.`);
+  if(h>=2&&u===2**(h-1)-2)return T('host_bits',`That’s 2<sup>${h-1}</sup> − 2. You used one host bit too few; h = 32 − ${32-h} = ${h}, so it’s 2<sup>${h}</sup> − 2 = ${G(ans.toLocaleString())}.`);
+  if(u===2**(h+1)-2)return T('host_bits',`That’s 2<sup>${h+1}</sup> − 2. You used one host bit too many; h = 32 − ${32-h} = ${h}, so it’s 2<sup>${h}</sup> − 2 = ${G(ans.toLocaleString())}.`);
+  if(u===2**(32-h)-2||u===2**(32-h))return T('host_bits',`You used the network bits (${32-h}) as the exponent. Hosts come from the <i>host</i> bits: 32 − ${32-h} = ${h}, so 2<sup>${h}</sup> − 2 = ${G(ans.toLocaleString())}.`);
+  if(u===2*h-2||u===2*h)return T('power',`2<sup>${h}</sup> means 2 multiplied by itself ${h} times, not 2 × ${h}. 2<sup>${h}</sup> = ${(2**h).toLocaleString()}, minus 2 = ${G(ans.toLocaleString())}.`);
+  if(inChart&&h<=8&&u===2**h-3)return T('minus2',`Usable hosts is 2<sup>h</sup> − 2 = ${G(ans.toLocaleString())}. Don’t also subtract the gateway: it’s a usable host address.`);
+  return T('host_formula',`${u.toLocaleString()} isn’t right. ${how}`);
 }
 
 /* --- binary --- */
 function diagBits(v,ub){
   if(ub===bin8(v))return null;const uval=parseInt(ub,2);
-  if([...ub].reverse().join('')===bin8(v))return `You wrote it backwards. The leftmost bit is worth 128 and the rightmost is worth 1. ${v} = ${G(bin8(v))}.`;
+  if([...ub].reverse().join('')===bin8(v))return T('bin_order',`You wrote it backwards. The leftmost bit is worth 128 and the rightmost is worth 1. ${v} = ${G(bin8(v))}.`);
   let rem=v,first=null;const wrong=[];
   placeVals.forEach((pv,k)=>{const should=rem>=pv;const has=ub[k]==='1';
     if(has!==should){wrong.push(`${pv} should be ${should?'on':'off'}`);if(first==null)first=`At the ${pv} bit you had ${rem} left. ${rem} ${should?'≥':'<'} ${pv}, so that bit should be ${should?'<b>on</b>':'<b>off</b>'}.`;}
     if(should)rem-=pv;});
   const on=placeVals.filter((pv,k)=>ub[k]==='1');
-  return `Your bits add up to ${on.length?on.join(' + ')+' = ':''}${uval}, which is ${uval>v?uval-v+' too high':v-uval+' too low'}. ${first} Fix: ${wrong.join(', ')} → ${G(bin8(v))}.`;
+  return T('bin_convert',`Your bits add up to ${on.length?on.join(' + ')+' = ':''}${uval}, which is ${uval>v?uval-v+' too high':v-uval+' too low'}. ${first} Fix: ${wrong.join(', ')} → ${G(bin8(v))}.`);
 }
 function diagBinDec(v,raw){
   const u=toNum(raw);if(u===v)return null;const b=bin8(v);
   const sum=`${placeVals.filter((pv,k)=>b[k]==='1').join(' + ')||'0'} = ${G(v)}`;
   if(u==null)return badEntry(raw,'num')+' Add the place values of the 1 bits: '+sum+'.';
-  if(u===parseInt([...b].reverse().join(''),2))return `You read it right to left. The leftmost bit is worth 128, not 1: ${sum}.`;
-  if(u===popcount(v))return `${u} is how many bits are 1. Add up their place <i>values</i> instead: ${sum}.`;
+  if(u===parseInt([...b].reverse().join(''),2))return T('bin_order',`You read it right to left. The leftmost bit is worth 128, not 1: ${sum}.`);
+  if(u===popcount(v))return T('bin_read',`${u} is how many bits are 1. Add up their place <i>values</i> instead: ${sum}.`);
   const d=u-v,pv=Math.abs(d),k=placeVals.indexOf(pv);
-  if(k>=0){if(d<0&&b[k]==='1')return `You left out the ${pv} bit; it’s a 1. ${sum}.`;
-    if(d>0&&b[k]==='0')return `You added ${pv}, but that bit is 0. ${sum}.`;}
-  return `${u} isn’t right. Line the bits up under 128 64 32 16 8 4 2 1 and add the places with a 1: ${sum}.`;
+  if(k>=0){if(d<0&&b[k]==='1')return T('bin_read',`You left out the ${pv} bit; it’s a 1. ${sum}.`);
+    if(d>0&&b[k]==='0')return T('bin_read',`You added ${pv}, but that bit is 0. ${sum}.`);}
+  return T('bin_read',`${u} isn’t right. Line the bits up under 128 64 32 16 8 4 2 1 and add the places with a 1: ${sum}.`);
 }
 
 /* --- prefix ↔ mask --- */
@@ -718,94 +757,94 @@ function diagMask(p,raw){
   const q=maskPrefix(u);
   if(q<0){const bad=[0,1,2,3].map(i=>oct(u,i)).find(x=>![0,128,192,224,240,248,252,254,255].includes(x));
     const uo=part&&full<4?oct(u,full):null;
-    if(uo!=null&&uo===256-mv)return `${uo} is only the value of the last 1 bit (that’s the increment). The mask octet is the <i>sum</i> of all ${part} bits: ${placeVals.slice(0,part).join(' + ')} = ${mv}. ${build}`;
-    if(bad!=null)return `${bad} can’t appear in a subnet mask, because a mask is all 1s followed by all 0s. The only valid octets are ${VALID_OCT}. ${build}`;
-    return `That isn’t a valid mask: once an octet is less than 255, every octet after it must be 0. ${build}`;}
-  if(q===32-p)return `That mask has ${q} ones. It looks like you counted the host bits (32 − ${p} = ${32-p}) instead of the network bits. ${build}`;
-  if(Math.abs(q-p)===8)return `Right octet value, wrong spot: that’s a /${q}. With /${p} the first ${full} octet${full!==1?'s are':' is'} 255 and the partial octet comes next. ${build}`;
-  return `${M(ipStr(u))} is a /${q} (${q} ones), but you need ${p} ones. ${build}`;
+    if(uo!=null&&uo===256-mv)return T('mask_build',`${uo} is only the value of the last 1 bit (that’s the increment). The mask octet is the <i>sum</i> of all ${part} bits: ${placeVals.slice(0,part).join(' + ')} = ${mv}. ${build}`);
+    if(bad!=null)return T('mask_build',`${bad} can’t appear in a subnet mask, because a mask is all 1s followed by all 0s. The only valid octets are ${VALID_OCT}. ${build}`);
+    return T('mask_build',`That isn’t a valid mask: once an octet is less than 255, every octet after it must be 0. ${build}`);}
+  if(q===32-p)return T('host_bits',`That mask has ${q} ones. It looks like you counted the host bits (32 − ${p} = ${32-p}) instead of the network bits. ${build}`);
+  if(Math.abs(q-p)===8)return T('mask_build',`Right octet value, wrong spot: that’s a /${q}. With /${p} the first ${full} octet${full!==1?'s are':' is'} 255 and the partial octet comes next. ${build}`);
+  return T('mask_build',`${M(ipStr(u))} is a /${q} (${q} ones), but you need ${p} ones. ${build}`);
 }
 function diagPrefix(p,raw){
   const u=toPre(raw);if(u===p)return null;const m=maskOf(p),full=Math.floor(p/8),part=p%8,mv=part?oct(m,full):0;
   const count=`Count the 1s: ${full} × 255 = ${full*8} bits${part?`, plus ${mv} = ${M(bin8(mv))} = ${part} bits`:''} → ${G('/'+p)}.`;
   if(u==null)return badEntry(raw,'prefix')+' '+count;
-  if(u===32-p)return `You counted the 0s (host bits). The prefix is the number of 1s. ${count}`;
-  if(part&&u===full*8)return `You counted the 255s but forgot the partial octet. ${mv} = ${M(bin8(mv))} adds ${part} more. ${count}`;
-  if(part&&u===part)return `You counted only the partial octet. Each 255 adds 8 more. ${count}`;
-  if(part&&Math.abs(u-p)<=2&&Math.floor(u/8)===full)return `The 255s are right, but recount the bits in ${mv}: ${M(bin8(mv))} has ${part} ones, not ${u-full*8}. ${count}`;
-  return `/${u} isn’t right. ${count}`;
+  if(u===32-p)return T('host_bits',`You counted the 0s (host bits). The prefix is the number of 1s. ${count}`);
+  if(part&&u===full*8)return T('prefix_count',`You counted the 255s but forgot the partial octet. ${mv} = ${M(bin8(mv))} adds ${part} more. ${count}`);
+  if(part&&u===part)return T('prefix_count',`You counted only the partial octet. Each 255 adds 8 more. ${count}`);
+  if(part&&Math.abs(u-p)<=2&&Math.floor(u/8)===full)return T('prefix_count',`The 255s are right, but recount the bits in ${mv}: ${M(bin8(mv))} has ${part} ones, not ${u-full*8}. ${count}`);
+  return T('prefix_count',`/${u} isn’t right. ${count}`);
 }
 
 /* --- formulas --- */
 function diagNetworks(n,raw){
   const u=toNum(raw);const ans=2**n;if(u===ans)return null;const how=`Networks = 2<sup>n</sup> = 2<sup>${n}</sup> = ${G(ans)}.`;
   if(u==null)return badEntry(raw,'num')+' '+how;
-  if(u===ans-2)return `Don’t subtract 2 for networks; that rule is only for hosts. ${how}`;
-  if(u===2*n)return `2<sup>${n}</sup> means 2 multiplied by itself ${n} times, not 2 × ${n}. ${how}`;
-  if(u===n)return `${n} is how many bits you borrowed. ${how}`;
-  if(u===2**(n+1)||u===2**(n-1))return `That’s 2<sup>${Math.log2(u)}</sup>. Use exactly the ${n} borrowed bits: ${how}`;
-  return `${u} isn’t right. ${how}`;
+  if(u===ans-2)return T('nets_minus2',`Don’t subtract 2 for networks; that rule is only for hosts. ${how}`);
+  if(u===2*n)return T('power',`2<sup>${n}</sup> means 2 multiplied by itself ${n} times, not 2 × ${n}. ${how}`);
+  if(u===n)return T('net_formula',`${n} is how many bits you borrowed. ${how}`);
+  if(u===2**(n+1)||u===2**(n-1))return T('net_formula',`That’s 2<sup>${Math.log2(u)}</sup>. Use exactly the ${n} borrowed bits: ${how}`);
+  return T('net_formula',`${u} isn’t right. ${how}`);
 }
 function diagNewPrefix(base,n,raw){
   const u=toPre(raw);const ans=base+n;if(u===ans)return null;const how=`Borrowed bits move from the host side to the network side, so the prefix grows: /${base} + ${n} = ${G('/'+ans)}.`;
   if(u==null)return badEntry(raw,'prefix')+' '+how;
-  if(u===base-n)return `The prefix gets bigger when you borrow bits, not smaller. ${how}`;
-  if(u===base)return `That’s the original prefix. ${how}`;
-  if(u===n)return `${n} is just the borrowed bits. ${how}`;
-  if(u===32-ans)return `That’s the host bits left over. ${how}`;
-  return `/${u} isn’t right. ${how}`;
+  if(u===base-n)return T('prefix_grow',`The prefix gets bigger when you borrow bits, not smaller. ${how}`);
+  if(u===base)return T('prefix_grow',`That’s the original prefix. ${how}`);
+  if(u===n)return T('prefix_grow',`${n} is just the borrowed bits. ${how}`);
+  if(u===32-ans)return T('prefix_grow',`That’s the host bits left over. ${how}`);
+  return T('prefix_grow',`/${u} isn’t right. ${how}`);
 }
 function diagSizeHosts(H,p,raw){
   const u=toPre(raw);if(u===p)return null;const h=32-p;const us=q=>2**(32-q)-2;
   const how=`Find the smallest h where 2<sup>h</sup> − 2 ≥ ${H}: h = ${h} (${us(p)} hosts). Prefix = 32 − ${h} = ${G('/'+p)}.`;
   if(u==null||u<1||u>32)return (u==null?badEntry(raw,'prefix'):`/${u} isn’t a valid prefix.`)+' '+how;
-  if(u===h)return `${h} is the number of host bits. The prefix is 32 − ${h} = ${G('/'+p)}.`;
-  if(us(u)<H){if(2**(32-u)>=H)return `/${u} has ${2**(32-u)} addresses but only ${us(u)} usable once you remove the network and broadcast. That’s not enough for ${H}. ${how}`;
-    return `/${u} only gives ${us(u)} usable hosts, not enough for ${H}. ${how}`;}
-  return `/${u} fits (${us(u).toLocaleString()} hosts) but isn’t the smallest. /${u+1} gives ${us(u+1).toLocaleString()}, which still covers ${H}. ${how}`;
+  if(u===h)return T('host_bits',`${h} is the number of host bits. The prefix is 32 − ${h} = ${G('/'+p)}.`);
+  if(us(u)<H){if(2**(32-u)>=H)return T('minus2',`/${u} has ${2**(32-u)} addresses but only ${us(u)} usable once you remove the network and broadcast. That’s not enough for ${H}. ${how}`);
+    return T('size_hosts',`/${u} only gives ${us(u)} usable hosts, not enough for ${H}. ${how}`);}
+  return T('size_hosts',`/${u} fits (${us(u).toLocaleString()} hosts) but isn’t the smallest. /${u+1} gives ${us(u+1).toLocaleString()}, which still covers ${H}. ${how}`);
 }
 function diagBits4Nets(N,n,raw){
   const u=toNum(raw);if(u===n)return null;const how=`Smallest n where 2<sup>n</sup> ≥ ${N}: 2<sup>${n}</sup> = ${2**n}${n>1?` (2<sup>${n-1}</sup> = ${2**(n-1)} is too few)`:''} → ${G(n)}.`;
   if(u==null)return badEntry(raw,'num')+' '+how;
-  if(u===N)return `${N} is the number of subnets you need, not the bits. ${how}`;
-  if(u<n)return `2<sup>${u}</sup> = ${2**u} subnets, which is fewer than ${N}. ${how}`;
-  return `That works, but it borrows more than you need. ${how}`;
+  if(u===N)return T('size_nets',`${N} is the number of subnets you need, not the bits. ${how}`);
+  if(u<n)return T('size_nets',`2<sup>${u}</sup> = ${2**u} subnets, which is fewer than ${N}. ${how}`);
+  return T('size_nets',`That works, but it borrows more than you need. ${how}`);
 }
 function diagNewMask(base,n,raw,userBits){
   const p=base+n,m=maskOf(p);const u=parseIP(raw);if(u===m)return null;
   const how=`/${base} + ${n} borrowed = /${p} = ${G(ipStr(m))}.`;
   if(u==null)return badEntry(raw,'ip')+' '+how;
   const q=maskPrefix(u);const ub=toNum(userBits);
-  if(q===base)return `That’s the original /${base} mask. Add the ${n} borrowed bits: ${how}`;
+  if(q===base)return T('prefix_grow',`That’s the original /${base} mask. Add the ${n} borrowed bits: ${how}`);
   if(q>0&&ub!=null&&ub!==n&&q===base+ub)return `This is the right mask for the ${ub} bits you borrowed, so only the bits answer is off. ${how}`;
-  if(q===base-n)return `Borrowing bits makes the prefix bigger, not smaller. ${how}`;
+  if(q===base-n)return T('prefix_grow',`Borrowing bits makes the prefix bigger, not smaller. ${how}`);
   return diagMask(p,raw);
 }
 function diagIncrement(p,raw){
   const m=maskOf(p),io=Math.floor((p-1)/8),mv=oct(m,io),ans=256-mv;const u=toNum(raw);if(u===ans)return null;
   const how=`The interesting octet is octet ${io+1} (${mv}), the one that isn’t 255 or 0. 256 − ${mv} = ${G(ans)}.`;
   if(u==null)return badEntry(raw,'num')+' '+how;
-  if(u===mv)return `${mv} is the mask octet itself. Subtract it from 256: ${how}`;
-  if(u===255-mv)return `Use 256, not 255: 256 − ${mv} = ${G(ans)}. (Think of it this way: the last 1 bit in ${M(bin8(mv))} is worth ${ans}.)`;
-  if(u===256||u===1)return `You used the wrong octet. ${how}`;
-  if(u===2**(32-p))return `${u.toLocaleString()} is the total number of addresses per subnet. The increment is counted in octet ${io+1}: ${how}`;
-  return `${u} isn’t right. ${how}`;
+  if(u===mv)return T('wrong_inc',`${mv} is the mask octet itself. Subtract it from 256: ${how}`);
+  if(u===255-mv)return T('wrong_inc',`Use 256, not 255: 256 − ${mv} = ${G(ans)}. (Think of it this way: the last 1 bit in ${M(bin8(mv))} is worth ${ans}.)`);
+  if(u===256||u===1)return T('wrong_inc',`You used the wrong octet. ${how}`);
+  if(u===2**(32-p))return T('wrong_inc',`${u.toLocaleString()} is the total number of addresses per subnet. The increment is counted in octet ${io+1}: ${how}`);
+  return T('wrong_inc',`${u} isn’t right. ${how}`);
 }
 
 /* ---------------- generators ---------------- */
 const GEN={
-  binary(){
+  binary(sub){
     const v=Math.random()<0.4?pick([128,192,224,240,248,252,254,255,0,168,10,172]):R(0,255);
-    if(Math.random()<0.5) return {mode:'binary',title:'Binary · decimal → binary',prompt:`Flip on the bits that make <b class="big">${v}</b>`,
+    if(sub?sub==='d2b':Math.random()<0.5) return {mode:'binary',sub:'d2b',title:'Binary · decimal → binary',prompt:`Flip on the bits that make <b class="big">${v}</b>`,
       fields:[{type:'bits',label:'Octet',answer:bin8(v)}],diag:x=>[diagBits(v,x[0])],hint:'Start at 128 and move right: if the value left is ≥ the place value, turn it on and subtract.',explain:explainBin(v)};
-    return {mode:'binary',title:'Binary · binary → decimal',prompt:`What is <b class="big">${bin8(v)}</b> in decimal?`,
+    return {mode:'binary',sub:'b2d',title:'Binary · binary → decimal',prompt:`What is <b class="big">${bin8(v)}</b> in decimal?`,
       fields:[{type:'num',label:'Decimal value',answer:v}],diag:x=>[diagBinDec(v,x[0])],hint:'Add the place values (128 64 32 16 8 4 2 1) for every bit that is 1.',explain:explainBin(v)};
   },
-  prefix(){
+  prefix(sub){
     const p=state.level==='core'?(Math.random()<0.8?R(24,30):pick([8,16])):R(8,30);const m=maskOf(p);
-    if(Math.random()<0.5) return {mode:'prefix',title:'Prefix → mask',prompt:`Write the dotted-decimal subnet mask for <b class="big">/${p}</b>`,
+    if(sub?sub==='p2m':Math.random()<0.5) return {mode:'prefix',sub:'p2m',title:'Prefix → mask',prompt:`Write the dotted-decimal subnet mask for <b class="big">/${p}</b>`,
       fields:[{type:'ip',label:'Subnet mask',answer:m}],diag:x=>[diagMask(p,x[0])],hint:`/${p} means ${p} ones followed by ${32-p} zeros. Every full octet of ones is 255.`,explain:explainMask(p)};
-    return {mode:'prefix',title:'Mask → prefix',prompt:`What prefix length is <b class="big">${ipStr(m)}</b>?`,
+    return {mode:'prefix',sub:'m2p',title:'Mask → prefix',prompt:`What prefix length is <b class="big">${ipStr(m)}</b>?`,
       fields:[{type:'prefix',label:'Prefix (e.g. /26)',answer:p}],diag:x=>[diagPrefix(p,x[0])],hint:'Count the 1 bits: each 255 is 8 bits, then add the 1s in the last non-zero octet.',explain:explainMask(p)};
   },
   anding(){
@@ -820,30 +859,129 @@ const GEN={
       fields:[{type:'ip',label:'Subnet (network)',answer:net},{type:'ip',label:'Default gateway (1st usable)',answer:(net+1)>>>0},{type:'ip',label:'Last usable',answer:(bc-1)>>>0},{type:'ip',label:'Broadcast',answer:bc},{type:'num',label:'Usable hosts',answer:size-2}],diag:x=>diagChart(ip,p,x),
       hint:`Mask is ${ipStr(m)}. Increment = 256 − the octet that isn’t 255 or 0. List the subnets (0, inc, 2×inc…) and round the IP down to one of them.`,explain:explainSubnet(ip,p)};
   },
-  formulas(){
-    const core=state.level==='core';const t=R(0,4);
+  formulas(sub){
+    const core=state.level==='core';const t=sub!=null?sub:R(0,4);
     if(t===0){const p=core?R(24,30):R(16,30),h=32-p;
-      return {mode:'formulas',title:'Host formula',prompt:`How many <u>usable</u> host addresses are in each <b class="big">/${p}</b> subnet?`,
+      return {mode:'formulas',sub:t,title:'Host formula',prompt:`How many <u>usable</u> host addresses are in each <b class="big">/${p}</b> subnet?`,
         fields:[{type:'num',label:'Usable hosts',answer:2**h-2}],diag:x=>[diagHosts(h,x[0])],hint:`Host bits h = 32 − ${p}. Usable = 2^h − 2.`,
         explain:`<p>h = 32 − ${p} = <b>${h}</b> host bits.</p><p class="mono">2<sup>${h}</sup> − 2 = ${(2**h).toLocaleString()} − 2 = <b class="g">${(2**h-2).toLocaleString()}</b></p><p class="dim">You subtract 2 because the first address is the network address and the last is the broadcast.</p>`};}
     if(t===1){const n=R(1,6),base=core?24:pick([16,24]),ip=parseIP(base===24?`192.168.${R(0,255)}.0`:`172.${R(16,31)}.0.0`);
-      return {mode:'formulas',title:'Network formula',prompt:`You take <b>${ipStr(ip)}/${base}</b> and borrow <b class="big">${n}</b> host bit${n>1?'s':''}. How many subnets do you get?`,
+      return {mode:'formulas',sub:t,title:'Network formula',prompt:`You take <b>${ipStr(ip)}/${base}</b> and borrow <b class="big">${n}</b> host bit${n>1?'s':''}. How many subnets do you get?`,
         fields:[{type:'num',label:'Subnets',answer:2**n},{type:'prefix',label:'New prefix',answer:base+n}],diag:x=>[diagNetworks(n,x[0]),diagNewPrefix(base,n,x[1])],hint:'Networks = 2^n, where n is bits borrowed. The new prefix grows by n.',
         explain:`<p class="mono">2<sup>${n}</sup> = <b class="g">${2**n}</b> subnets</p><p>New prefix = /${base} + ${n} = <b class="g">/${base+n}</b> (${ipStr(maskOf(base+n))}). More network bits → more networks, fewer hosts each.</p>`};}
     if(t===2){const H=core?R(3,120):R(3,4000);let h=2;while(2**h-2<H)h++;const p=32-h;
-      return {mode:'formulas',title:'Size for hosts',prompt:`A department needs <b class="big">${H}</b> hosts. What's the smallest subnet that fits? (Give the prefix.)`,
+      return {mode:'formulas',sub:t,title:'Size for hosts',prompt:`A department needs <b class="big">${H}</b> hosts. What's the smallest subnet that fits? (Give the prefix.)`,
         fields:[{type:'prefix',label:'Prefix',answer:p}],diag:x=>[diagSizeHosts(H,p,x[0])],hint:'Find the smallest h where 2^h − 2 ≥ the hosts needed. Prefix = 32 − h.',
         explain:`<p>Try host-bit counts until 2<sup>h</sup> − 2 covers ${H}:</p><p class="mono">${h>2?`h=${h-1}: 2<sup>${h-1}</sup>−2 = ${2**(h-1)-2} ✗ too small<br>`:''}h=${h}: 2<sup>${h}</sup>−2 = ${2**h-2} ✓</p><p>Prefix = 32 − ${h} = <b class="g">/${p}</b> (mask ${ipStr(maskOf(p))}).</p>`};}
     if(t===3){const N=R(2,core?60:200);let n=1;while(2**n<N)n++;const base=n>6?16:(core?24:pick([16,24]));const p=base+n;
-      return {mode:'formulas',title:'Size for networks',prompt:`You need <b class="big">${N}</b> subnets out of a <b>/${base}</b>. How many bits do you borrow, and what's the new mask?`,
+      return {mode:'formulas',sub:t,title:'Size for networks',prompt:`You need <b class="big">${N}</b> subnets out of a <b>/${base}</b>. How many bits do you borrow, and what's the new mask?`,
         fields:[{type:'num',label:'Bits borrowed',answer:n},{type:'ip',label:'New subnet mask',answer:maskOf(p)}],diag:x=>[diagBits4Nets(N,n,x[0]),diagNewMask(base,n,x[1],x[0])],hint:'Find the smallest n where 2^n ≥ the networks needed. Add n to the prefix.',
         explain:`<p class="mono">${n>1?`n=${n-1}: 2<sup>${n-1}</sup> = ${2**(n-1)} ✗<br>`:''}n=${n}: 2<sup>${n}</sup> = ${2**n} ✓</p><p>Borrow <b class="g">${n}</b> bits → /${base} + ${n} = /${p} = <b class="g mono">${ipStr(maskOf(p))}</b>.</p>`};}
     let p=core?R(25,30):R(17,30);if(p===24)p=R(25,30);const m=maskOf(p);const io=Math.floor((p-1)/8);const mv=oct(m,io);
-    return {mode:'formulas',title:'Network increment',prompt:`What is the network increment for <b class="big">${ipStr(m)}</b>?`,
+    return {mode:'formulas',sub:t,title:'Network increment',prompt:`What is the network increment for <b class="big">${ipStr(m)}</b>?`,
       fields:[{type:'num',label:'Increment',answer:256-mv}],diag:x=>[diagIncrement(p,x[0])],hint:'256 minus the octet that isn’t 255 or 0.',
       explain:`<p>Interesting octet (octet ${io+1}) = ${mv} = <span class="mono">${bin8(mv)}</span>. The last 1 bit sits in the <b>${256-mv}</b> position.</p><p class="mono">256 − ${mv} = <b class="g">${256-mv}</b></p><p>So subnets go 0, ${256-mv}, ${2*(256-mv)}${3*(256-mv)<256?', '+3*(256-mv):''}… in octet ${io+1}.</p>`};
   }
 };
+
+
+/* ---------------- weak spots ---------------- */
+/* Every tagged mistake is logged. "w" is how weak the spot is right now (goes up on a miss, down when you get
+   matching questions right); "n" is the lifetime count. The Weak spots tab serves questions for the heaviest spots. */
+const WEAK={
+  round_up:['Rounding up instead of down',[['detective'],['anding']]],
+  wrong_block:['Picking the wrong subnet block',[['detective'],['anding']]],
+  copied_ip:['Using the IP instead of its network',[['detective'],['anding']]],
+  copy_octets:['Changing octets that should copy down',[['anding','','stretch'],['detective','','stretch']]],
+  zero_octets:['Zeroing the octets after the interesting one',[['anding','','stretch'],['detective','','stretch']]],
+  wrong_inc:['Finding the increment',[['detective'],['anding'],['formulas',4]]],
+  or_and:['ANDing an octet',[['anding']]],
+  swap:['Putting chart answers in the wrong box',[['detective']]],
+  off_by_one:['Off by one on gateway, last usable or broadcast',[['detective']]],
+  next_subnet:['Using the next subnet as the broadcast',[['detective']]],
+  assume_255:['Assuming addresses end in .255 or .254',[['detective']]],
+  fill_255:['Setting the broadcast’s trailing octets to 255',[['detective','','stretch']]],
+  chart_misc:['Other subnet chart mistakes',[['detective']]],
+  minus2:['Remembering the − 2 for usable hosts',[['formulas',0],['detective'],['formulas',2]]],
+  host_bits:['Mixing up host bits and network bits',[['formulas',0],['formulas',2],['prefix','m2p']]],
+  power:['2ⁿ (not 2 × n)',[['formulas',0],['formulas',1]]],
+  host_formula:['Host formula (2ʰ − 2)',[['formulas',0]]],
+  bin_order:['Binary place order (128 on the left)',[['binary','d2b'],['binary','b2d']]],
+  bin_convert:['Decimal → binary',[['binary','d2b']]],
+  bin_read:['Binary → decimal',[['binary','b2d']]],
+  mask_build:['Writing a mask from a prefix',[['prefix','p2m'],['formulas',3]]],
+  prefix_count:['Counting the prefix in a mask',[['prefix','m2p']]],
+  nets_minus2:['Not subtracting 2 for networks',[['formulas',1]]],
+  net_formula:['Network formula (2ⁿ)',[['formulas',1]]],
+  prefix_grow:['Which way the prefix moves when borrowing',[['formulas',1],['formulas',3]]],
+  size_hosts:['Picking a subnet size for a host count',[['formulas',2]]],
+  size_nets:['Bits to borrow for a subnet count',[['formulas',3]]],
+};
+let weak=store.get('ss_weak',{});if(typeof weak!=='object'||!weak)weak={};
+const saveWeak=()=>store.set('ss_weak',weak);
+function noteMisses(tags){tags.forEach(t=>{if(!WEAK[t])return;const e=weak[t]||(weak[t]={w:0,n:0});e.w=Math.min(e.w+1,6);e.n++;});saveWeak();}
+function noteRight(q){
+  for(const [t,e] of Object.entries(weak)){if(!e.w||!WEAK[t])continue;
+    const d=q.target===t?1:WEAK[t][1].some(g=>g[0]===q.mode&&(!g[1]&&g[1]!==0||g[1]===q.sub))?0.5:0;
+    if(d)e.w=Math.max(0,Math.round((e.w-d)*10)/10);}
+  saveWeak();}
+function pickWeak(){const list=Object.entries(weak).filter(([t,e])=>e.w>0&&WEAK[t]);if(!list.length)return null;
+  let r=Math.random()*list.reduce((a,[,e])=>a+e.w,0);for(const [t,e] of list){r-=e.w;if(r<=0)return t;}return list[list.length-1][0];}
+function renderWeak(){
+  const box=$('#weakbox');if(state.mode!=='weak'||state.timed){box.hidden=true;return;}box.hidden=false;
+  const list=Object.entries(weak).filter(([t,e])=>e.w>0&&WEAK[t]).sort((a,b)=>b[1].w-a[1].w);
+  const fixed=Object.entries(weak).filter(([t,e])=>!e.w&&e.n&&WEAK[t]).length;
+  if(!list.length){box.innerHTML=`<div class="wk-h"><b>Your weak spots</b>${fixed?'<button class="btn small" id="weakReset">Reset</button>':''}</div><p class="dim">${fixed?`Nice: all ${fixed} of your logged weak spots are cleared. `:''}Every mistake you make in any mode gets logged here, and this tab drills the ones you miss most. Until there’s something to drill, you’ll get mixed questions.</p>`;}
+  else box.innerHTML=`<div class="wk-h"><b>Your weak spots</b><button class="btn small" id="weakReset">Reset</button></div>`+list.slice(0,6).map(([t,e])=>
+    `<div class="wk-row${state.q&&state.q.target===t?' now':''}"><span>${WEAK[t][0]}</span><span class="wk-bar"><i style="width:${Math.round(100*e.w/6)}%"></i></span><small>missed ${e.n}×</small></div>`).join('')+
+    (list.length>6?`<p class="dim">+ ${list.length-6} more</p>`:'')+`<p class="dim">Questions are picked from your heaviest spots. Each one shrinks as you get matching questions right.</p>`;
+  const r=$('#weakReset');if(r)r.onclick=()=>{weak={};saveWeak();renderWeak();};
+}
+
+
+/* ---------------- walk me through it (subnet chart) ---------------- */
+function walkSteps(ip,p){
+  const m=maskOf(p),io=p%8===0?p/8:Math.floor((p-1)/8),k=io+1,mv=oct(m,io),inc=256-mv,ipo=oct(ip,io),neto=Math.floor(ipo/inc)*inc;
+  const net=(ip&m)>>>0,size=2**(32-p),bc=(net+size-1)>>>0,nextNet=(net+size)>>>0,h=32-p;
+  const hl=x=>[0,1,2,3].map(j=>j===io?`<b>${oct(x,j)}</b>`:oct(x,j)).join('.');
+  const around=()=>{const lo=Math.max(0,neto-inc),hi=Math.min(256-inc,neto+2*inc),a=[];for(let x=lo;x<=hi;x+=inc)a.push(x);return (lo>0?'… ':'')+a.join(', ')+(hi<256-inc?' …':'');};
+  return [
+    {q:`/${p} as a mask is ${M(ipStr(m))}. Which octet is the <b>interesting</b> one, the first from the left that isn’t 255? (1–4)`,kind:'num',ans:k,
+     bad:u=>u==null||u<1||u>4?'Enter a number from 1 to 4.':oct(m,u-1)===255?`Octet ${u} of the mask is 255: all network bits, so it just copies down from the IP. Keep moving right.`:`Octet ${u} isn’t the <i>first</i> one that’s below 255. Read the mask left to right: ${M(ipStr(m))}.`},
+    {q:`What is the mask’s value in octet ${k}?`,kind:'num',ans:mv,
+     bad:u=>u===ipo?`That’s the IP’s octet ${k}. I want the <i>mask’s</i>: ${M(hl(m))}.`:`Look at octet ${k} of the mask: ${M(hl(m))}.`},
+    {q:`The increment is 256 − ${mv}. What is it?`,kind:'num',ans:inc,
+     bad:u=>u===255-mv?'Use 256, not 255.':u===mv?`That’s the mask value. Subtract it from 256.`:`256 − ${mv} = ?`},
+    {q:`The IP is ${M(hl(ip))}. In octet ${k}, subnets start at 0, ${inc}${2*inc<256?', '+2*inc:''}${3*inc<256?', '+3*inc:''}${4*inc<256?'…':''} Which start does ${ipo} round <b>down</b> to?`,kind:'num',ans:neto,
+     bad:u=>u==null?'Enter a number.':u%inc!==0?`${u} isn’t a multiple of ${inc}, so it isn’t a subnet start. Count by ${inc}: ${around(u)}.`:u>ipo?`${u} is above ${ipo}. Always round down: the network is never higher than the IP.`:`The block starting at ${u} only runs to ${u+inc-1}, which doesn’t reach ${ipo}. Keep counting: ${around(u)}.`},
+    {q:`Write the <b>network address</b>: octets before ${k} copy from the IP, octet ${k} is ${neto}${io<3?', and every octet after it is 0':''}.`,kind:'ip',ans:net,
+     bad:(u,raw)=>u==null?badEntry(raw,'ip'):String(diagNet(ip,p,u,false))},
+    {q:`The next subnet starts at ${neto+inc} in octet ${k}${neto+inc===256?' (256 means it rolls over into the octet before)':''}, so it’s ${M(ipStr(nextNet))}. The <b>broadcast</b> is the address right before that${io<3?': octet '+k+' is '+(neto+inc-1)+' and every octet after it is 255':''}. Write the broadcast.`,kind:'ip',ans:bc,
+     bad:(u,raw)=>u==null?badEntry(raw,'ip'):u===nextNet?`That’s the next subnet itself. Go back one address.`:u===((bc-1)>>>0)?'That’s one too low; it’s the last usable. The broadcast is the very last address in the block.':`Next subnet ${M(ipStr(nextNet))} minus 1.`},
+    {q:`Host bits = 32 − ${p} = ${h}. How many <b>usable hosts</b> is 2<sup>${h}</sup> − 2?`,kind:'num',ans:2**h-2,
+     bad:(u,raw)=>String(diagHosts(h,raw)||'')},
+  ].concat([{done:true,q:`You have everything for the chart. Network = ${M(ipStr(net))}. Gateway = network + 1. Last usable = broadcast − 1. Broadcast = ${M(ipStr(bc))}. Hosts = ${(2**h-2).toLocaleString()}. Fill them in above and press <b>Check</b>.`}]);
+}
+function renderWalk(){
+  const w=state.walk,box=$('#walk');if(!w){box.hidden=true;box.innerHTML='';return;}box.hidden=false;
+  const shown=v=>typeof v==='number'&&v>255?v.toLocaleString():v;
+  box.innerHTML=`<div class="wk-title">Step by step <small>(counts as a hint: ½ points)</small></div><ol>`+w.steps.slice(0,w.i+1).map((st,n)=>{
+    if(st.done)return `<li class="wdone-all">${st.q}</li>`;
+    if(n<w.i)return `<li class="wok"><span>${st.q}</span><b class="g mono wans">✓ ${st.kind==='ip'?ipStr(st.ans):shown(st.ans)}</b></li>`;
+    return `<li class="wcur"><span>${st.q}</span><div class="wrow"><input id="winp" class="winp" autocomplete="off" spellcheck="false" inputmode="${st.kind==='ip'?'decimal':'numeric'}" placeholder="${st.kind==='ip'?'e.g. 192.168.4.0':'number'}"><button class="btn small primary" id="wchk">Check step</button><button class="btn small" id="wshow">Show me</button></div><div class="wmsg" id="wmsg">${w.msg||''}</div></li>`;
+  }).join('')+`</ol>`;
+  const inp=$('#winp');if(!inp)return;
+  inp.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();e.stopPropagation();walkCheck();}});
+  $('#wchk').onclick=walkCheck;$('#wshow').onclick=()=>{w.i++;w.msg='';renderWalk();focusWalk();};
+}
+function focusWalk(){const i=$('#winp');if(i){if(isDesktop())i.focus();i.scrollIntoView({block:'nearest',behavior:'smooth'});}}
+function walkCheck(){
+  const w=state.walk,st=w.steps[w.i],raw=$('#winp').value;
+  const u=st.kind==='ip'?parseIP(raw):toNum(raw);
+  if(u===st.ans){w.i++;w.msg='';renderWalk();focusWalk();return;}
+  w.msg=isBlank(raw)?'Type an answer, or press “Show me”.':st.bad(u,raw);renderWalk();
+  const i=$('#winp');i.value=raw;i.classList.add('shake');focusWalk();
+}
 
 /* ---------------- game rendering ---------------- */
 function renderTabs(){
@@ -862,13 +1000,16 @@ function fieldHTML(f,i){
   return `<div class="field" data-i="${i}"><label for="f${i}">${f.label}</label><div class="inrow"><input id="f${i}" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" inputmode="${im}" enterkeyhint="${i<state.q.fields.length-1?'next':'done'}" placeholder="${ph}"><span class="fix"></span></div></div>`;
 }
 function next(){
-  const mode=state.timed||state.mode==='mixed'?pick(['binary','prefix','anding','detective','formulas']):state.mode;
-  const q=GEN[mode]();state.q=q;state.checked=false;state.hinted=false;
-  $('#qtype').textContent=q.title;$('#prompt').innerHTML=q.prompt;$('#miniQ').innerHTML=q.prompt.replace(/<br>/g,' ');
+  let mode=state.timed||state.mode==='mixed'?pick(['binary','prefix','anding','detective','formulas']):state.mode,sub,lvl,target=null;
+  if(mode==='weak'){target=pickWeak();if(target){const g=pick(WEAK[target][1]);mode=g[0];sub=g[1]===''?undefined:g[1];lvl=g[2];}else mode=pick(['binary','prefix','anding','detective','formulas']);}
+  const keep=state.level;if(lvl)state.level=lvl;const q=GEN[mode](sub);state.level=keep;q.target=target;
+  state.q=q;state.checked=false;state.hinted=false;
+  $('#qtype').innerHTML=q.title+(target?` <span class="drill">· drilling: ${WEAK[target][0]}</span>`:'');renderWeak();$('#prompt').innerHTML=q.prompt;$('#miniQ').innerHTML=q.prompt.replace(/<br>/g,' ');
   $('#fields').innerHTML=q.fields.map(fieldHTML).join('');
   $$('#fields .bit').forEach(b=>b.onclick=()=>{if(state.checked)return;b.classList.toggle('on');b.textContent=b.classList.contains('on')?'1':'0';});
   $('#hint').hidden=true;$('#feedback').className='feedback';$('#work').style.display='none';
   $('#checkBtn').innerHTML='Check <span class="kbd">Enter</span>';$('#hintBtn').disabled=false;
+  state.walk=null;renderWalk();$('#walkBtn').hidden=q.mode!=='detective';$('#walkBtn').disabled=false;
   if($('#autoClear').checked){strokes=[];redrawInk();$('#scratchText').value='';}
   const first=$('#fields input');if(first&&isDesktop())first.focus();
 }
@@ -886,8 +1027,8 @@ function check(){
   q.fields.forEach((f,i)=>{const el=$(`.field[data-i="${i}"]`);const ok=isRight(f,vals[i]);if(!ok)wrong.push(i);
     el.classList.add(ok?'ok':'no');if(!ok){all=false;el.querySelector('.fix').textContent='→ '+show(f);}
     el.querySelectorAll('input').forEach(x=>{x.readOnly=true;x.blur();});});
-  state.checked=true;state.tried++;state.per[q.mode].t++;const mixed=state.mode==='mixed'||state.timed;if(mixed)state.per.mixed.t++;
-  if(all){const pts=state.hinted?5:10;state.score+=pts;state.right++;state.per[q.mode].r++;if(mixed)state.per.mixed.r++;
+  state.checked=true;state.tried++;state.per[q.mode].t++;const agg=state.timed?'mixed':(state.mode==='mixed'||state.mode==='weak')?state.mode:null;if(agg)state.per[agg].t++;
+  if(all){const pts=state.hinted?5:10;state.score+=pts;state.right++;state.per[q.mode].r++;if(agg)state.per[agg].r++;noteRight(q);
     state.streak++;if(state.streak>state.best){state.best=state.streak;store.set('ss_best',state.best);}
     $('#feedback').className='feedback good';$('#feedback').textContent=pick(['Correct!','Nailed it.','Clean.','Exactly right.','Yep — that’s it.'])+` +${pts}${state.streak>2?`  ·  🔥 ${state.streak} in a row`:''}`;
     if(state.timed)state.timed.right++;
@@ -896,18 +1037,22 @@ function check(){
   if(state.timed)state.timed.tried++;
   let coach='';
   if(!all){let d=[];try{d=q.diag?q.diag(vals):[];}catch(e){d=[];}
+    noteMisses([...new Set(wrong.map(i=>d[i]&&d[i].tag).filter(Boolean))]);
+    const chipShown=new Set();
     coach='<div class="coach">'+wrong.map(i=>{const f=q.fields[i];const typed=isBlank(vals[i])?'(blank)':f.type==='bits'?vals[i]:String(vals[i]).trim();
-      return `<div class="ci" data-i="${i}"><div class="ch"><b>${f.label}</b><span>you put <s class="mono">${typed.replace(/</g,'&lt;')}</s> → <b class="g mono">${show(f)}</b></span></div><p>${d[i]||'Compare with the full walkthrough below.'}</p></div>`;}).join('')+'</div>';}
+      return `<div class="ci" data-i="${i}"><div class="ch"><b>${f.label}</b><span>you put <s class="mono">${typed.replace(/</g,'&lt;')}</s> → <b class="g mono">${show(f)}</b></span></div><p>${d[i]||'Compare with the full walkthrough below.'}</p>${d[i]&&d[i].tag&&WEAK[d[i].tag]&&!chipShown.has(d[i].tag)&&chipShown.add(d[i].tag)?`<span class="wk-chip">Logged to weak spots: ${WEAK[d[i].tag][0]}</span>`:''}</div>`;}).join('')+'</div>';}
   $('#work').innerHTML=coach+`<details class="full"${all?'':''}><summary>${all?'Show the work':'Full walkthrough'}</summary>${q.explain}</details>`;
   $('#work').style.display=all&&state.timed?'none':'block';
-  $('#checkBtn').innerHTML='Next <span class="kbd">Enter</span>';$('#hintBtn').disabled=true;
-  renderStats();renderTabs();
+  $('#checkBtn').innerHTML='Next <span class="kbd">Enter</span>';$('#hintBtn').disabled=true;$('#walkBtn').disabled=true;if(state.walk){$('#walk').querySelectorAll('input,button').forEach(x=>x.disabled=true);}
+  renderStats();renderTabs();renderWeak();
   if(!isDesktop())$('#feedback').scrollIntoView({block:'nearest',behavior:'smooth'});else $('#checkBtn').focus();
 }
 $('#checkBtn').onclick=check;
 $('#hintBtn').onclick=()=>{if(state.checked)return;state.hinted=true;
   const h=$('#hint');h.innerHTML=`💡 ${state.q.hint}<br><button class="btn small" id="hintGuide">Open the step-by-step guide →</button>`;h.hidden=false;
   $('#hintGuide').onclick=()=>openTool('guide',GUIDE_FOR[state.q.mode]);};
+$('#walkBtn').onclick=()=>{if(state.checked||state.walk)return;const q=state.q;state.hinted=true;
+  const m=q.prompt.match(/([\d.]+)\/(\d+)/);state.walk={steps:walkSteps(parseIP(m[1]),Number(m[2])),i:0,msg:''};$('#walkBtn').disabled=true;renderWalk();focusWalk();};
 $('#skipBtn').onclick=()=>{if(!state.checked){state.streak=0;renderStats();}next();};
 $('#fields').addEventListener('keydown',e=>{
   if(e.key==='Enter'&&e.target.classList.contains('bit')){e.preventDefault();check();return;}
@@ -1054,7 +1199,7 @@ new ResizeObserver(setDockH).observe($('#dock'),{box:'border-box'});setTimeout(s
 renderTabs();renderStats();next();
 if(isDesktop())openTool('scratch');
 /* hooks for the automated tests */
-window.SS={GEN,state,show,isRight,parseIP,R,netCtx,diagNet,diagChart,diagHosts,diagBits,diagBinDec,diagMask,diagPrefix,diagNetworks,diagNewPrefix,diagSizeHosts,diagBits4Nets,diagNewMask,diagIncrement};
+window.SS={walkSteps,GEN,state,WEAK,getWeak:()=>weak,pickWeak,next,check,show,isRight,parseIP,R,netCtx,diagNet,diagChart,diagHosts,diagBits,diagBinDec,diagMask,diagPrefix,diagNetworks,diagNewPrefix,diagSizeHosts,diagBits4Nets,diagNewMask,diagIncrement};
 })();
 </script>
 </body>
