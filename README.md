@@ -29,7 +29,8 @@ Works in any modern browser on desktop, tablet or phone. No install, no account,
 - **Stretch (/16–/30):** the subnet boundary can land in the 3rd octet.
 
 ### Learn from every answer
-- Wrong answers show the correct value in green, plus **Show the work**: the IP and mask lined up in binary (network bits blue, host bits yellow), the increment, and a small subnet table with your network highlighted.
+- Wrong answers get feedback aimed at the exact mistake, for only the boxes you missed. It catches things like rounding up instead of down, swapping the last usable and broadcast boxes, forgetting the − 2 in the host formula, using the wrong increment, reading binary backwards, or ORing instead of ANDing. If one wrong answer was caused by another (say, a broadcast that's right for the wrong network you entered), it tells you which one to fix.
+- A **Full walkthrough** is one tap away: the IP and mask lined up in binary (network bits blue, host bits yellow), the increment, and a small subnet table with your network highlighted.
 - **Hint** gives you the method for half points and links straight to the matching section of the guide.
 
 <img src="docs/show-the-work.png" alt="Show-the-work explanation after a wrong answer" width="720">
@@ -88,12 +89,14 @@ The `tests/` folder has two [Playwright](https://playwright.dev/python/) scripts
 
 - **`test_answers.py`** generates hundreds of random questions in every mode and at both levels, computes the correct answers independently with Python's `ipaddress` module, types them in, and checks that the game marks them correct and that every explanation renders cleanly.
 - **`test_ui.py`** runs 87 checks of every control: hints, scoring, streaks, timed challenge, scratchpad drawing/erasing/undo, typed notes, calculator, guide, keyboard shortcuts, the phone layout and bottom panel, and running with browser storage blocked.
+- **`test_feedback.py`** feeds in 45 common mistakes and checks each gets the matching explanation, then answers 15,000 random questions with junk and near-miss input to make sure feedback appears for every wrong box and never for a right one.
 
 ```bash
 pip install playwright
 playwright install chromium
 python tests/test_answers.py      # N=200 python tests/test_answers.py for a longer run
 python tests/test_ui.py
+python tests/test_feedback.py
 ```
 
 ## Built with
