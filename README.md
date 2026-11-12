@@ -81,6 +81,19 @@ Subnet Sprint works as an app. Install it once and it opens full screen from its
 
 A service worker saves a copy of the game on your device on your first visit. Online, you always get the newest version (and the saved copy is refreshed); offline, the saved copy loads instead. Your scores and weak spots are stored on the device either way.
 
+## Security
+The game is a static page with no server, accounts or data collection, so the main risks are someone injecting code into the page or disguising it inside another site. It's hardened against both:
+
+- **Typed input is never run.** Anything you type (answers, walkthrough steps, calculator, notes) is escaped before it's shown, so HTML or script just appears as text.
+- **Content Security Policy.** The page only runs its own script file (`app.js`): no inline scripts, no scripts from other sites, no plugins, forms or `<base>` tags. Even if something slipped past the escaping, the browser would refuse to run it.
+- **No third-party requests.** Fonts are self-hosted (SIL Open Font License, see `fonts/`), and the page sends no referrer, so nothing about your visit goes to another site.
+- **Saved data is validated.** Scores and weak spots read back from browser storage are checked and cleaned, so tampered or corrupted data can't inject anything or crash the game.
+- **No framing.** If another site loads the game inside a frame, it shows a link to the real page instead.
+- **No `eval`.** The calculator uses its own small parser.
+- The service worker only handles and caches this site's own files.
+
+`tests/test_security.py` attacks all of this: it types injection payloads into every input in every mode, tampers with saved data, injects a script tag directly, and frames the page from another origin.
+
 ## How subnetting works (quick version)
 
 Using `172.16.62.68/26`:
@@ -111,6 +124,7 @@ The `tests/` folder has two [Playwright](https://playwright.dev/python/) scripts
 - **`test_feedback.py`** feeds in 45 common mistakes and checks each gets the matching explanation, then answers 15,000 random questions with junk and near-miss input to make sure feedback appears for every wrong box and never for a right one.
 - **`test_practice.py`** runs 80 full walkthroughs at both levels (with deliberate wrong steps), checks that mistakes are logged to the right weak spot, that the Weak spots tab drills them, that right answers shrink them, and that the walkthrough fits a phone screen.
 - **`test_offline.py`** serves the site locally, loads it once, cuts the network, and plays a full question offline. It also checks that a new version is picked up when back online, and that the install button works on Chrome and gives iPhone directions.
+- **`test_security.py`** tries to inject code through every input and through tampered saved data, checks the Content Security Policy blocks inline and outside scripts, confirms nothing loads from other sites, and checks the page refuses to run inside another site's frame.
 
 ```bash
 pip install playwright
@@ -120,11 +134,12 @@ python tests/test_ui.py
 python tests/test_feedback.py
 python tests/test_practice.py
 python tests/test_offline.py
+python tests/test_security.py
 ```
 
 ## Built with
 
-HTML, CSS and JavaScript in a single file, with fonts from Google Fonts ([Inter](https://fonts.google.com/specimen/Inter), [JetBrains Mono](https://fonts.google.com/specimen/JetBrains+Mono)). Best streak and challenge scores are saved only in your own browser.
+Plain HTML, CSS and JavaScript (`index.html` and `app.js`) with no frameworks or build step, plus self-hosted [Inter](https://rsms.me/inter/) and [JetBrains Mono](https://www.jetbrains.com/lp/mono/) fonts. Scores and weak spots are saved only in your own browser.
 
 ## About
 
