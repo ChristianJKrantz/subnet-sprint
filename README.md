@@ -14,16 +14,29 @@ Works in any modern browser on desktop, tablet or phone. No install, no account,
 
 ## Features
 
-### Six practice modes
+### Practice modes
 | Mode | What you practice |
 |---|---|
+| **Worksheet** | The full class worksheet for an IP and mask: mask in dotted decimal and binary, increment, network and broadcast, whether the IP is a network/host/broadcast address, total networks (2ⁿ), hosts per network (2ʰ − 2), and the network chart |
 | **Binary** | Decimal → binary (tap the 128 / 64 / 32 … bits) and binary → decimal |
-| **Prefix ↔ Mask** | `/26` → `255.255.255.192` and back |
+| **Prefix ↔ Mask** | `/26` → `255.255.255.192` and back, and masks written out in 32-bit binary |
 | **ANDing** | IP + mask → network address |
-| **Subnet Chart** | Given `IP/prefix`, fill in the network, default gateway, last usable, broadcast and usable hosts |
-| **Formulas** | Usable hosts (2ʰ − 2), subnets (2ⁿ), network increment, "smallest subnet for X hosts", "bits to borrow for N subnets" |
+| **Subnet Chart** | Given `IP/prefix`, fill in the network, default gateway, last usable, broadcast and usable hosts; plus quick “network, host or broadcast?” questions |
+| **Formulas** | Usable hosts (2ʰ − 2), subnets (2ⁿ), total networks from the class default (A /8, B /16, C /24), network increment, "smallest subnet for X hosts", "bits to borrow for N subnets" |
 | **Mixed** | A random mix of everything |
 | **Weak spots** | Drills the mistakes you make most (see below) |
+
+### Worksheet mode and exam readiness
+Worksheet mode matches the class worksheet format: each problem gives an IP with a mask (as `/27` or `255.255.255.224`) and asks for every answer plus the network chart (network, useable host range and broadcast for each row, counting up from .0). It's checked box by box, with feedback on exactly what went wrong in each one, including chart cells that are only wrong because of an earlier mistake.
+
+The **Exam readiness** panel lays out a three-stage path:
+1. **Learn:** use the step-by-step Hint to walk through whole worksheets.
+2. **Practice:** do full worksheets without hints and fix what the feedback flags.
+3. **Prove it:** turn on **No-help mode**, which hides Hint and the Guide, and get 5 perfect worksheets in a row.
+
+Total networks is counted from the IP's class default mask (10.x.x.x is Class A, /8). The /24-baseline answer is also accepted for the worksheet, since some classes count it that way.
+
+<img src="docs/worksheet.png" alt="A checked worksheet with two mistakes explained" width="720">
 
 ### Two difficulty levels
 - **Last octet (/24–/30):** subnetting inside the 4th octet. Start here.
@@ -135,6 +148,7 @@ The `tests/` folder has two [Playwright](https://playwright.dev/python/) scripts
 - **`test_offline.py`** serves the site locally, loads it once, cuts the network, and plays a full question offline. It also checks that a new version is picked up when back online, and that the install button works on Chrome and gives iPhone directions.
 - **`test_security.py`** tries to inject code through every input and through tampered saved data, checks the Content Security Policy blocks inline and outside scripts, confirms nothing loads from other sites, and checks the page refuses to run inside another site's frame.
 - **`test_touch.py`** uses simulated finger swipes on a phone and tablet to check the Guide and Calculator panels scroll (with momentum) without moving the page behind them, and that tapping keys and drawing on the scratchpad still work.
+- **`test_worksheet.py`** loads the five problems from the class solutions guide and checks every worksheet answer and chart row matches it, then checks 15 common mistakes get the right explanation, that No-help mode hides the help, and that exam readiness counts correctly and survives a reload.
 - **`test_hints.py`** generates 12,500 questions across all 11 question types and checks every hint's steps lead to the real answer and handle junk input, then works through 40 hints on screen with deliberate wrong steps and answers each question for half points.
 
 ```bash
@@ -148,6 +162,7 @@ python tests/test_offline.py
 python tests/test_security.py
 python tests/test_touch.py
 python tests/test_hints.py
+python tests/test_worksheet.py
 ```
 
 ## Built with

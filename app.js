@@ -21,9 +21,9 @@ function binColored(n,p,dimHost){
 }
 const store={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v);}catch(e){return d;}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}}};
 
-const MODES=[{id:'mixed',name:'Mixed'},{id:'binary',name:'Binary'},{id:'prefix',name:'Prefix ↔ Mask'},{id:'anding',name:'ANDing'},{id:'detective',name:'Subnet Chart'},{id:'formulas',name:'Formulas'},{id:'weak',name:'Weak spots'}];
-const GUIDE_FOR={binary:'g-bin',prefix:'g-mask',anding:'g-and',detective:'g-chart',formulas:'g-form'};
-const state={mode:'mixed',level:'core',score:0,streak:0,best:Math.max(0,Math.floor(Number(store.get('ss_best',0)))||0),right:0,tried:0,per:{},q:null,checked:false,hinted:false,timed:null};
+const MODES=[{id:'worksheet',name:'Worksheet'},{id:'mixed',name:'Mixed'},{id:'binary',name:'Binary'},{id:'prefix',name:'Prefix ↔ Mask'},{id:'anding',name:'ANDing'},{id:'detective',name:'Subnet Chart'},{id:'formulas',name:'Formulas'},{id:'weak',name:'Weak spots'}];
+const GUIDE_FOR={worksheet:'g-ws',binary:'g-bin',prefix:'g-mask',anding:'g-and',detective:'g-chart',formulas:'g-form'};
+const state={mode:'worksheet',level:'core',score:0,streak:0,best:Math.max(0,Math.floor(Number(store.get('ss_best',0)))||0),right:0,tried:0,per:{},q:null,checked:false,hinted:false,timed:null};
 MODES.forEach(m=>state.per[m.id]={r:0,t:0});
 const randPrefix=()=>state.level==='core'?R(24,30):R(16,30);
 
@@ -314,6 +314,7 @@ const GEN={
   },
   prefix(sub){
     const p=state.level==='core'?(Math.random()<0.8?R(24,30):pick([8,16])):R(8,30);const m=maskOf(p);
+    if(sub==='bin'||(!sub&&Math.random()<1/3))return genMaskBin();
     if(sub?sub==='p2m':Math.random()<0.5) return {mode:'prefix',sub:'p2m',walk:()=>walkP2M(p),title:'Prefix → mask',prompt:`Write the dotted-decimal subnet mask for <b class="big">/${p}</b>`,
       fields:[{type:'ip',label:'Subnet mask',answer:m}],diag:x=>[diagMask(p,x[0])],hint:`/${p} means ${p} ones followed by ${32-p} zeros. Every full octet of ones is 255.`,explain:explainMask(p)};
     return {mode:'prefix',sub:'m2p',walk:()=>walkM2P(p),title:'Mask → prefix',prompt:`What prefix length is <b class="big">${ipStr(m)}</b>?`,
@@ -325,14 +326,17 @@ const GEN={
       fields:[{type:'ip',label:'Network address',answer:(ip&m)>>>0}],diag:x=>{const u=parseIP(x[0]);if(u===((ip&m)>>>0))return[null];const c=netCtx(ip,p);return[u==null?badEntry(x[0],'ip')+` Copy the octets under 255, AND octet ${c.io+1} (${c.ipo} AND ${c.mv} = ${c.neto}), and zero the rest → ${G(ipStr(c.net))}.`:diagNet(ip,p,u,true)];},
       hint:'Copy the octets under 255. In the octet where the mask isn’t 255 or 0, write both numbers in binary and AND them: 1 only where both are 1.',explain:explainAnd(ip,p)};
   },
-  detective(){
+  worksheet(){return genSheet();},
+  detective(sub){
+    if(sub==='role'||(!sub&&Math.random()<.25))return genRole();
     const p=randPrefix(),ip=randIP(),m=maskOf(p),net=(ip&m)>>>0,size=2**(32-p),bc=(net+size-1)>>>0;
     return {mode:'detective',walk:()=>walkSteps(ip,p),title:'Subnet chart',prompt:`Fill in the network chart for <b class="big">${ipStr(ip)}/${p}</b>`,
       fields:[{type:'ip',label:'Subnet (network)',answer:net},{type:'ip',label:'Default gateway (1st usable)',answer:(net+1)>>>0},{type:'ip',label:'Last usable',answer:(bc-1)>>>0},{type:'ip',label:'Broadcast',answer:bc},{type:'num',label:'Usable hosts',answer:size-2}],diag:x=>diagChart(ip,p,x),
       hint:`Mask is ${ipStr(m)}. Increment = 256 − the octet that isn’t 255 or 0. List the subnets (0, inc, 2×inc…) and round the IP down to one of them.`,explain:explainSubnet(ip,p)};
   },
   formulas(sub){
-    const core=state.level==='core';const t=sub!=null?sub:R(0,4);
+    const core=state.level==='core';const t=sub!=null?sub:R(0,5);
+    if(t===5)return genClassNets();
     if(t===0){const p=core?R(24,30):R(16,30),h=32-p;
       return {mode:'formulas',sub:t,walk:()=>walkHosts(p),title:'Host formula',prompt:`How many <u>usable</u> host addresses are in each <b class="big">/${p}</b> subnet?`,
         fields:[{type:'num',label:'Usable hosts',answer:2**h-2}],diag:x=>[diagHosts(h,x[0])],hint:`Host bits h = 32 − ${p}. Usable = 2^h − 2.`,
@@ -356,6 +360,226 @@ const GEN={
   }
 };
 
+
+
+/* ---------------- worksheet (the full class worksheet: mask, binary, increment, network, broadcast, role, totals, chart) ---------------- */
+const classOf=ip=>{const a=oct(ip,0);return a<128?{c:'A',d:8,range:'1–126'}:a<192?{c:'B',d:16,range:'128–191'}:{c:'C',d:24,range:'192–223'};};
+const bin32=m=>[0,1,2,3].map(i=>bin8(oct(m,i))).join('.');
+const bits32=raw=>{const s=String(raw).replace(/[.\s]/g,'');return /^[01]{32}$/.test(s)?s.match(/.{8}/g).join('.'):null;};
+const ROLES={network:'Network address',host:'Useable host',broadcast:'Broadcast address'};
+const toRole=raw=>{const s=String(raw).trim().toLowerCase();if(!s)return null;if(/^n/.test(s))return 'network';if(/^(h|u)/.test(s))return 'host';if(/^b/.test(s))return 'broadcast';return null;};
+const pow2=raw=>{const s=String(raw).replace(/[,\s]/g,'');const m=s.match(/^2\^(\d{1,2})$/);if(m)return 2**Number(m[1]);return /^\d+$/.test(s)?Number(s):null;};
+const big=n=>Number(n).toLocaleString();
+
+function diagBin32(p,raw){
+  const m=maskOf(p),want=bin32(m);if(bits32(raw)===want)return null;
+  const s=String(raw).replace(/[.\s]/g,''),how=`/${p} = ${p} ones then ${32-p} zeros: ${G(want)}.`;
+  if(isBlank(raw))return 'You left this blank. '+how;
+  if(!/^[01]+$/.test(s))return T('mask_binary',`Use only 1s and 0s (dots between octets are optional). ${how}`);
+  if(s.length!==32)return T('mask_binary',`That’s ${s.length} bits. A mask is 32 bits: four groups of 8. ${how}`);
+  if([...s].reverse().join('')===want.replace(/\./g,''))return T('mask_binary',`You wrote it backwards. The 1s (network bits) come first, on the left. ${how}`);
+  if(!/^1*0*$/.test(s))return T('mask_binary',`A mask is all 1s followed by all 0s: once a 0 appears, the rest are 0. ${how}`);
+  const q=s.indexOf('0')<0?32:s.indexOf('0');
+  if(q===32-p)return T('mask_binary',`You have ${q} ones: that’s the host bits. The 1s are the <i>network</i> bits, ${p} of them. ${how}`);
+  return T('mask_binary',`You have ${q} ones (a /${q}), but /${p} needs ${p}: ${Math.floor(p/8)} full octet${p>=16?'s':''} of 1s plus ${p%8} in the next octet. ${how}`);
+}
+function diagRole(ip,p,role,raw){
+  const r=toRole(raw);if(r===role)return null;
+  const m=maskOf(p),net=(ip&m)>>>0,bc=(net+2**(32-p)-1)>>>0;
+  const why=`${M(ipStr(ip))} is in the block ${M(ipStr(net))} – ${M(ipStr(bc))}. ${role==='network'?'It’s the <b>first</b> address of the block, so it’s the <b>network address</b>.':role==='broadcast'?'It’s the <b>last</b> address of the block, so it’s the <b>broadcast address</b>.':'It’s strictly between the network and broadcast, so it’s a <b>usable host</b>.'}`;
+  if(!r)return 'Pick one of the three. '+why;
+  const extra=r==='network'&&role==='host'?' Being a multiple of a small number isn’t enough: it has to be a multiple of the increment.':r==='host'&&role!=='host'?' The first and last addresses of every block are reserved.':'';
+  return T('ip_role',why+extra);
+}
+function diagClassNets(ip,p,raw,allowAlt){
+  const c=classOf(ip),n=p-c.d,ans=2**n,u=pow2(raw);if(u===ans||(allowAlt&&u===2**(p-24)))return null;
+  const how=`First octet ${oct(ip,0)} is Class ${c.c} (${c.range}), so the default mask is /${c.d}. Borrowed bits n = ${p} − ${c.d} = ${n}, and 2<sup>${n}</sup> = ${G(big(ans))}.`;
+  if(u==null)return badEntry(raw,'num')+' '+how;
+  if(u===2**(32-p)||u===2**(32-p)-2)return T('class_nets',`That’s from the host bits (2<sup>${32-p}</sup>). Total networks come from the <i>borrowed</i> bits. ${how}`);
+  if((n>1&&u===ans-2)||(allowAlt&&p-24>1&&u===2**(p-24)-2))return T('class_nets',`Don’t subtract 2 for networks; that’s only for hosts. ${how}`);
+  if(u===n)return T('class_nets',`${n} is the number of borrowed bits. Networks = 2<sup>${n}</sup>. ${how}`);
+  if(u===2*n&&n!==2)return T('power',`2<sup>${n}</sup> isn’t 2 × ${n}. ${how}`);
+  for(const d of [8,16,24])if(d!==c.d&&p>d&&u===2**(p-d))return T('class_nets',`That’s counting from /${d}, the Class ${{8:'A',16:'B',24:'C'}[d]} default. ${how}`);
+  if(u===2**p)return T('class_nets',`You used the whole prefix. Only the bits <i>borrowed past the class default</i> count. ${how}`);
+  return T('class_nets',`${big(u)} isn’t right. ${how}`);
+}
+function diagDefault(ip,raw){
+  const c=classOf(ip),u=toPre(raw);if(u===c.d)return null;
+  const how=`First octet ${oct(ip,0)} is in ${c.range}, so it’s Class ${c.c}: default ${G('/'+c.d)}. (A: 1–126 → /8 · B: 128–191 → /16 · C: 192–223 → /24)`;
+  if(u==null)return badEntry(raw,'prefix')+' '+how;
+  return T('class_nets',how);
+}
+function diagCell(rowNet,inc,c,raw,userNet,userBc){
+  const rowBc=(rowNet+inc-1)>>>0,want=[rowNet,(rowNet+1)>>>0,(rowBc-1)>>>0,rowBc][c],u=parseIP(raw);if(u===want)return null;
+  const r=oct(rowNet,3)/inc+1,nextNet=(rowNet+inc)>>>0;
+  const how=[`Rows count up by the increment from 0 (0, ${inc}, ${2*inc}…), so row ${r} starts at ${G(ipStr(rowNet))}.`,
+    `First usable = network + 1 = ${G(ipStr(want))}.`,`Last usable = broadcast − 1 = ${G(ipStr(want))}.`,
+    `Broadcast = next row’s network − 1 = ${M(ipStr(nextNet))} − 1 = ${G(ipStr(want))}.`][c];
+  if(u==null)return badEntry(raw,'ip')+' '+how;
+  if(c===1&&userNet!=null&&userNet!==rowNet&&u===((userNet+1)>>>0))return `Right method for the network you wrote in this row; only that network is off. ${how}`;
+  if(c===2&&userBc!=null&&userBc!==rowBc&&u===((userBc-1)>>>0))return `Right method for the broadcast you wrote in this row; only that broadcast is off. ${how}`;
+  if(c===3&&userNet!=null&&userNet!==rowNet&&u===((userNet+inc-1)>>>0))return `Right method for the network you wrote in this row; only that network is off. ${how}`;
+  if(c===0&&oct(u,3)%inc===0)return T('chart_rows',`${M(ipStr(u))} is a real network, but it belongs to a different row. ${how}`);
+  if(c===0)return T('chart_rows',`Network addresses are multiples of the increment (${inc}). ${how}`);
+  if(c===1&&u===rowNet)return T('chart_rows',`That’s the network address itself, which can’t be used. ${how}`);
+  if(c===2&&u===rowBc)return T('chart_rows',`The broadcast can’t be used by a host. ${how}`);
+  if((c===2||c===3)&&u===nextNet)return T('chart_rows',`That’s the next row’s network. ${how}`);
+  if(c===3&&u===((rowBc-1)>>>0))return T('chart_rows',`That’s the last usable. The broadcast is one more. ${how}`);
+  return T('chart_rows',`${M(ipStr(u))} isn’t right. ${how}`);
+}
+function walkSheet(ip,p,asPrefix,rows){
+  const m=maskOf(p),k=p-24,mv=oct(m,3),inc=256-mv,ipo=oct(ip,3),neto=ipo-ipo%inc,net=(ip&m)>>>0,bc=(net+inc-1)>>>0,c=classOf(ip),n=p-c.d,h=32-p;
+  const role=ipo===neto?'network':ipo===neto+inc-1?'broadcast':'host';
+  const st=[];
+  if(asPrefix){
+    st.push({q:`<b>/${p}</b>: the first three octets are full (24 ones = 255.255.255). How many 1s go in the 4th octet? ${p} − 24 = ?`,kind:'num',ans:k,bad:()=>`${p} − 24 = ?`});
+    st.push({q:`Add the first ${k} place value${k>1?'s':''} (128, 64, 32, 16, …). Total?`,kind:'num',ans:mv,bad:u=>k>1&&u===placeVals[k-1]?`That’s only the last one. Add all ${k}: ${placeVals.slice(0,k).join(' + ')}.`:`${placeVals.slice(0,k).join(' + ')} = ?`});
+    st.push({q:`Write the mask in dotted decimal.`,kind:'ip',ans:m,bad:(u,raw)=>String(diagMask(p,raw)||'')});
+  }else{
+    st.push({q:`Write the mask’s 4th octet (<b>${mv}</b>) in binary.`,kind:'bits8',ans:bin8(mv),bad:(u,raw)=>isBits8(raw)?String(diagBits(mv,bits8(raw))):'Type 8 digits, each 0 or 1.'});
+    st.push({q:`Count the 1s: 24 from the three 255s, plus ${k} in ${M(bin8(mv))}. Prefix = ?`,kind:'prefix',ans:p,bad:()=>`24 + ${k} = ?`});
+  }
+  st.push({q:`Write the whole mask in binary: three groups of ${M('11111111')}, then ${M(bin8(mv))}.`,kind:'bin32',ans:bin32(m),bad:(u,raw)=>String(diagBin32(p,raw)||'')});
+  st.push({q:`Increment = 256 − ${mv} = ?`,kind:'num',ans:inc,bad:u=>u===255-mv?'Use 256, not 255.':u===mv?'That’s the mask octet. Subtract it from 256.':`256 − ${mv} = ?`});
+  st.push({q:`Count up from 0 by ${inc}: 0, ${inc}, ${2*inc}${3*inc<256?', '+3*inc:''}… The IP ends in <b>${ipo}</b>. Which network value does it fall in (round <b>down</b>)?`,kind:'num',ans:neto,
+    bad:u=>u==null?'Enter a number.':u%inc?`${u} isn’t a multiple of ${inc}.`:u>ipo?'Too high: always round down.':`The block starting at ${u} ends at ${u+inc-1}, before ${ipo}. Keep counting.`});
+  st.push({q:`So the network address of the IP is ?`,kind:'ip',ans:net,bad:(u,raw)=>u==null?badEntry(raw,'ip'):String(diagNet(ip,p,u,false))});
+  st.push({q:`The next network is .${neto+inc}${neto+inc===256?' (the end of the octet)':''}. Broadcast = one less. Broadcast address of the IP = ?`,kind:'ip',ans:bc,bad:(u,raw)=>u==null?badEntry(raw,'ip'):u===((bc+1)>>>0)?'That’s the next network. Subtract 1.':`Network ${M(ipStr(net))} + ${inc} − 1.`});
+  st.push({q:`The IP ends in .${ipo}; its block runs .${neto} to .${neto+inc-1}. Is it the <b>network</b> (first), <b>broadcast</b> (last), or a usable <b>host</b> (in between)?`,kind:'role',ans:role,
+    bad:()=>`.${neto} is the network, .${neto+inc-1} is the broadcast, and anything between is a host. Where is .${ipo}?`});
+  st.push({q:`Host bits h = number of 0s in the mask = 32 − ${p} = ?`,kind:'num',ans:h,bad:()=>`32 − ${p} = ?`});
+  st.push({q:`Hosts per network = 2<sup>${h}</sup> − 2 = ?`,kind:'num',ans:2**h-2,bad:u=>u===2**h?'Subtract 2 (network and broadcast).':`2<sup>${h}</sup> = ${2**h}, then subtract 2.`});
+  st.push({q:`For total networks, find the IP’s class. First octet is <b>${oct(ip,0)}</b>. Class A is 1–126, B is 128–191, C is 192–223. Which class?`,kind:'cls',ans:c.c,bad:()=>`${oct(ip,0)} falls in ${c.range}.`});
+  st.push({q:`Class ${c.c}’s default mask is /?`,kind:'prefix',ans:c.d,bad:()=>'A → /8, B → /16, C → /24.'});
+  st.push({q:`Borrowed bits n = ${p} − ${c.d} = ?`,kind:'num',ans:n,bad:()=>`${p} − ${c.d} = ?`});
+  st.push({q:`Total networks = 2<sup>${n}</sup> = ? (you can type ${M('2^'+n)})`,kind:'pow',ans:2**n,bad:u=>u===2**n-2?'No − 2 for networks.':`Keep doubling ${n} times, or type 2^${n}.`});
+  rows.forEach((rn,r)=>{
+    st.push({q:`Chart row ${r+1}: ${r===0?'the first row starts at .0. Its network is':`count up ${inc} from the row above. Row ${r+1} network is`} ?`,kind:'ip',ans:rn,bad:()=>`Row ${r+1} starts at .${r*inc} (${r} × ${inc}).`});
+    st.push({q:`Row ${r+1} broadcast = next row’s network − 1 = ?`,kind:'ip',ans:(rn+inc-1)>>>0,bad:u=>u===((rn+inc)>>>0)?'That’s the next row’s network. Subtract 1.':`.${r*inc+inc} − 1 = .${r*inc+inc-1}`});
+  });
+  return st.concat({done:true,q:`Each row’s useable range runs from network + 1 to broadcast − 1. Fill in the worksheet and chart above and press <b>Check</b>.`});
+}
+function explainSheet(ip,p,rows){
+  const m=maskOf(p),mv=oct(m,3),inc=256-mv,net=(ip&m)>>>0,bc=(net+inc-1)>>>0,c=classOf(ip),n=p-c.d,h=32-p,ipo=oct(ip,3);
+  const role=ipo===oct(net,3)?'network':ipo===oct(bc,3)?'broadcast':'host';
+  return `<table class="sol"><tr><td>Subnet mask</td><td class="mono">${ipStr(m)} = /${p}</td></tr><tr><td>Binary</td><td class="mono">${bin32(m)}</td></tr>
+  <tr><td>Increment</td><td class="mono">256 − ${mv} = ${inc}</td></tr><tr><td>Network</td><td class="mono">${ipStr(net)}</td></tr><tr><td>Broadcast</td><td class="mono">${ipStr(bc)}</td></tr>
+  <tr><td>The IP is a</td><td>${ROLES[role].toLowerCase()}</td></tr><tr><td>Total networks</td><td>Class ${c.c} default /${c.d} → n = ${p} − ${c.d} = ${n} → 2<sup>${n}</sup> = <b>${big(2**n)}</b>${c.d!==24?` <span class="dim">(2<sup>${p-24}</sup> = ${2**(p-24)} if your class counts from /24)</span>`:''}</td></tr>
+  <tr><td>Hosts per network</td><td>h = ${h} → 2<sup>${h}</sup> − 2 = <b>${2**h-2}</b></td></tr></table>
+  <table class="sol chartsol"><tr><th>Network</th><th>Useable host range</th><th>Broadcast</th></tr>${rows.map(rn=>`<tr class="${rn===net?'hl':''}"><td class="mono">${ipStr(rn)}</td><td class="mono">${ipStr(rn+1)} – ${ipStr(rn+inc-2)}</td><td class="mono">${ipStr(rn+inc-1)}</td></tr>`).join('')}</table>`;
+}
+function genSheet(fixed){
+  const p=fixed?fixed.p:R(25,30),m=maskOf(p),inc=2**(32-p),blocks=256/inc;
+  const kind=pick(['a','a','a','a','b','c']);
+  const first3=kind==='a'?(Math.random()<.5?[10,10,10]:[10,R(0,255),R(0,255)]):kind==='b'?[172,R(16,31),R(0,255)]:[192,168,R(0,255)];
+  const want=pick(['network','host','broadcast']),row=R(0,Math.min(blocks-1,3)),lo=row*inc;
+  const last=want==='network'?lo:want==='broadcast'?lo+inc-1:lo+R(1,inc-2);
+  const ip=fixed?parseIP(fixed.ip):parseIP(first3.join('.')+'.'+last),net=(ip&m)>>>0,bc=(net+inc-1)>>>0,base=(ip&0xFFFFFF00)>>>0,c=classOf(ip);
+  const role=ip===net?'network':ip===bc?'broadcast':'host';
+  const asPrefix=fixed?fixed.asPrefix:Math.random()<.5,nRows=Math.min(blocks,Math.max(3,Math.floor(oct(ip,3)/inc)+2));
+  const rows=[...Array(nRows)].map((_,r)=>(base+r*inc)>>>0);
+  const fields=[asPrefix?{type:'ip',label:'Subnet mask (dotted decimal)',answer:m}:{type:'prefix',label:'Prefix (CIDR)',answer:p},
+    {type:'bin32',label:'Subnet mask (binary)',answer:bin32(m)},
+    {type:'num',label:'Network increment',answer:inc},
+    {type:'ip',label:'Network address of the IP',answer:net},
+    {type:'ip',label:'Broadcast address of the IP',answer:bc},
+    {type:'choice',label:'The given IP is a…',answer:role},
+    {type:'numalt',label:'Total networks (2ⁿ)',answer:2**(p-c.d),alt:c.d===24?[]:[2**(p-24)]},
+    {type:'num',label:'Hosts per network (2ʰ − 2)',answer:inc-2}];
+  rows.forEach((rn,r)=>['network','first usable','last usable','broadcast'].forEach((nm,col)=>
+    fields.push({type:'ip',cell:{r,c:col},label:`Row ${r+1} ${nm}`,answer:[rn,rn+1,rn+inc-2,rn+inc-1][col]>>>0})));
+  return {mode:'worksheet',layout:'sheet',title:'Worksheet',
+    prompt:asPrefix?`<b class="big">${ipStr(ip)}/${p}</b>`:`<b class="big">${ipStr(ip)}</b> <span class="sep">|</span> <b class="big">${ipStr(m)}</b>`,
+    fields,
+    diag:x=>{const out=[asPrefix?diagMask(p,x[0]):diagPrefix(p,x[0]),diagBin32(p,x[1]),diagIncrement(p,x[2])];
+      const u3=parseIP(x[3]);out.push(u3===net?null:u3==null?badEntry(x[3],'ip'):diagNet(ip,p,u3,false));
+      out.push(parseIP(x[4])===bc?null:diagChart(ip,p,[x[3],'','',x[4],'0'])[3]);
+      out.push(diagRole(ip,p,role,x[5]));out.push(diagClassNets(ip,p,x[6],true));out.push(diagHosts(32-p,x[7]));
+      rows.forEach((rn,r)=>{const o=8+r*4,un=parseIP(x[o]),ub=parseIP(x[o+3]);for(let col=0;col<4;col++)out.push(diagCell(rn,inc,col,x[o+col],un,ub));});
+      return out;},
+    hint:'Mask → binary → increment (256 − the last mask octet). Count up by the increment from 0 to build the chart, find the IP’s row, then hosts = 2ʰ − 2 and networks = 2ⁿ from the class default.',
+    walk:()=>walkSheet(ip,p,asPrefix,rows),explain:explainSheet(ip,p,rows)};
+}
+
+/* ---------------- worksheet readiness ---------------- */
+let sheet={streak:0,best:0,perfect:0,done:0};{const raw=store.get('ss_sheet',{});if(raw&&typeof raw==='object')for(const k of Object.keys(sheet)){const v=Number(raw[k]);if(Number.isFinite(v)&&v>=0)sheet[k]=Math.floor(v);}}
+let noHelp=store.get('ss_nohelp',false)===true;
+const GOAL=5;
+function applyNoHelp(){
+  const on=noHelp&&state.mode==='worksheet'&&!state.timed;
+  document.body.classList.toggle('nohelp',on);
+  $('#hintBtn').hidden=on;
+  $$('[data-t="guide"]').forEach(b=>{b.disabled=on;});
+  if(on&&!$('#t-guide').hidden&&typeof closeTools==='function')closeTools();
+}
+function renderSheetBox(){
+  const box=$('#sheetbox');if(state.mode!=='worksheet'||state.timed){box.hidden=true;applyNoHelp();return;}box.hidden=false;
+  const pct=Math.min(100,Math.round(100*sheet.streak/GOAL)),ready=sheet.best>=GOAL;
+  const stage=noHelp?3:sheet.perfect>0||sheet.done>=3?2:1;
+  box.innerHTML=`<div class="wk-h"><b>Exam readiness</b><label class="switch"><input type="checkbox" id="noHelpSw" ${noHelp?'checked':''}><span>No-help mode</span></label></div>
+  <ol class="path"><li class="${stage===1?'now':stage>1?'did':''}"><b>Learn:</b> use <b>Hint</b> to walk through each worksheet step by step.</li>
+  <li class="${stage===2?'now':stage>2?'did':''}"><b>Practice:</b> try full worksheets without hints and fix what the feedback flags.</li>
+  <li class="${stage===3?'now':''}"><b>Prove it:</b> turn on <b>No-help mode</b> (no hints or guide) and get ${GOAL} perfect worksheets in a row.</li></ol>
+  <div class="rd-row"><span>${noHelp?'Perfect no-help worksheets in a row':'Turn on No-help mode to start counting'}</span><b>${noHelp?`${sheet.streak} / ${GOAL}`:''}</b></div>
+  <div class="wk-bar rd"><i style="width:${noHelp?pct:0}%"></i></div>
+  <p class="dim">${ready?`🎉 You’ve hit ${GOAL} in a row (best ${sheet.best}). You can work these with no help. Keep it sharp with a few a day.`:sheet.best?`Best run so far: ${sheet.best}. `:''}${sheet.done?` Worksheets finished: ${sheet.done}, perfect: ${sheet.perfect}.`:''}</p>`;
+  $('#noHelpSw').onchange=e=>{noHelp=e.target.checked;store.set('ss_nohelp',noHelp);if(!noHelp){sheet.streak=0;store.set('ss_sheet',sheet);}renderSheetBox();};
+  applyNoHelp();
+}
+function noteSheet(q,all){
+  if(q.mode!=='worksheet')return;sheet.done++;
+  if(all&&!state.hinted)sheet.perfect++;
+  if(noHelp){if(all&&!state.hinted){sheet.streak++;sheet.best=Math.max(sheet.best,sheet.streak);}else sheet.streak=0;}
+  store.set('ss_sheet',sheet);renderSheetBox();
+  if(noHelp&&all&&sheet.streak===GOAL){const d=document.createElement('div');d.className='toast';d.textContent=`🎉 ${GOAL} perfect worksheets in a row with no help!`;document.body.appendChild(d);setTimeout(()=>d.remove(),4000);}
+}
+
+/* ---------------- worksheet layout ---------------- */
+function cellHTML(f,i){
+  return `<div class="field cell" data-i="${i}"><input id="f${i}" aria-label="${f.label}" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" inputmode="decimal" enterkeyhint="next" placeholder="${['network','first','last','broadcast'][f.cell.c]}"><span class="fix"></span></div>`;
+}
+function sheetHTML(q){
+  const top=q.fields.map((f,i)=>f.cell?'':fieldHTML(f,i)).join('');
+  const byRow={};q.fields.forEach((f,i)=>{if(f.cell)(byRow[f.cell.r]=byRow[f.cell.r]||[])[f.cell.c]=i;});
+  const rows=Object.keys(byRow).map(r=>{const ix=byRow[r];return `<div class="crow"><span class="rlab">Row ${Number(r)+1}</span><div class="cc" data-l="Network">${cellHTML(q.fields[ix[0]],ix[0])}</div><div class="cc rng" data-l="Useable host range">${cellHTML(q.fields[ix[1]],ix[1])}<span class="dash">–</span>${cellHTML(q.fields[ix[2]],ix[2])}</div><div class="cc" data-l="Broadcast">${cellHTML(q.fields[ix[3]],ix[3])}</div></div>`;}).join('');
+  return `<div class="ws-top">${top}</div><div class="ws-chart"><div class="ch-title">Network chart</div><div class="crow chead"><span class="rlab"></span><span>Network</span><span>Useable host range</span><span>Broadcast</span></div>${rows}</div>`;
+}
+
+/* ---------------- drills for the worksheet's extra skills ---------------- */
+function genMaskBin(){
+  const p=state.level==='core'?R(24,30):R(8,30),m=maskOf(p),asPrefix=Math.random()<.5;
+  return {mode:'prefix',sub:'bin',title:'Mask → binary',prompt:`Write ${asPrefix?`<b class="big">/${p}</b>`:`<b class="big">${ipStr(m)}</b>`} as a 32-bit binary mask`,
+    fields:[{type:'bin32',label:'Subnet mask (binary)',answer:bin32(m)}],diag:x=>[diagBin32(p,x[0])],
+    hint:`${p} ones, then ${32-p} zeros, in four groups of 8.`,explain:explainMask(p),
+    walk:()=>{const full=Math.floor(p/8),part=p%8,st=[{q:`/${p} has ${p} ones. How many full groups of 8 ones (11111111) is that? (${p} ÷ 8, ignore the remainder)`,kind:'num',ans:full,bad:()=>`${full} × 8 = ${full*8}.`}];
+      if(part)st.push({q:`That leaves ${p} − ${full*8} = ${part} ones for the next octet. Write that octet in binary.`,kind:'bits8',ans:bin8(oct(m,full)),bad:(u,raw)=>isBits8(raw)?`${part} ones then ${8-part} zeros.`:'Type 8 digits, each 0 or 1.'});
+      st.push({q:`Write all 32 bits.`,kind:'bin32',ans:bin32(m),bad:(u,raw)=>String(diagBin32(p,raw)||'')});
+      return st.concat({done:true,q:`${M(bin32(m))}. Enter it above and press <b>Check</b>.`});}};
+}
+function genRole(){
+  const p=randPrefix(),m=maskOf(p),size=2**(32-p),role=pick(['network','host','broadcast']);
+  const net=(randIP()&m)>>>0,ip=role==='network'?net:role==='broadcast'?(net+size-1)>>>0:(net+R(1,size-2))>>>0,asPrefix=Math.random()<.5;
+  return {mode:'detective',sub:'role',title:'Network, host or broadcast?',
+    prompt:`Is ${asPrefix?`<b class="big">${ipStr(ip)}/${p}</b>`:`<b class="big">${ipStr(ip)}</b> with mask <b>${ipStr(m)}</b>`} a network address, a usable host, or a broadcast address?`,
+    fields:[{type:'choice',label:'The IP is a…',answer:role}],diag:x=>[diagRole(ip,p,role,x[0])],
+    hint:'Find the IP’s block (network to broadcast). First address = network, last = broadcast, anything between = host.',explain:explainSubnet(ip,p),
+    walk:()=>walkSteps(ip,p).slice(0,6).concat({q:`So the IP’s block runs from the network to the broadcast. Is ${M(ipStr(ip))} the <b>network</b>, the <b>broadcast</b>, or a usable <b>host</b>?`,kind:'role',ans:role,bad:()=>'First address = network, last = broadcast, anything in between = host.'},{done:true,q:`It’s a <b>${ROLES[role].toLowerCase()}</b>. Pick it above and press <b>Check</b>.`})};
+}
+function genClassNets(){
+  const t=pick(['A','A','B','C']),ip=t==='A'?parseIP(`10.${R(0,255)}.${R(0,255)}.${R(1,254)}`):t==='B'?parseIP(`172.${R(16,31)}.${R(0,255)}.${R(1,254)}`):parseIP(`192.168.${R(0,255)}.${R(1,254)}`);
+  const c=classOf(ip),p=R(Math.max(c.d+1,24),30),n=p-c.d;
+  return {mode:'formulas',sub:5,title:'Total networks (class default)',
+    prompt:`For <b class="big">${ipStr(ip)}/${p}</b>, counting from the IP’s <u>class default</u> mask, how many networks (2ⁿ) are there?`,
+    fields:[{type:'prefix',label:'Class default prefix',answer:c.d},{type:'numalt',label:'Total networks (2ⁿ)',answer:2**n,alt:[]}],
+    diag:x=>[diagDefault(ip,x[0]),diagClassNets(ip,p,x[1],false)],
+    hint:'Class A (1–126) → /8, B (128–191) → /16, C (192–223) → /24. n = prefix − default. Networks = 2ⁿ.',
+    explain:`<p>First octet ${oct(ip,0)} → Class ${c.c} → default /${c.d}.</p><p>n = ${p} − ${c.d} = ${n} borrowed bits → 2<sup>${n}</sup> = <b class="g">${big(2**n)}</b> networks.</p>`,
+    walk:()=>[{q:`First octet is <b>${oct(ip,0)}</b>. Class A is 1–126, B is 128–191, C is 192–223. Which class?`,kind:'cls',ans:c.c,bad:()=>`${oct(ip,0)} falls in ${c.range}.`},
+      {q:`Class ${c.c}’s default mask is /?`,kind:'prefix',ans:c.d,bad:()=>'A → /8, B → /16, C → /24.'},
+      {q:`Borrowed bits n = ${p} − ${c.d} = ?`,kind:'num',ans:n,bad:()=>`${p} − ${c.d} = ?`},
+      {q:`Total networks = 2<sup>${n}</sup> = ? (you can type ${M('2^'+n)})`,kind:'pow',ans:2**n,bad:()=>`Keep doubling ${n} times, or type 2^${n}.`},
+      {done:true,q:`Default /${c.d}, and 2<sup>${n}</sup> = <b>${big(2**n)}</b> networks. Enter them above and press <b>Check</b>.`}]};
+}
 
 /* ---------------- weak spots ---------------- */
 /* Every tagged mistake is logged. "w" is how weak the spot is right now (goes up on a miss, down when you get
@@ -388,6 +612,10 @@ const WEAK={
   prefix_grow:['Which way the prefix moves when borrowing',[['formulas',1],['formulas',3]]],
   size_hosts:['Picking a subnet size for a host count',[['formulas',2]]],
   size_nets:['Bits to borrow for a subnet count',[['formulas',3]]],
+  mask_binary:['Writing the mask in binary',[['prefix','bin'],['worksheet']]],
+  ip_role:['Network, host or broadcast?',[['detective','role'],['worksheet']]],
+  class_nets:['Total networks from the class default',[['formulas',5],['worksheet']]],
+  chart_rows:['Filling in the network chart rows',[['worksheet']]],
 };
 let weak={};{const raw=store.get('ss_weak',{});if(raw&&typeof raw==='object')for(const t of Object.keys(raw))if(Object.prototype.hasOwnProperty.call(WEAK,t)){const w=Number(raw[t]&&raw[t].w),n=Number(raw[t]&&raw[t].n);weak[t]={w:Number.isFinite(w)?Math.min(6,Math.max(0,w)):0,n:Number.isFinite(n)?Math.max(0,Math.floor(n)):0};}}
 const saveWeak=()=>store.set('ss_weak',weak);
@@ -525,11 +753,11 @@ function walkSteps(ip,p){
 }
 function renderWalk(){
   const w=state.walk,box=$('#walk');if(!w){box.hidden=true;box.innerHTML='';return;}box.hidden=false;
-  const shown=v=>typeof v==='number'&&v>255?v.toLocaleString():v;
+  const shown=(v,k)=>k==='role'?ROLES[v]:k==='cls'?'Class '+v:typeof v==='number'&&v>255?v.toLocaleString():v;
   box.innerHTML=`<div class="wk-title">Step by step</div><ol>`+w.steps.slice(0,w.i+1).map((st,n)=>{
     if(st.done)return `<li class="wdone-all">${st.q}</li>`;
-    if(n<w.i)return `<li class="wok"><span>${st.q}</span><b class="g mono wans">✓ ${st.show||(st.kind==='ip'?ipStr(st.ans):st.kind==='prefix'?'/'+st.ans:shown(st.ans))}</b></li>`;
-    return `<li class="wcur"><span>${st.q}</span><div class="wrow"><input id="winp" class="winp" autocomplete="off" spellcheck="false" inputmode="${st.kind==='ip'?'decimal':'numeric'}" placeholder="${{ip:'e.g. 192.168.4.0',prefix:'e.g. /26',bits8:'8 digits, e.g. 01000000'}[st.kind]||'number'}"><button class="btn small primary" id="wchk">Check step</button><button class="btn small" id="wshow">Show me</button></div><div class="wmsg" id="wmsg">${w.msg||''}</div></li>`;
+    if(n<w.i)return `<li class="wok"><span>${st.q}</span><b class="g mono wans">✓ ${st.show||(st.kind==='ip'?ipStr(st.ans):st.kind==='prefix'?'/'+st.ans:shown(st.ans,st.kind))}</b></li>`;
+    return `<li class="wcur"><span>${st.q}</span><div class="wrow"><input id="winp" class="winp" autocomplete="off" spellcheck="false" inputmode="${['role','cls'].includes(st.kind)?'text':st.kind==='ip'||st.kind==='bin32'?'decimal':st.kind==='pow'?'text':'numeric'}" placeholder="${{ip:'e.g. 192.168.4.0',prefix:'e.g. /26',bits8:'8 digits, e.g. 01000000',bin32:'32 bits, dots optional',role:'network, host or broadcast',cls:'A, B or C',pow:'number or 2^n'}[st.kind]||'number'}"><button class="btn small primary" id="wchk">Check step</button><button class="btn small" id="wshow">Show me</button></div><div class="wmsg" id="wmsg">${w.msg||''}</div></li>`;
   }).join('')+`</ol>`;
   const inp=$('#winp');if(!inp)return;
   inp.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();e.stopPropagation();walkCheck();}});
@@ -538,7 +766,7 @@ function renderWalk(){
 function focusWalk(){const i=$('#winp');if(i){if(isDesktop())i.focus();i.scrollIntoView({block:'nearest',behavior:'smooth'});}}
 function walkCheck(){
   const w=state.walk,st=w.steps[w.i],raw=$('#winp').value;
-  const u=st.kind==='ip'?parseIP(raw):st.kind==='prefix'?toPre(raw):st.kind==='bits8'?(isBits8(raw)?bits8(raw):null):toNum(raw);
+  const u=st.kind==='ip'?parseIP(raw):st.kind==='prefix'?toPre(raw):st.kind==='bits8'?(isBits8(raw)?bits8(raw):null):st.kind==='bin32'?bits32(raw):st.kind==='role'?toRole(raw):st.kind==='cls'?(/^\s*(class\s*)?[abc]\s*$/i.test(raw)?raw.trim().slice(-1).toUpperCase():null):st.kind==='pow'?pow2(raw):toNum(raw);
   if(u===st.ans){w.i++;w.msg='';renderWalk();focusWalk();return;}
   w.msg=isBlank(raw)?'Type an answer, or press “Show me”.':st.bad(u,raw);renderWalk();
   const i=$('#winp');i.value=raw;i.classList.add('shake');focusWalk();
@@ -556,17 +784,21 @@ function renderStats(){
 function fieldHTML(f,i){
   if(f.type==='bits'){const vals=[128,64,32,16,8,4,2,1];
     return `<div class="field" data-i="${i}"><label>${f.label}</label><div><div class="bits">${vals.map((v,k)=>`<div class="bitcol"><small>${v}</small><button class="bit" data-k="${k}">0</button></div>`).join('')}</div><div class="fix"></div></div></div>`;}
-  const ph=f.type==='ip'?'e.g. 192.168.4.0':f.type==='prefix'?'/26':'number';
+  if(f.type==='choice')return `<div class="field" data-i="${i}"><label>${f.label}</label><div class="inrow"><div class="choices">${Object.entries(ROLES).map(([k,v])=>`<button type="button" class="choice" data-v="${k}">${v}</button>`).join('')}</div><span class="fix"></span></div></div>`;
+  const ph=f.type==='ip'?'e.g. 192.168.4.0':f.type==='prefix'?'/26':f.type==='bin32'?'32 ones and zeros (dots optional)':f.type==='numalt'?'number or 2^n':'number';
   const im=f.type==='num'?'numeric':'decimal';
-  return `<div class="field" data-i="${i}"><label for="f${i}">${f.label}</label><div class="inrow"><input id="f${i}" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" inputmode="${im}" enterkeyhint="${i<state.q.fields.length-1?'next':'done'}" placeholder="${ph}"><span class="fix"></span></div></div>`;
+  return `<div class="field${f.type==='bin32'?' wide':''}" data-i="${i}"><label for="f${i}">${f.label}</label><div class="inrow"><input id="f${i}" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" inputmode="${im}" enterkeyhint="${i<state.q.fields.length-1?'next':'done'}" placeholder="${ph}"><span class="fix"></span></div></div>`;
 }
-function next(){
+function next(force){
   let mode=state.timed||state.mode==='mixed'?pick(['binary','prefix','anding','detective','formulas']):state.mode,sub,lvl,target=null;
   if(mode==='weak'){target=pickWeak();if(target){const g=pick(WEAK[target][1]);mode=g[0];sub=g[1]===''?undefined:g[1];lvl=g[2];}else mode=pick(['binary','prefix','anding','detective','formulas']);}
-  const keep=state.level;if(lvl)state.level=lvl;const q=GEN[mode](sub);state.level=keep;q.target=target;
+  const keep=state.level;if(lvl)state.level=lvl;const q=force||GEN[mode](sub);state.level=keep;q.target=target;
   state.q=q;state.checked=false;state.hinted=false;
   $('#qtype').innerHTML=q.title+(target?` <span class="drill">· drilling: ${WEAK[target][0]}</span>`:'');renderWeak();$('#prompt').innerHTML=q.prompt;$('#miniQ').innerHTML=q.prompt.replace(/<br>/g,' ');
-  $('#fields').innerHTML=q.fields.map(fieldHTML).join('');
+  $('#fields').innerHTML=q.layout==='sheet'?sheetHTML(q):q.fields.map(fieldHTML).join('');
+  $('#fields').classList.toggle('sheet',q.layout==='sheet');
+  $$('#fields .choices').forEach(g=>g.querySelectorAll('.choice').forEach(b=>b.onclick=()=>{if(state.checked)return;g.querySelectorAll('.choice').forEach(x=>x.classList.toggle('on',x===b));}));
+  $('#level').hidden=state.mode==='worksheet'&&!state.timed;renderSheetBox();
   $$('#fields .bit').forEach(b=>b.onclick=()=>{if(state.checked)return;b.classList.toggle('on');b.textContent=b.classList.contains('on')?'1':'0';});
   $('#hint').hidden=true;$('#feedback').className='feedback';$('#work').style.display='none';
   $('#checkBtn').innerHTML='Check <span class="kbd">Enter</span>';$('#hintBtn').disabled=false;
@@ -574,20 +806,23 @@ function next(){
   if($('#autoClear').checked){strokes=[];redrawInk();$('#scratchText').value='';}
   const first=$('#fields input');if(first&&isDesktop())first.focus();
 }
-function readField(f,el){if(f.type==='bits')return $$(`.field[data-i="${el.dataset.i}"] .bit`).map(b=>b.classList.contains('on')?'1':'0').join('');return el.querySelector('input').value;}
+function readField(f,el){if(f.type==='choice'){const b=el.querySelector('.choice.on');return b?b.dataset.v:'';}if(f.type==='bits')return $$(`.field[data-i="${el.dataset.i}"] .bit`).map(b=>b.classList.contains('on')?'1':'0').join('');return el.querySelector('input').value;}
 function isRight(f,v){
   if(f.type==='bits')return v===f.answer;
+  if(f.type==='choice')return toRole(v)===f.answer;
+  if(f.type==='bin32')return bits32(v)===f.answer;
+  if(f.type==='numalt'){const u=pow2(v);return u===f.answer||(f.alt||[]).includes(u);}
   if(f.type==='ip')return parseIP(v)===f.answer;
   if(f.type==='prefix'){const m=String(v).trim().replace(/^\//,'');return /^\d+$/.test(m)&&Number(m)===f.answer;}
   const s=String(v).replace(/[,\s]/g,'');return /^\d+$/.test(s)&&Number(s)===f.answer;
 }
-const show=f=>f.type==='ip'?ipStr(f.answer):f.type==='prefix'?'/'+f.answer:f.type==='bits'?f.answer:Number(f.answer).toLocaleString();
+const show=f=>f.type==='choice'?ROLES[f.answer]:f.type==='bin32'?f.answer:f.type==='numalt'?big(f.answer):f.type==='ip'?ipStr(f.answer):f.type==='prefix'?'/'+f.answer:f.type==='bits'?f.answer:Number(f.answer).toLocaleString();
 function check(){
   if(state.checked){next();if(!isDesktop())$('.card').scrollIntoView({block:'start',behavior:'smooth'});return;}
   const q=state.q;let all=true;const vals=q.fields.map((f,i)=>readField(f,$(`.field[data-i="${i}"]`)));const wrong=[];
   q.fields.forEach((f,i)=>{const el=$(`.field[data-i="${i}"]`);const ok=isRight(f,vals[i]);if(!ok)wrong.push(i);
     el.classList.add(ok?'ok':'no');if(!ok){all=false;el.querySelector('.fix').textContent='→ '+show(f);}
-    el.querySelectorAll('input').forEach(x=>{x.readOnly=true;x.blur();});});
+    el.querySelectorAll('input').forEach(x=>{x.readOnly=true;x.blur();});el.querySelectorAll('.choice').forEach(x=>x.disabled=true);});
   state.checked=true;state.tried++;state.per[q.mode].t++;const agg=state.timed?'mixed':(state.mode==='mixed'||state.mode==='weak')?state.mode:null;if(agg)state.per[agg].t++;
   if(all){const pts=state.hinted?5:10;state.score+=pts;state.right++;state.per[q.mode].r++;if(agg)state.per[agg].r++;noteRight(q);
     state.streak++;if(state.streak>state.best){state.best=state.streak;store.set('ss_best',state.best);}
@@ -600,11 +835,12 @@ function check(){
   if(!all){let d=[];try{d=q.diag?q.diag(vals):[];}catch(e){d=[];}
     noteMisses([...new Set(wrong.map(i=>d[i]&&d[i].tag).filter(Boolean))]);
     const chipShown=new Set();
-    coach='<div class="coach">'+wrong.map(i=>{const f=q.fields[i];const typed=isBlank(vals[i])?'(blank)':f.type==='bits'?vals[i]:String(vals[i]).trim();
+    coach='<div class="coach">'+wrong.map(i=>{const f=q.fields[i];const typed=isBlank(vals[i])?'(blank)':f.type==='choice'?ROLES[vals[i]]:f.type==='bits'?vals[i]:String(vals[i]).trim();
       return `<div class="ci" data-i="${i}"><div class="ch"><b>${f.label}</b><span>you put <s class="mono">${esc(typed)}</s> → <b class="g mono">${show(f)}</b></span></div><p>${d[i]||'Compare with the full walkthrough below.'}</p>${d[i]&&d[i].tag&&WEAK[d[i].tag]&&!chipShown.has(d[i].tag)&&chipShown.add(d[i].tag)?`<span class="wk-chip">Logged to weak spots: ${WEAK[d[i].tag][0]}</span>`:''}</div>`;}).join('')+'</div>';}
   $('#work').innerHTML=coach+`<details class="full"${all?'':''}><summary>${all?'Show the work':'Full walkthrough'}</summary>${q.explain}</details>`;
   $('#work').style.display=all&&state.timed?'none':'block';
   $('#checkBtn').innerHTML='Next <span class="kbd">Enter</span>';$('#hintBtn').disabled=true;if(state.walk){$('#walk').querySelectorAll('input,button').forEach(x=>x.disabled=true);}
+  noteSheet(q,all);
   renderStats();renderTabs();renderWeak();
   if(!isDesktop())$('#feedback').scrollIntoView({block:'nearest',behavior:'smooth'});else $('#checkBtn').focus();
 }
@@ -652,6 +888,7 @@ $('#tClose').onclick=()=>{$('#overlay').classList.remove('on');next();};
 /* ---------------- tools panel ---------------- */
 const tools=$('#tools');
 function openTool(name,sec){
+  if(name==='guide'&&document.body.classList.contains('nohelp'))return;
   $$('.ttab').forEach(b=>b.classList.toggle('on',b.dataset.t===name));
   $$('.tpane').forEach(p=>p.hidden=p.id!=='t-'+name);
   const wasOpen=tools.classList.contains('open');
@@ -814,5 +1051,5 @@ if(isDesktop())openTool('scratch');
 })();
 
 /* hooks for the automated tests */
-window.SS={walkSteps,walkD2B,walkB2D,walkP2M,walkM2P,walkAnd,walkHosts,walkNets,walkSizeHosts,walkSizeNets,walkInc,GEN,state,WEAK,getWeak:()=>weak,pickWeak,next,check,show,isRight,parseIP,R,netCtx,diagNet,diagChart,diagHosts,diagBits,diagBinDec,diagMask,diagPrefix,diagNetworks,diagNewPrefix,diagSizeHosts,diagBits4Nets,diagNewMask,diagIncrement};
+window.SS={next,genSheet,walkSheet,genMaskBin,genRole,genClassNets,classOf,bin32,bits32,pow2,toRole,getSheet:()=>sheet,ipStr,walkSteps,walkD2B,walkB2D,walkP2M,walkM2P,walkAnd,walkHosts,walkNets,walkSizeHosts,walkSizeNets,walkInc,GEN,state,WEAK,getWeak:()=>weak,pickWeak,next,check,show,isRight,parseIP,R,netCtx,diagNet,diagChart,diagHosts,diagBits,diagBinDec,diagMask,diagPrefix,diagNetworks,diagNewPrefix,diagSizeHosts,diagBits4Nets,diagNewMask,diagIncrement};
 })();

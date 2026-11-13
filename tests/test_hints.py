@@ -11,13 +11,13 @@ with sync_playwright() as pw:
     b=pw.chromium.launch(); pg=b.new_page(viewport={'width':1300,'height':900}); errs=[]; pg.on('pageerror',lambda e:errs.append(str(e))); pg.goto(URL)
     # 1. logic: for thousands of generated questions, the steps' answers lead to the field answers
     r=pg.evaluate("""(()=>{with(window.SS){const bad=[];const kinds={};
-      for(let t=0;t<2500;t++)for(const m of ['binary','prefix','anding','detective','formulas']){state.level=t%2?'core':'stretch';const q=GEN[m]();
+      for(let t=0;t<2500;t++)for(const m of ['binary','prefix','anding','detective','formulas','worksheet']){state.level=t%2?'core':'stretch';const q=GEN[m]();
         const k=q.mode+(q.sub!=null?':'+q.sub:'');kinds[k]=(kinds[k]||0)+1;if(!q.walk){bad.push('no walk '+k);continue;}
         const st=q.walk();const last=st[st.length-1];if(!last.done){bad.push('no final step '+k);continue;}
         const work=st.filter(s=>!s.done);if(work.some(s=>s.ans===undefined||typeof s.bad!=='function'||!s.q)){bad.push('incomplete step '+k);continue;}
         const answers=work.map(s=>s.ans);
         q.fields.forEach(f=>{const a=f.answer;
-          const hit=f.type==='bits'?work.map(s=>s.ans).join('')===a:answers.includes(a)||(q.mode==='detective'&&(a===((answers[4]+1)>>>0)||a===((answers[5]-1)>>>0)));
+          const ws=q.mode==='worksheet';const ipAns=work.filter(s=>s.kind==='ip').map(s=>s.ans);const hit=f.type==='bits'?work.map(s=>s.ans).join('')===a:answers.includes(a)||(q.mode==='detective'&&(a===((answers[4]+1)>>>0)||a===((answers[5]-1)>>>0)))||(ws&&f.cell&&(f.cell.c===1&&ipAns.includes((a-1)>>>0)||f.cell.c===2&&ipAns.includes((a+1)>>>0)));
           if(!hit)bad.push(`${k} field ${f.label} (${a}) not reached by the steps`);});
         // every wrong-answer message is non-empty and never throws
         work.forEach(s=>{for(const raw of ['', '999', '0', '1', '/5', '10.0.0.0', '11111111', 'abc']){let u=null;
@@ -27,7 +27,7 @@ with sync_playwright() as pw:
     ok(r['n']==0,f"12,500 questions across {len(r['kinds'])} question types: every step leads to the real answer and handles junk input {r['bad']}")
     print('    types:',', '.join(sorted(r['kinds'])))
     # 2. UI: do the walkthrough for real on several questions of each type
-    for mode in ['binary','prefix','anding','detective','formulas']:
+    for mode in ['binary','prefix','anding','detective','formulas','worksheet']:
         pg.click(f'.tab[data-m="{mode}"]'); done=0
         for _ in range(8):
             pg.click('#hintBtn'); ok_q=True
@@ -35,15 +35,17 @@ with sync_playwright() as pw:
             for i in range(n-1):
                 st=pg.evaluate("(()=>{const s=window.SS.state.walk.steps[window.SS.state.walk.i];return {kind:s.kind,ans:s.kind==='ip'?window.SS.ipStr?null:null:s.ans}})()")
                 ans=pg.evaluate("(()=>{const s=window.SS.state.walk.steps[window.SS.state.walk.i];const a=s.ans;if(s.kind!=='ip')return (s.kind==='prefix'?'/':'')+a;return [a>>>24,(a>>16)&255,(a>>8)&255,a&255].join('.')})()")
+                if st['kind'] in ('role','cls','bin32','pow') and random.random()<.3: ans={'role':ans,'cls':'class '+ans.lower(),'bin32':ans.replace('.',''),'pow':ans}[st['kind']]
                 if random.random()<.4:
                     pg.fill('#winp','7.7.7.7' if st['kind']=='ip' else ('00000000' if st['kind']=='bits8' and ans!='00000000' else '987'))
                     pg.press('#winp','Enter')
                     if not pg.inner_text('#wmsg').strip(): ok_q=False
                 pg.fill('#winp',ans); pg.press('#winp','Enter')
             if pg.locator('.wdone-all').count()!=1: ok_q=False
-            f=pg.evaluate("window.SS.state.q.fields.map(f=>f.type==='bits'?f.answer:window.SS.show(f))")
+            f=pg.evaluate("window.SS.state.q.fields.map(f=>f.type==='bits'||f.type==='choice'?f.answer:window.SS.show(f))")
             for i,(v,t) in enumerate(zip(f,pg.evaluate("window.SS.state.q.fields.map(f=>f.type)"))):
-                if t=='bits':
+                if t=='choice': pg.click(f'.field[data-i="{i}"] .choice[data-v="{v}"]')
+                elif t=='bits':
                     for k,c in enumerate(v):
                         if c=='1': pg.click(f'.bit[data-k="{k}"]')
                 else: pg.fill(f'#f{i}',v.replace(',',''))

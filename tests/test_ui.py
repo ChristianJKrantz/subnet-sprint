@@ -13,7 +13,7 @@ with sync_playwright() as pw:
     b=pw.chromium.launch(**({'executable_path':os.environ['CHROME_PATH']} if os.environ.get('CHROME_PATH') else {}))
     # ---------- DESKTOP ----------
     ctx=b.new_context(viewport={'width':1400,'height':950}); pg=ctx.new_page(); errs=[]; pg.on('pageerror',lambda e:errs.append(str(e)))
-    pg.clock.install(); pg.goto(URL); pg.wait_for_timeout(300)
+    pg.clock.install(); pg.goto(URL); pg.wait_for_timeout(300); pg.click('.tab[data-m="mixed"]')
     ok('desktop: tools panel visible on load', pg.is_visible('#t-scratch'))
     # wrong answer: streak reset, work shown, fix shown
     pg.click('.tab[data-m="anding"]'); pg.fill('#f0','1.2.3.4'); pg.press('#f0','Enter')
@@ -48,12 +48,16 @@ with sync_playwright() as pw:
     pg.click('.bit[data-k="7"]'); pg.keyboard.press('Enter'); ok('Enter after clicking a bit checks (no flip)', pg.text_content('.bit[data-k="7"]')=='1' and True); ok('Enter on page checks binary question', pg.get_attribute('#feedback','class')!='feedback')
     pg.keyboard.press('Enter')
     # level switch
+    def prefix_of(t):
+        m=re.search(r'/(\d+)',t)
+        if m: return int(m.group(1))
+        return ipaddress.IPv4Network('0.0.0.0/'+re.findall(r'\d+\.\d+\.\d+\.\d+',t)[1]).prefixlen
     pg.click('#level button[data-l="stretch"]'); ok('stretch level selected', 'on' in pg.get_attribute('#level button[data-l="stretch"]','class'))
     pg.click('.tab[data-m="detective"]'); prs=[]
-    for i in range(30): prs.append(int(re.search(r'/(\d+)',pg.inner_text('#prompt')).group(1))); pg.click('#skipBtn')
+    for i in range(30): prs.append(prefix_of(pg.inner_text('#prompt'))); pg.click('#skipBtn')
     ok('stretch gives prefixes below /24', min(prs)<24, f'min /{min(prs)}')
     pg.click('#level button[data-l="core"]'); prs=[]
-    for i in range(30): prs.append(int(re.search(r'/(\d+)',pg.inner_text('#prompt')).group(1))); pg.click('#skipBtn')
+    for i in range(30): prs.append(prefix_of(pg.inner_text('#prompt'))); pg.click('#skipBtn')
     ok('core stays /24–/30', min(prs)>=24 and max(prs)<=30)
     # scratchpad draw
     pg.click('.ttab[data-t="scratch"]'); pg.wait_for_timeout(200)
@@ -115,7 +119,9 @@ with sync_playwright() as pw:
     ok('phone: no horizontal scroll', ph.evaluate('document.documentElement.scrollWidth')<=390)
     ok('phone: dock visible', ph.is_visible('#dock')); ok('phone: panel closed at start', 'open' not in ph.get_attribute('#tools','class'))
     ok('phone: keyboard tip hidden', not ph.is_visible('.keytip'))
-    ph.tap('.tab[data-m="detective"]'); ph.tap('#f0'); ph.fill('#f0','1.1.1.1'); ph.press('#f0','Enter')
+    ph.tap('.tab[data-m="detective"]')
+    while ph.evaluate("window.SS.state.q.sub")=='role': ph.tap('#skipBtn')
+    ph.tap('#f0'); ph.fill('#f0','1.1.1.1'); ph.press('#f0','Enter')
     ok('phone: Enter/Go moves to next box', ph.evaluate("document.activeElement.id")=='f1')
     ph.tap('#dock button[data-t="scratch"]'); ph.wait_for_timeout(500)
     ok('phone: panel opens', 'open' in ph.get_attribute('#tools','class'))

@@ -15,6 +15,7 @@ with sync_playwright() as pw:
     for level in ['core','stretch']:
         pg.click(f'#level button[data-l="{level}"]')
         for _ in range(40):
+            while pg.evaluate("window.SS.state.q.sub")=='role': pg.click('#skipBtn')
             ok_walk=True
             q=pg.evaluate("window.SS.state.q.prompt")
             ip,p=q.split('</b>')[0].split('>')[-1].split('/'); p=int(p)
@@ -35,6 +36,7 @@ with sync_playwright() as pw:
             pg.click('#checkBtn')
         else: ok(True,f'40 walkthroughs at {level} level: every step accepts the right answer, explains a wrong one, then the chart scores ½ points')
     pg.click('#level button[data-l="core"]')
+    while pg.evaluate("window.SS.state.q.sub")=='role': pg.click('#skipBtn')
     pg.click('#hintBtn'); pg.fill('#winp','4'); pg.press('#winp','Enter'); pg.fill('#winp','255'); pg.press('#winp','Enter')
     ok('the mask' in pg.inner_text('#wmsg').lower() or 'octet' in pg.inner_text('#wmsg'), 'step 2 explains a wrong mask value')
     pg.click('#wshow'); ok(pg.locator('.walk li.wok').count()==2,'“Show me” reveals the step and moves on')
@@ -48,6 +50,7 @@ with sync_playwright() as pw:
     pg.click('.tab[data-m="detective"]')
     made=0
     while made<3:
+        if pg.evaluate("window.SS.state.q.sub")=='role': pg.click('#skipBtn'); continue
         f=pg.evaluate("window.SS.state.q.fields.map(f=>window.SS.show(f))")
         n=ipaddress.ip_network(f[0]+'/'+str(pg.evaluate("window.SS.state.q.prompt").split('/')[1].split('<')[0]))
         up=n.network_address+n.num_addresses

@@ -29,21 +29,45 @@ def expected(qtype, prompt):
     if qtype=='Network increment':
         m=re.search(r'\d+\.\d+\.\d+\.\d+',t).group(0); o=[int(x) for x in m.split('.')]; v=next(x for x in o if x not in (255,)) if any(x not in (255,0) for x in o) else None
         v=next(x for x in o if x!=255); return [str(256-v)]
+    if qtype=='Worksheet':
+        ips=re.findall(r'\d+\.\d+\.\d+\.\d+',t); pm=re.search(r'/(\d+)',t)
+        ip=ips[0]; p=int(pm.group(1)) if pm else ipaddress.IPv4Network(f'0.0.0.0/{ips[1]}').prefixlen
+        n=ipaddress.IPv4Network(f'{ip}/{p}',strict=False); inc=n.num_addresses; last=int(ip.split('.')[3])
+        role='network' if ipaddress.IPv4Address(ip)==n.network_address else 'broadcast' if ipaddress.IPv4Address(ip)==n.broadcast_address else 'host'
+        first=int(ip.split('.')[0]); d=8 if first<128 else 16 if first<192 else 24
+        bits='.'.join(format(int(o),'08b') for o in mask(p).split('.'))
+        out=[mask(p) if pm else '/'+str(p), bits, str(inc), str(n.network_address), str(n.broadcast_address), 'CHOICE:'+role, str(2**(p-d)), str(inc-2)]
+        row=last//inc; blocks=256//inc; rows=min(blocks,max(3,row+2)); base=ipaddress.IPv4Address(ip.rsplit('.',1)[0]+'.0')
+        for r in range(rows):
+            rn=base+r*inc; out+= [str(rn),str(rn+1),str(rn+inc-2),str(rn+inc-1)]
+        return out
+    if qtype=='Network, host or broadcast?':
+        ips=re.findall(r'\d+\.\d+\.\d+\.\d+',t); pm=re.search(r'/(\d+)',t); ip=ips[0]
+        n=ipaddress.IPv4Network(f'{ip}/{pm.group(1) if pm else ips[1]}',strict=False); a=ipaddress.IPv4Address(ip)
+        return ['CHOICE:'+('network' if a==n.network_address else 'broadcast' if a==n.broadcast_address else 'host')]
+    if qtype=='Mask → binary':
+        pm=re.search(r'/(\d+)',t); m=mask(int(pm.group(1))) if pm else re.search(r'\d+\.\d+\.\d+\.\d+',t).group(0)
+        return ['.'.join(format(int(o),'08b') for o in m.split('.'))]
+    if qtype=='Total networks (class default)':
+        ip=re.search(r'(\d+)\.\d+\.\d+\.\d+/(\d+)',t); first,p=int(ip.group(1)),int(ip.group(2)); d=8 if first<128 else 16 if first<192 else 24
+        return ['/'+str(d),str(2**(p-d))]
     raise Exception('unknown '+qtype)
 fails=[];counts={};bad_text=0
 with sync_playwright() as pw:
     b=pw.chromium.launch(**({'executable_path':os.environ['CHROME_PATH']} if os.environ.get('CHROME_PATH') else {}))
     pg=b.new_page(viewport={'width':1400,'height':950}); errs=[]; pg.on('pageerror',lambda e:errs.append(str(e)))
-    pg.goto(URL)
+    pg.goto(URL); pg.click('.tab[data-m="mixed"]')
     for lvl in ['core','stretch']:
-        pg.click(f'#level button[data-l="{lvl}"]')
-        for mode in ['binary','prefix','anding','detective','formulas']:
+        pg.click('.tab[data-m="mixed"]'); pg.click(f'#level button[data-l="{lvl}"]')
+        for mode in ['binary','prefix','anding','detective','formulas','worksheet']:
+            if mode=='worksheet' and lvl=='stretch': continue
             pg.click(f'.tab[data-m="{mode}"]')
             for i in range(int(os.environ.get('N','80'))):
                 qt=pg.text_content('#qtype'); pr=pg.inner_text('#prompt')
                 exp=expected(qt,pr); counts[qt]=counts.get(qt,0)+1
                 for j,a in enumerate(exp):
-                    if a.startswith('BITS:'):
+                    if a.startswith('CHOICE:'): pg.click(f'.field[data-i="{j}"] .choice[data-v="{a[7:]}"]')
+                    elif a.startswith('BITS:'):
                         for k,c in enumerate(a[5:]):
                             if c=='1': pg.click(f'.bit[data-k="{k}"]')
                     else: pg.fill(f'#f{j}',a)
@@ -57,6 +81,7 @@ with sync_playwright() as pw:
                     fails.append((lvl,qt,pr,exp,fixes))
                 pg.click('#checkBtn')
     print('questions checked:',sum(counts.values())); print(counts)
+    if fails: print('FAILED')
     print('failures:',len(fails)); [print(f) for f in fails[:10]]
     print('page errors:',errs[:5])
     b.close()

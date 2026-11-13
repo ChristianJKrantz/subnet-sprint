@@ -32,7 +32,7 @@ with sync_playwright() as pw:
     ok(not offsite,f'page loads nothing from other sites {offsite[:3]}')
     ok(not csp_viol,f'the game itself triggers no CSP violations {csp_viol[:2]}')
     # 1. payloads in every answer box, in every mode
-    for mode in ['binary','prefix','anding','detective','formulas']:
+    for mode in ['worksheet','binary','prefix','anding','detective','formulas']:
         pg.click(f'.tab[data-m="{mode}"]')
         for p in PAYLOADS:
             for inp in pg.locator('#fields input').all(): inp.fill(p)
@@ -41,9 +41,13 @@ with sync_playwright() as pw:
             if pg.evaluate("!!window.__pwned||!!document.getElementById('inj')"): ok(False,f'injection in {mode}: {p}'); break
             pg.click('#checkBtn')
     ok(not pg.evaluate("!!window.__pwned||!!document.getElementById('inj')"),'code typed into answer boxes is shown as text, never run (6 payloads × every mode)')
-    pg.click('.tab[data-m="detective"]'); pg.fill('#f0',PAYLOADS[0]); pg.click('#checkBtn')
+    pg.click('.tab[data-m="detective"]')
+    while pg.evaluate("window.SS.state.q.sub")=='role': pg.click('#skipBtn')
+    pg.fill('#f0',PAYLOADS[0]); pg.click('#checkBtn')
     ok('&lt;img' in pg.inner_html('#work') or '<img src=x' in pg.inner_text('#work'),'the typed text still appears in the feedback, just harmlessly')
-    pg.click('#checkBtn'); pg.click('#hintBtn')
+    pg.click('#checkBtn')
+    while pg.evaluate("window.SS.state.q.sub")=='role': pg.click('#skipBtn')
+    pg.click('#hintBtn')
     for p in PAYLOADS: pg.fill('#winp',p); pg.press('#winp','Enter')
     ok(not pg.evaluate("!!window.__pwned||!!document.getElementById('inj')"),'code typed into walkthrough steps is never run')
     # calculator + typed scratchpad

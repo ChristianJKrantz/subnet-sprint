@@ -135,6 +135,39 @@ h1 span{color:var(--accent)}
 .pv8{display:inline-flex;flex-wrap:nowrap;gap:2px;margin:4px 0}.pvb{display:inline-flex;flex-direction:column;align-items:center;min-width:1.75em;font-weight:700}.pvb small{font-size:10px;color:var(--muted);font-weight:500}
 .wmsg{margin-top:6px;color:#ffb3b6;font-size:14px}.wmsg:empty{display:none}
 .shake{animation:shk .25s}@keyframes shk{25%{transform:translateX(-4px)}75%{transform:translateX(4px)}}
+.choices{display:flex;flex-wrap:wrap;gap:8px}
+.choice{background:var(--bg);border:1px solid var(--line);border-radius:999px;padding:8px 14px;font-weight:600;font-size:14px;color:var(--text)}
+.choice.on{background:var(--accent2);border-color:var(--accent2);color:#071a33}
+.field.ok .choice.on{outline:2px solid var(--good)}.field.no .choice.on{outline:2px solid var(--bad)}
+.field.wide input{max-width:430px;font-size:15px;letter-spacing:.02em}
+.prompt .sep{color:var(--muted);margin:0 6px}
+#fields.sheet{display:block}
+.ws-top{display:flex;flex-direction:column;gap:12px}
+.ws-chart{margin-top:22px;border-top:1px solid var(--line);padding-top:14px}
+.ch-title{font-weight:700;margin-bottom:8px}
+.crow{display:grid;grid-template-columns:54px minmax(0,1fr) minmax(0,2fr) minmax(0,1fr);gap:8px;align-items:start;margin-bottom:8px}
+.crow.chead{color:var(--muted);font-size:13px;font-weight:600;margin-bottom:4px}
+.rlab{color:var(--muted);font-size:13px;font-weight:600;padding-top:10px}
+.cc.rng{display:flex;align-items:flex-start;gap:6px}.cc.rng .field{flex:1;min-width:0}.dash{color:var(--muted);padding-top:9px}
+.field.cell{display:block}.field.cell input{max-width:none;font-size:14px;padding:8px 9px}
+.field.cell .fix{display:block;margin:3px 0 0 2px;font-size:12px}
+.switch{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:600;cursor:pointer}
+.switch input{width:38px;height:22px;appearance:none;-webkit-appearance:none;background:var(--line);border-radius:999px;position:relative;cursor:pointer;transition:background .2s;margin:0}
+.switch input::after{content:'';position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:var(--text);transition:transform .2s}
+.switch input:checked{background:var(--accent)}.switch input:checked::after{transform:translateX(16px)}
+.path{margin:4px 0 10px;padding-left:20px;font-size:14px;line-height:1.5;color:var(--muted)}.path li.now{color:var(--text)}.path li.did{text-decoration:line-through;opacity:.7}
+.rd-row{display:flex;justify-content:space-between;font-size:14px;margin-bottom:6px}.wk-bar.rd{height:10px}.wk-bar.rd i{background:var(--accent)}
+table.sol{border-collapse:collapse;width:100%;margin:6px 0 12px;font-size:14px}table.sol td,table.sol th{border:1px solid var(--line);padding:6px 9px;text-align:left;vertical-align:top}
+table.sol td:first-child{color:var(--muted);white-space:nowrap}table.sol th{color:var(--muted);font-weight:600}table.sol tr.hl td{background:#5aa9ff14}
+.chartsol td:first-child{color:var(--text)}
+@media (max-width:700px){
+  .crow.chead{display:none}
+  .crow{grid-template-columns:1fr 1fr;border:1px solid var(--line);border-radius:10px;padding:8px 10px 10px;gap:6px 10px}
+  .rlab{grid-column:1/-1;padding-top:0}
+  .cc::before{content:attr(data-l);display:block;color:var(--muted);font-size:12px;font-weight:600;margin-bottom:3px}
+  .cc.rng{grid-column:1/-1;flex-wrap:wrap;order:3}.cc.rng::before{flex-basis:100%}
+  .field.wide input{font-size:13px}
+}
 .coach{display:flex;flex-direction:column;gap:10px;margin-bottom:12px}
 .ci{border:1px solid #f2545b40;border-left:3px solid var(--bad,#f2545b);border-radius:10px;padding:10px 12px;background:#f2545b0d}
 .ci .ch{display:flex;flex-wrap:wrap;justify-content:space-between;gap:4px 12px;font-size:14px}
@@ -323,6 +356,7 @@ tr.me td{background:#3fb6a81a;color:#9ef0e4}
     <button class="btn timed" id="timedBtn">⏱ 2-minute challenge</button>
   </div>
 
+  <div class="weakbox" id="sheetbox" hidden></div>
   <div class="weakbox" id="weakbox" hidden></div>
   <div class="card">
     <div class="qhead"><div class="qtype" id="qtype"></div><div class="timer" id="timer"></div></div>
@@ -408,7 +442,22 @@ tr.me td{background:#3fb6a81a;color:#9ef0e4}
 
   <!-- Guide -->
   <section class="tpane guide" id="t-guide" hidden>
-    <details id="g-chart" open>
+    <details id="g-ws" open>
+      <summary>Worksheet: start to finish</summary>
+      <p>Given an IP and a mask (as <span class="mono">/27</span> or <span class="mono">255.255.255.224</span>), work it in this order:</p>
+      <ol>
+        <li><b>Mask both ways.</b> /p means p ones. The first three octets are 255; the 4th octet gets p − 24 ones from the left. Add their place values (128, 64, 32 …) to get the octet. Going the other way, count the 1s.</li>
+        <li><b>Binary mask.</b> Write it as four groups of 8: <span class="mono">11111111.11111111.11111111.11100000</span> for /27.</li>
+        <li><b>Increment</b> = 256 − the 4th mask octet.</li>
+        <li><b>Network chart.</b> Start at .0 and count up by the increment. Each row’s broadcast is the next row’s network − 1. The useable range is network + 1 to broadcast − 1.</li>
+        <li><b>Network and broadcast of the IP.</b> Find the row the IP’s last octet falls in (round down to a multiple of the increment).</li>
+        <li><b>Network, host or broadcast?</b> First address of its row = network. Last address = broadcast. Anything between = useable host.</li>
+        <li><b>Hosts per network</b> = 2<sup>h</sup> − 2, where h = 32 − p (the 0s in the mask).</li>
+        <li><b>Total networks</b> = 2<sup>n</sup>, where n = p − the class default: Class A (first octet 1–126) /8, B (128–191) /16, C (192–223) /24. For 10.x.x.x/27: n = 27 − 8 = 19 → 524,288. Some classes count from /24 instead (n = p − 24); the game accepts either for the worksheet.</li>
+      </ol>
+      <p class="dim">Exam habit: write the binary mask and the increment first, then build the chart. Every other answer comes straight off the chart.</p>
+    </details>
+    <details id="g-chart">
       <summary>Subnet Chart — step by step</summary>
       <div class="gbody">
         <p>Use this for any "fill in the chart" question. Example: <span class="gmono">172.16.62.68/26</span></p>
