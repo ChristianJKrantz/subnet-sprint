@@ -21,7 +21,7 @@ with sync_playwright() as pw:
             n=ipaddress.ip_network(f'{ip}/{p}',strict=False)
             mask=str(n.netmask).split('.'); io=p//8 if p%8==0 else (p-1)//8
             exp=[str(io+1),mask[io],str(256-int(mask[io])),str(int(str(n.network_address).split('.')[io])),str(n.network_address),str(n.broadcast_address),str(n.num_addresses-2)]
-            pg.click('#walkBtn')
+            pg.click('#hintBtn')
             for k,a in enumerate(exp):
                 if k==0 and random.random()<.5:   # one deliberate miss: should explain and stay on the step
                     pg.fill('#winp','9'); pg.press('#winp','Enter')
@@ -35,11 +35,11 @@ with sync_playwright() as pw:
             pg.click('#checkBtn')
         else: ok(True,f'40 walkthroughs at {level} level: every step accepts the right answer, explains a wrong one, then the chart scores ½ points')
     pg.click('#level button[data-l="core"]')
-    pg.click('#walkBtn'); pg.fill('#winp','4'); pg.press('#winp','Enter'); pg.fill('#winp','255'); pg.press('#winp','Enter')
+    pg.click('#hintBtn'); pg.fill('#winp','4'); pg.press('#winp','Enter'); pg.fill('#winp','255'); pg.press('#winp','Enter')
     ok('the mask' in pg.inner_text('#wmsg').lower() or 'octet' in pg.inner_text('#wmsg'), 'step 2 explains a wrong mask value')
     pg.click('#wshow'); ok(pg.locator('.walk li.wok').count()==2,'“Show me” reveals the step and moves on')
     pg.click('#skipBtn'); ok(pg.is_hidden('#walk'),'walkthrough clears on the next question')
-    pg.click('.tab[data-m="binary"]'); ok(pg.is_hidden('#walkBtn'),'button only shows on subnet chart questions')
+    pg.click('.tab[data-m="binary"]'); pg.click('#hintBtn'); ok(pg.is_visible('#walk'),'Hint opens a walkthrough on other question types too')
 
     print('Weak spots')
     pg.click('.tab[data-m="weak"]')
@@ -82,7 +82,7 @@ with sync_playwright() as pw:
     pg.click('#weakReset'); ok(pg.evaluate("Object.keys(window.SS.getWeak()).length")==0,'Reset wipes the log')
 
     print('Phone layout')
-    m=b.new_page(viewport={'width':390,'height':844}); m.goto(URL); m.click('.tab[data-m="detective"]'); m.click('#walkBtn')
+    m=b.new_page(viewport={'width':390,'height':844}); m.goto(URL); m.click('.tab[data-m="detective"]'); m.click('#hintBtn')
     wide=m.evaluate("document.documentElement.scrollWidth<=window.innerWidth")
     ok(wide,'walkthrough fits a phone screen with no sideways scroll')
     m.screenshot(path='/tmp/walk_phone.png',full_page=True)

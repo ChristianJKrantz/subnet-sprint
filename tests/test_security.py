@@ -43,7 +43,7 @@ with sync_playwright() as pw:
     ok(not pg.evaluate("!!window.__pwned||!!document.getElementById('inj')"),'code typed into answer boxes is shown as text, never run (6 payloads × every mode)')
     pg.click('.tab[data-m="detective"]'); pg.fill('#f0',PAYLOADS[0]); pg.click('#checkBtn')
     ok('&lt;img' in pg.inner_html('#work') or '<img src=x' in pg.inner_text('#work'),'the typed text still appears in the feedback, just harmlessly')
-    pg.click('#checkBtn'); pg.click('#walkBtn')
+    pg.click('#checkBtn'); pg.click('#hintBtn')
     for p in PAYLOADS: pg.fill('#winp',p); pg.press('#winp','Enter')
     ok(not pg.evaluate("!!window.__pwned||!!document.getElementById('inj')"),'code typed into walkthrough steps is never run')
     # calculator + typed scratchpad

@@ -32,12 +32,21 @@ Works in any modern browser on desktop, tablet or phone. No install, no account,
 ### Learn from every answer
 - Wrong answers get feedback aimed at the exact mistake, for only the boxes you missed. It catches things like rounding up instead of down, swapping the last usable and broadcast boxes, forgetting the − 2 in the host formula, using the wrong increment, reading binary backwards, or ORing instead of ANDing. If one wrong answer was caused by another (say, a broadcast that's right for the wrong network you entered), it tells you which one to fix.
 - A **Full walkthrough** is one tap away: the IP and mask lined up in binary (network bits blue, host bits yellow), the increment, and a small subnet table with your network highlighted.
-- **Hint** gives you the method for half points and links straight to the matching section of the guide.
+- **Hint** walks you through the question step by step (see below) for half points, and links to the matching section of the guide.
 
 <img src="docs/feedback.png" alt="Feedback after swapping the last usable and broadcast boxes, explaining each mistake" width="720">
 
-### Walk me through it
-Stuck on a subnet chart? **Walk me through it** breaks the question into small steps: find the interesting octet, read its mask value, work out the increment, round the IP down, then write the network, broadcast and host count. Each step is checked before you move on, and a wrong step gets its own explanation. **Show me** reveals a step if you're stuck. Using it counts as a hint (half points).
+### Step-by-step hints
+Every question has a **Hint** that walks you through it as a series of fill-in-the-blank steps, each checked before you move on. A wrong step gets its own explanation, and **Show me** reveals a step if you're stuck. For example:
+
+- **Decimal → binary:** for each place value from 128 down, does it fit in what's left? (1 or 0)
+- **Binary → decimal:** count the 1 bits, then keep a running total of their place values.
+- **Prefix → mask:** how many full octets of 255, how many bits are left over, what they add up to, then write the mask.
+- **ANDing:** find the interesting octet, write the IP and mask octets in binary, AND them, convert back, write the network.
+- **Subnet chart:** interesting octet, mask value, increment, round down, network, broadcast, usable hosts.
+- **Formulas:** work out host bits, powers of 2 and prefixes one piece at a time.
+
+Using a hint makes that question worth half points.
 
 <img src="docs/walkthrough.png" alt="Step-by-step walkthrough with a wrong step explained" width="720">
 
@@ -126,6 +135,7 @@ The `tests/` folder has two [Playwright](https://playwright.dev/python/) scripts
 - **`test_offline.py`** serves the site locally, loads it once, cuts the network, and plays a full question offline. It also checks that a new version is picked up when back online, and that the install button works on Chrome and gives iPhone directions.
 - **`test_security.py`** tries to inject code through every input and through tampered saved data, checks the Content Security Policy blocks inline and outside scripts, confirms nothing loads from other sites, and checks the page refuses to run inside another site's frame.
 - **`test_touch.py`** uses simulated finger swipes on a phone and tablet to check the Guide and Calculator panels scroll (with momentum) without moving the page behind them, and that tapping keys and drawing on the scratchpad still work.
+- **`test_hints.py`** generates 12,500 questions across all 11 question types and checks every hint's steps lead to the real answer and handle junk input, then works through 40 hints on screen with deliberate wrong steps and answers each question for half points.
 
 ```bash
 pip install playwright
@@ -137,6 +147,7 @@ python tests/test_practice.py
 python tests/test_offline.py
 python tests/test_security.py
 python tests/test_touch.py
+python tests/test_hints.py
 ```
 
 ## Built with

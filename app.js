@@ -307,50 +307,50 @@ function diagIncrement(p,raw){
 const GEN={
   binary(sub){
     const v=Math.random()<0.4?pick([128,192,224,240,248,252,254,255,0,168,10,172]):R(0,255);
-    if(sub?sub==='d2b':Math.random()<0.5) return {mode:'binary',sub:'d2b',title:'Binary · decimal → binary',prompt:`Flip on the bits that make <b class="big">${v}</b>`,
+    if(sub?sub==='d2b':Math.random()<0.5) return {mode:'binary',sub:'d2b',walk:()=>walkD2B(v),title:'Binary · decimal → binary',prompt:`Flip on the bits that make <b class="big">${v}</b>`,
       fields:[{type:'bits',label:'Octet',answer:bin8(v)}],diag:x=>[diagBits(v,x[0])],hint:'Start at 128 and move right: if the value left is ≥ the place value, turn it on and subtract.',explain:explainBin(v)};
-    return {mode:'binary',sub:'b2d',title:'Binary · binary → decimal',prompt:`What is <b class="big">${bin8(v)}</b> in decimal?`,
+    return {mode:'binary',sub:'b2d',walk:()=>walkB2D(v),title:'Binary · binary → decimal',prompt:`What is <b class="big">${bin8(v)}</b> in decimal?`,
       fields:[{type:'num',label:'Decimal value',answer:v}],diag:x=>[diagBinDec(v,x[0])],hint:'Add the place values (128 64 32 16 8 4 2 1) for every bit that is 1.',explain:explainBin(v)};
   },
   prefix(sub){
     const p=state.level==='core'?(Math.random()<0.8?R(24,30):pick([8,16])):R(8,30);const m=maskOf(p);
-    if(sub?sub==='p2m':Math.random()<0.5) return {mode:'prefix',sub:'p2m',title:'Prefix → mask',prompt:`Write the dotted-decimal subnet mask for <b class="big">/${p}</b>`,
+    if(sub?sub==='p2m':Math.random()<0.5) return {mode:'prefix',sub:'p2m',walk:()=>walkP2M(p),title:'Prefix → mask',prompt:`Write the dotted-decimal subnet mask for <b class="big">/${p}</b>`,
       fields:[{type:'ip',label:'Subnet mask',answer:m}],diag:x=>[diagMask(p,x[0])],hint:`/${p} means ${p} ones followed by ${32-p} zeros. Every full octet of ones is 255.`,explain:explainMask(p)};
-    return {mode:'prefix',sub:'m2p',title:'Mask → prefix',prompt:`What prefix length is <b class="big">${ipStr(m)}</b>?`,
+    return {mode:'prefix',sub:'m2p',walk:()=>walkM2P(p),title:'Mask → prefix',prompt:`What prefix length is <b class="big">${ipStr(m)}</b>?`,
       fields:[{type:'prefix',label:'Prefix (e.g. /26)',answer:p}],diag:x=>[diagPrefix(p,x[0])],hint:'Count the 1 bits: each 255 is 8 bits, then add the 1s in the last non-zero octet.',explain:explainMask(p)};
   },
   anding(){
     const p=randPrefix(),ip=randIP(),m=maskOf(p);
-    return {mode:'anding',title:'ANDing',prompt:`IP <b>${ipStr(ip)}</b> with mask <b>${ipStr(m)}</b> (/${p}).<br>What is the network address?`,
+    return {mode:'anding',walk:()=>walkAnd(ip,p),title:'ANDing',prompt:`IP <b>${ipStr(ip)}</b> with mask <b>${ipStr(m)}</b> (/${p}).<br>What is the network address?`,
       fields:[{type:'ip',label:'Network address',answer:(ip&m)>>>0}],diag:x=>{const u=parseIP(x[0]);if(u===((ip&m)>>>0))return[null];const c=netCtx(ip,p);return[u==null?badEntry(x[0],'ip')+` Copy the octets under 255, AND octet ${c.io+1} (${c.ipo} AND ${c.mv} = ${c.neto}), and zero the rest → ${G(ipStr(c.net))}.`:diagNet(ip,p,u,true)];},
       hint:'Copy the octets under 255. In the octet where the mask isn’t 255 or 0, write both numbers in binary and AND them: 1 only where both are 1.',explain:explainAnd(ip,p)};
   },
   detective(){
     const p=randPrefix(),ip=randIP(),m=maskOf(p),net=(ip&m)>>>0,size=2**(32-p),bc=(net+size-1)>>>0;
-    return {mode:'detective',title:'Subnet chart',prompt:`Fill in the network chart for <b class="big">${ipStr(ip)}/${p}</b>`,
+    return {mode:'detective',walk:()=>walkSteps(ip,p),title:'Subnet chart',prompt:`Fill in the network chart for <b class="big">${ipStr(ip)}/${p}</b>`,
       fields:[{type:'ip',label:'Subnet (network)',answer:net},{type:'ip',label:'Default gateway (1st usable)',answer:(net+1)>>>0},{type:'ip',label:'Last usable',answer:(bc-1)>>>0},{type:'ip',label:'Broadcast',answer:bc},{type:'num',label:'Usable hosts',answer:size-2}],diag:x=>diagChart(ip,p,x),
       hint:`Mask is ${ipStr(m)}. Increment = 256 − the octet that isn’t 255 or 0. List the subnets (0, inc, 2×inc…) and round the IP down to one of them.`,explain:explainSubnet(ip,p)};
   },
   formulas(sub){
     const core=state.level==='core';const t=sub!=null?sub:R(0,4);
     if(t===0){const p=core?R(24,30):R(16,30),h=32-p;
-      return {mode:'formulas',sub:t,title:'Host formula',prompt:`How many <u>usable</u> host addresses are in each <b class="big">/${p}</b> subnet?`,
+      return {mode:'formulas',sub:t,walk:()=>walkHosts(p),title:'Host formula',prompt:`How many <u>usable</u> host addresses are in each <b class="big">/${p}</b> subnet?`,
         fields:[{type:'num',label:'Usable hosts',answer:2**h-2}],diag:x=>[diagHosts(h,x[0])],hint:`Host bits h = 32 − ${p}. Usable = 2^h − 2.`,
         explain:`<p>h = 32 − ${p} = <b>${h}</b> host bits.</p><p class="mono">2<sup>${h}</sup> − 2 = ${(2**h).toLocaleString()} − 2 = <b class="g">${(2**h-2).toLocaleString()}</b></p><p class="dim">You subtract 2 because the first address is the network address and the last is the broadcast.</p>`};}
     if(t===1){const n=R(1,6),base=core?24:pick([16,24]),ip=parseIP(base===24?`192.168.${R(0,255)}.0`:`172.${R(16,31)}.0.0`);
-      return {mode:'formulas',sub:t,title:'Network formula',prompt:`You take <b>${ipStr(ip)}/${base}</b> and borrow <b class="big">${n}</b> host bit${n>1?'s':''}. How many subnets do you get?`,
+      return {mode:'formulas',sub:t,walk:()=>walkNets(base,n),title:'Network formula',prompt:`You take <b>${ipStr(ip)}/${base}</b> and borrow <b class="big">${n}</b> host bit${n>1?'s':''}. How many subnets do you get?`,
         fields:[{type:'num',label:'Subnets',answer:2**n},{type:'prefix',label:'New prefix',answer:base+n}],diag:x=>[diagNetworks(n,x[0]),diagNewPrefix(base,n,x[1])],hint:'Networks = 2^n, where n is bits borrowed. The new prefix grows by n.',
         explain:`<p class="mono">2<sup>${n}</sup> = <b class="g">${2**n}</b> subnets</p><p>New prefix = /${base} + ${n} = <b class="g">/${base+n}</b> (${ipStr(maskOf(base+n))}). More network bits → more networks, fewer hosts each.</p>`};}
     if(t===2){const H=core?R(3,120):R(3,4000);let h=2;while(2**h-2<H)h++;const p=32-h;
-      return {mode:'formulas',sub:t,title:'Size for hosts',prompt:`A department needs <b class="big">${H}</b> hosts. What's the smallest subnet that fits? (Give the prefix.)`,
+      return {mode:'formulas',sub:t,walk:()=>walkSizeHosts(H,h,p),title:'Size for hosts',prompt:`A department needs <b class="big">${H}</b> hosts. What's the smallest subnet that fits? (Give the prefix.)`,
         fields:[{type:'prefix',label:'Prefix',answer:p}],diag:x=>[diagSizeHosts(H,p,x[0])],hint:'Find the smallest h where 2^h − 2 ≥ the hosts needed. Prefix = 32 − h.',
         explain:`<p>Try host-bit counts until 2<sup>h</sup> − 2 covers ${H}:</p><p class="mono">${h>2?`h=${h-1}: 2<sup>${h-1}</sup>−2 = ${2**(h-1)-2} ✗ too small<br>`:''}h=${h}: 2<sup>${h}</sup>−2 = ${2**h-2} ✓</p><p>Prefix = 32 − ${h} = <b class="g">/${p}</b> (mask ${ipStr(maskOf(p))}).</p>`};}
     if(t===3){const N=R(2,core?60:200);let n=1;while(2**n<N)n++;const base=n>6?16:(core?24:pick([16,24]));const p=base+n;
-      return {mode:'formulas',sub:t,title:'Size for networks',prompt:`You need <b class="big">${N}</b> subnets out of a <b>/${base}</b>. How many bits do you borrow, and what's the new mask?`,
+      return {mode:'formulas',sub:t,walk:()=>walkSizeNets(N,n,base),title:'Size for networks',prompt:`You need <b class="big">${N}</b> subnets out of a <b>/${base}</b>. How many bits do you borrow, and what's the new mask?`,
         fields:[{type:'num',label:'Bits borrowed',answer:n},{type:'ip',label:'New subnet mask',answer:maskOf(p)}],diag:x=>[diagBits4Nets(N,n,x[0]),diagNewMask(base,n,x[1],x[0])],hint:'Find the smallest n where 2^n ≥ the networks needed. Add n to the prefix.',
         explain:`<p class="mono">${n>1?`n=${n-1}: 2<sup>${n-1}</sup> = ${2**(n-1)} ✗<br>`:''}n=${n}: 2<sup>${n}</sup> = ${2**n} ✓</p><p>Borrow <b class="g">${n}</b> bits → /${base} + ${n} = /${p} = <b class="g mono">${ipStr(maskOf(p))}</b>.</p>`};}
     let p=core?R(25,30):R(17,30);if(p===24)p=R(25,30);const m=maskOf(p);const io=Math.floor((p-1)/8);const mv=oct(m,io);
-    return {mode:'formulas',sub:t,title:'Network increment',prompt:`What is the network increment for <b class="big">${ipStr(m)}</b>?`,
+    return {mode:'formulas',sub:t,walk:()=>walkInc(p),title:'Network increment',prompt:`What is the network increment for <b class="big">${ipStr(m)}</b>?`,
       fields:[{type:'num',label:'Increment',answer:256-mv}],diag:x=>[diagIncrement(p,x[0])],hint:'256 minus the octet that isn’t 255 or 0.',
       explain:`<p>Interesting octet (octet ${io+1}) = ${mv} = <span class="mono">${bin8(mv)}</span>. The last 1 bit sits in the <b>${256-mv}</b> position.</p><p class="mono">256 − ${mv} = <b class="g">${256-mv}</b></p><p>So subnets go 0, ${256-mv}, ${2*(256-mv)}${3*(256-mv)<256?', '+3*(256-mv):''}… in octet ${io+1}.</p>`};
   }
@@ -411,6 +411,95 @@ function renderWeak(){
 }
 
 
+
+/* ---------------- step-by-step walkthroughs for every question type ---------------- */
+/* Each step: q (the prompt), kind ('num' | 'ip' | 'prefix' | 'bits8'), ans, bad(u,raw) → tailored message.
+   The last item is {done:true,q:...} telling the student what to enter in the real answer boxes. */
+const isBits8=raw=>/^[01]{8}$/.test(String(raw).replace(/\s/g,''));
+const bits8=raw=>String(raw).replace(/\s/g,'');
+const pv8=b=>`<span class="mono pv8">${[...b].map((c,i)=>`<span class="pvb"><small>${placeVals[i]}</small>${c}</span>`).join('')}</span>`;
+function interestingStep(m,io){
+  return {q:`The mask is ${M(ipStr(m))}. Which octet is the <b>interesting</b> one, the first from the left that isn’t 255? (1–4)`,kind:'num',ans:io+1,
+    bad:u=>u==null||u<1||u>4?'Enter a number from 1 to 4.':oct(m,u-1)===255?`Octet ${u} is 255: all network bits, so it just copies down. Keep moving right.`:`Octet ${u} isn’t the <i>first</i> one below 255. Read left to right: ${M(ipStr(m))}.`};
+}
+function walkD2B(v){
+  const st=[];let rem=v;
+  placeVals.forEach((pv,k)=>{const fits=rem>=pv,r=rem;
+    st.push({q:`${k===0?`Start with ${v}. `:''}You have <b>${r}</b> left. Does ${pv} fit (is ${r} ≥ ${pv})? Type <b>1</b> for yes or <b>0</b> for no.`,kind:'num',ans:fits?1:0,show:fits?`1 → ${r} − ${pv} = ${r-pv} left`:'0',
+      bad:u=>u!==0&&u!==1?'Type 1 or 0.':fits?`${r} is at least ${pv}, so it fits: that bit is 1 (then ${r} − ${pv} = ${r-pv} is left).`:`${r} is less than ${pv}, so it doesn’t fit: that bit is 0.`});
+    if(fits)rem-=pv;});
+  return st.concat({done:true,q:`Reading your answers left to right: ${pv8(bin8(v))}. Turn those bits on above and press <b>Check</b>.`});
+}
+function walkB2D(v){
+  const b=bin8(v),ones=placeVals.filter((pv,k)=>b[k]==='1');
+  const st=[{q:`Write the place values over the bits:<br>${pv8(b)}<br>How many bits are <b>1</b>?`,kind:'num',ans:ones.length,bad:()=>`Count the 1s in ${M(b)}.`}];
+  let tot=0;ones.forEach((pv,i)=>{const prev=tot;tot+=pv;
+    st.push({q:i===0?`The first 1 is under <b>${pv}</b>. What does your running total start at?`:`The next 1 is under <b>${pv}</b>. Running total ${prev} + ${pv} = ?`,kind:'num',ans:tot,
+      bad:u=>i===0?`It’s just the place value of that bit.`:u===prev?`Add the ${pv}.`:u===pv?`Add it to your running total: ${prev} + ${pv}.`:`${prev} + ${pv} = ?`});});
+  if(!ones.length)st.push({q:'No bits are 1, so the value is ?',kind:'num',ans:0,bad:()=>'Nothing to add up: it’s 0.'});
+  return st.concat({done:true,q:`So ${M(b)} = <b>${v}</b>. Enter that above and press <b>Check</b>.`});
+}
+function walkP2M(p){
+  const full=Math.floor(p/8),part=p%8,m=maskOf(p),mv=part?oct(m,full):0;
+  const st=[{q:`/${p} means ${p} ones in a row, and each full octet holds 8. How many <b>full octets</b> of 255 is that? (${p} ÷ 8, ignore the remainder)`,kind:'num',ans:full,
+    bad:u=>u!=null&&u*8>p?`${u} × 8 = ${u*8}, which is more than ${p}.`:`${full} × 8 = ${full*8} fits; ${full+1} × 8 = ${(full+1)*8} would be too many.`}];
+  if(full<4)st.push({q:`That’s ${full} × 8 = ${full*8} ones. How many ones are <b>left over</b>? ${p} − ${full*8} = ?`,kind:'num',ans:part,bad:()=>`${p} − ${full*8} = ?`});
+  if(part)st.push({q:`Octet ${full+1} gets those ${part} ones from the left. Add the first ${part} place value${part>1?'s':''} (128, 64, 32, 16, …). Total?`,kind:'num',ans:mv,
+    bad:u=>part>1&&u===placeVals[part-1]?`That’s just the last one. Add <i>all</i> ${part}: ${placeVals.slice(0,part).join(' + ')}.`:`${placeVals.slice(0,part).join(' + ')} = ?`});
+  st.push({q:`Write the mask: ${full?`${full} octet${full>1?'s':''} of 255, then `:''}${part?`${mv}, then `:''}0 for the rest.`,kind:'ip',ans:m,bad:(u,raw)=>String(diagMask(p,raw)||'')});
+  return st.concat({done:true,q:`/${p} = ${M(ipStr(m))}. Enter it above and press <b>Check</b>.`});
+}
+function walkM2P(p){
+  const full=Math.floor(p/8),part=p%8,m=maskOf(p),mv=part?oct(m,full):0;
+  const st=[{q:`The mask is ${M(ipStr(m))}. How many octets are <b>255</b>?`,kind:'num',ans:full,bad:()=>`Count the 255s in ${M(ipStr(m))}.`},
+    {q:`Each 255 is 8 ones. ${full} × 8 = ?`,kind:'num',ans:full*8,bad:()=>`${full} × 8 = ?`}];
+  if(part){st.push({q:`The next octet is <b>${mv}</b>. Write it in binary (8 digits).`,kind:'bits8',ans:bin8(mv),bad:(u,raw)=>isBits8(raw)?String(diagBits(mv,bits8(raw))):'Type 8 digits, each 0 or 1.'});
+    st.push({q:`${M(bin8(mv))} has how many 1s?`,kind:'num',ans:part,bad:()=>`Count the 1s in ${M(bin8(mv))}.`});}
+  st.push({q:`Prefix = ${full*8}${part?` + ${part}`:''} = ?`,kind:'prefix',ans:p,bad:()=>`${full*8}${part?` + ${part}`:''} = ?`});
+  return st.concat({done:true,q:`${M(ipStr(m))} is <b>/${p}</b>. Enter it above and press <b>Check</b>.`});
+}
+function walkAnd(ip,p){
+  const m=maskOf(p),io=p%8===0?p/8:Math.floor((p-1)/8),k=io+1,mv=oct(m,io),ipo=oct(ip,io),neto=ipo&mv,net=(ip&m)>>>0;
+  const st=[interestingStep(m,io),{q:`What is the mask’s value in octet ${k}?`,kind:'num',ans:mv,bad:u=>u===ipo?`That’s the IP’s octet. I want the mask’s: ${M(ipStr(m))}.`:`Octet ${k} of ${M(ipStr(m))}.`}];
+  if(mv===0)st.push({q:`Anything ANDed with 0 is 0. So octet ${k} of the network is ?`,kind:'num',ans:0,bad:()=>'Anything AND 0 = 0.'});
+  else{
+    st.push({q:`Write the IP’s octet ${k} (<b>${ipo}</b>) in binary.`,kind:'bits8',ans:bin8(ipo),bad:(u,raw)=>isBits8(raw)?String(diagBits(ipo,bits8(raw))):'Type 8 digits, each 0 or 1.'});
+    st.push({q:`Write the mask’s octet (<b>${mv}</b>) in binary.`,kind:'bits8',ans:bin8(mv),bad:(u,raw)=>isBits8(raw)?String(diagBits(mv,bits8(raw))):'Type 8 digits, each 0 or 1.'});
+    st.push({q:`AND them bit by bit: 1 only where <i>both</i> are 1.<br>${M(bin8(ipo))} &nbsp;IP<br>${M(bin8(mv))} &nbsp;mask`,kind:'bits8',ans:bin8(neto),
+      bad:(u,raw)=>!isBits8(raw)?'Type 8 digits, each 0 or 1.':bits8(raw)===bin8(ipo|mv)&&(ipo|mv)!==neto?'That’s OR (1 where <i>either</i> is 1). AND needs both.':'Go column by column: a column is 1 only if both rows have a 1.'});
+    st.push({q:`${M(bin8(neto))} in decimal = ?`,kind:'num',ans:neto,bad:(u,raw)=>String(diagBinDec(neto,raw)||'')});
+  }
+  st.push({q:`Write the network address: copy the octets before ${k} from the IP, octet ${k} is ${neto}${io<3?', and every octet after it is 0':''}.`,kind:'ip',ans:net,
+    bad:(u,raw)=>u==null?badEntry(raw,'ip'):String(diagNet(ip,p,u,true))});
+  return st.concat({done:true,q:`The network is ${M(ipStr(net))}. Enter it above and press <b>Check</b>.`});
+}
+function walkHosts(p){const h=32-p;
+  return [{q:`Host bits h = 32 − ${p} = ?`,kind:'num',ans:h,bad:u=>u===p?'That’s the network bits. Subtract from 32.':`32 − ${p} = ?`},
+    {q:`2<sup>${h}</sup> = ? (2 multiplied by itself ${h} times)`,kind:'num',ans:2**h,bad:u=>u===2*h?`That’s 2 × ${h}. Keep doubling instead: 2, 4, 8, 16, …`:`Double 1 a total of ${h} times: 2, 4, 8, 16, …`},
+    {q:`Take away the network address and the broadcast: ${(2**h).toLocaleString()} − 2 = ?`,kind:'num',ans:2**h-2,bad:()=>`${(2**h).toLocaleString()} − 2 = ?`},
+    {done:true,q:`A /${p} has <b>${(2**h-2).toLocaleString()}</b> usable hosts. Enter it above and press <b>Check</b>.`}];}
+function walkNets(base,n){
+  return [{q:`Networks = 2<sup>n</sup>, where n is the bits you borrowed. 2<sup>${n}</sup> = ?`,kind:'num',ans:2**n,bad:u=>u===2**n-2?'No − 2 for networks.':u===2*n&&n!==2?`That’s 2 × ${n}. Keep doubling instead: 2, 4, 8, …`:`Double 1 a total of ${n} time${n>1?'s':''}: 2, 4, 8, …`},
+    {q:`The borrowed bits join the network side, so the prefix grows: /${base} + ${n} = ?`,kind:'prefix',ans:base+n,bad:u=>u===base-n?'It grows, it doesn’t shrink.':`${base} + ${n} = ?`},
+    {done:true,q:`<b>${2**n}</b> subnets, new prefix <b>/${base+n}</b>. Enter them above and press <b>Check</b>.`}];}
+function walkSizeHosts(H,h,p){
+  const st=[{q:`You need ${H} hosts. Try h = ${h-1} host bits: 2<sup>${h-1}</sup> − 2 = ?`,kind:'num',ans:2**(h-1)-2,bad:()=>`2<sup>${h-1}</sup> = ${2**(h-1)}, then subtract 2.`},
+    {q:`${2**(h-1)-2} is less than ${H}, too small. Try one more bit: 2<sup>${h}</sup> − 2 = ?`,kind:'num',ans:2**h-2,bad:()=>`2<sup>${h}</sup> = ${2**h}, then subtract 2.`},
+    {q:`${2**h-2} ≥ ${H} ✓, so you need h = ${h}. Prefix = 32 − ${h} = ?`,kind:'prefix',ans:p,bad:u=>u===h?'That’s the host bits. Prefix = 32 − h.':`32 − ${h} = ?`}];
+  return st.concat({done:true,q:`The smallest subnet for ${H} hosts is <b>/${p}</b>. Enter it above and press <b>Check</b>.`});
+}
+function walkSizeNets(N,n,base){const p=base+n,st=[];
+  if(n>1)st.push({q:`You need ${N} subnets. Try n = ${n-1} borrowed bit${n>2?'s':''}: 2<sup>${n-1}</sup> = ?`,kind:'num',ans:2**(n-1),bad:()=>`Double 1 a total of ${n-1} time${n>2?'s':''}.`});
+  st.push({q:`${n>1?`${2**(n-1)} is less than ${N}. `:`You need ${N} subnets. `}Try n = ${n}: 2<sup>${n}</sup> = ?`,kind:'num',ans:2**n,bad:()=>`Double 1 a total of ${n} time${n>1?'s':''}.`});
+  st.push({q:`${2**n} ≥ ${N} ✓. So how many bits do you borrow?`,kind:'num',ans:n,bad:u=>u===2**n?`${2**n} is how many subnets you get. The bits borrowed is the exponent: n.`:`The first n that worked was ${n}.`});
+  st.push({q:`New prefix = /${base} + ${n} = ?`,kind:'prefix',ans:p,bad:()=>`${base} + ${n} = ?`});
+  st.push({q:`Write the mask for /${p}.`,kind:'ip',ans:maskOf(p),bad:(u,raw)=>String(diagMask(p,raw)||'')});
+  return st.concat({done:true,q:`Borrow <b>${n}</b> bits; the new mask is ${M(ipStr(maskOf(p)))}. Enter them above and press <b>Check</b>.`});}
+function walkInc(p){const m=maskOf(p),io=Math.floor((p-1)/8),mv=oct(m,io);
+  return [interestingStep(m,io),{q:`What is the mask’s value in octet ${io+1}?`,kind:'num',ans:mv,bad:()=>`Octet ${io+1} of ${M(ipStr(m))}.`},
+    {q:`Increment = 256 − ${mv} = ?`,kind:'num',ans:256-mv,bad:u=>u===255-mv?'Use 256, not 255.':`256 − ${mv} = ?`},
+    {done:true,q:`The increment is <b>${256-mv}</b>. Enter it above and press <b>Check</b>.`}];}
+
 /* ---------------- walk me through it (subnet chart) ---------------- */
 function walkSteps(ip,p){
   const m=maskOf(p),io=p%8===0?p/8:Math.floor((p-1)/8),k=io+1,mv=oct(m,io),inc=256-mv,ipo=oct(ip,io),neto=Math.floor(ipo/inc)*inc;
@@ -437,10 +526,10 @@ function walkSteps(ip,p){
 function renderWalk(){
   const w=state.walk,box=$('#walk');if(!w){box.hidden=true;box.innerHTML='';return;}box.hidden=false;
   const shown=v=>typeof v==='number'&&v>255?v.toLocaleString():v;
-  box.innerHTML=`<div class="wk-title">Step by step <small>(counts as a hint: ½ points)</small></div><ol>`+w.steps.slice(0,w.i+1).map((st,n)=>{
+  box.innerHTML=`<div class="wk-title">Step by step</div><ol>`+w.steps.slice(0,w.i+1).map((st,n)=>{
     if(st.done)return `<li class="wdone-all">${st.q}</li>`;
-    if(n<w.i)return `<li class="wok"><span>${st.q}</span><b class="g mono wans">✓ ${st.kind==='ip'?ipStr(st.ans):shown(st.ans)}</b></li>`;
-    return `<li class="wcur"><span>${st.q}</span><div class="wrow"><input id="winp" class="winp" autocomplete="off" spellcheck="false" inputmode="${st.kind==='ip'?'decimal':'numeric'}" placeholder="${st.kind==='ip'?'e.g. 192.168.4.0':'number'}"><button class="btn small primary" id="wchk">Check step</button><button class="btn small" id="wshow">Show me</button></div><div class="wmsg" id="wmsg">${w.msg||''}</div></li>`;
+    if(n<w.i)return `<li class="wok"><span>${st.q}</span><b class="g mono wans">✓ ${st.show||(st.kind==='ip'?ipStr(st.ans):st.kind==='prefix'?'/'+st.ans:shown(st.ans))}</b></li>`;
+    return `<li class="wcur"><span>${st.q}</span><div class="wrow"><input id="winp" class="winp" autocomplete="off" spellcheck="false" inputmode="${st.kind==='ip'?'decimal':'numeric'}" placeholder="${{ip:'e.g. 192.168.4.0',prefix:'e.g. /26',bits8:'8 digits, e.g. 01000000'}[st.kind]||'number'}"><button class="btn small primary" id="wchk">Check step</button><button class="btn small" id="wshow">Show me</button></div><div class="wmsg" id="wmsg">${w.msg||''}</div></li>`;
   }).join('')+`</ol>`;
   const inp=$('#winp');if(!inp)return;
   inp.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();e.stopPropagation();walkCheck();}});
@@ -449,7 +538,7 @@ function renderWalk(){
 function focusWalk(){const i=$('#winp');if(i){if(isDesktop())i.focus();i.scrollIntoView({block:'nearest',behavior:'smooth'});}}
 function walkCheck(){
   const w=state.walk,st=w.steps[w.i],raw=$('#winp').value;
-  const u=st.kind==='ip'?parseIP(raw):toNum(raw);
+  const u=st.kind==='ip'?parseIP(raw):st.kind==='prefix'?toPre(raw):st.kind==='bits8'?(isBits8(raw)?bits8(raw):null):toNum(raw);
   if(u===st.ans){w.i++;w.msg='';renderWalk();focusWalk();return;}
   w.msg=isBlank(raw)?'Type an answer, or press “Show me”.':st.bad(u,raw);renderWalk();
   const i=$('#winp');i.value=raw;i.classList.add('shake');focusWalk();
@@ -481,7 +570,7 @@ function next(){
   $$('#fields .bit').forEach(b=>b.onclick=()=>{if(state.checked)return;b.classList.toggle('on');b.textContent=b.classList.contains('on')?'1':'0';});
   $('#hint').hidden=true;$('#feedback').className='feedback';$('#work').style.display='none';
   $('#checkBtn').innerHTML='Check <span class="kbd">Enter</span>';$('#hintBtn').disabled=false;
-  state.walk=null;renderWalk();$('#walkBtn').hidden=q.mode!=='detective';$('#walkBtn').disabled=false;
+  state.walk=null;renderWalk();
   if($('#autoClear').checked){strokes=[];redrawInk();$('#scratchText').value='';}
   const first=$('#fields input');if(first&&isDesktop())first.focus();
 }
@@ -515,16 +604,16 @@ function check(){
       return `<div class="ci" data-i="${i}"><div class="ch"><b>${f.label}</b><span>you put <s class="mono">${esc(typed)}</s> → <b class="g mono">${show(f)}</b></span></div><p>${d[i]||'Compare with the full walkthrough below.'}</p>${d[i]&&d[i].tag&&WEAK[d[i].tag]&&!chipShown.has(d[i].tag)&&chipShown.add(d[i].tag)?`<span class="wk-chip">Logged to weak spots: ${WEAK[d[i].tag][0]}</span>`:''}</div>`;}).join('')+'</div>';}
   $('#work').innerHTML=coach+`<details class="full"${all?'':''}><summary>${all?'Show the work':'Full walkthrough'}</summary>${q.explain}</details>`;
   $('#work').style.display=all&&state.timed?'none':'block';
-  $('#checkBtn').innerHTML='Next <span class="kbd">Enter</span>';$('#hintBtn').disabled=true;$('#walkBtn').disabled=true;if(state.walk){$('#walk').querySelectorAll('input,button').forEach(x=>x.disabled=true);}
+  $('#checkBtn').innerHTML='Next <span class="kbd">Enter</span>';$('#hintBtn').disabled=true;if(state.walk){$('#walk').querySelectorAll('input,button').forEach(x=>x.disabled=true);}
   renderStats();renderTabs();renderWeak();
   if(!isDesktop())$('#feedback').scrollIntoView({block:'nearest',behavior:'smooth'});else $('#checkBtn').focus();
 }
 $('#checkBtn').onclick=check;
-$('#hintBtn').onclick=()=>{if(state.checked)return;state.hinted=true;
-  const h=$('#hint');h.innerHTML=`💡 ${state.q.hint}<br><button class="btn small" id="hintGuide">Open the step-by-step guide →</button>`;h.hidden=false;
-  $('#hintGuide').onclick=()=>openTool('guide',GUIDE_FOR[state.q.mode]);};
-$('#walkBtn').onclick=()=>{if(state.checked||state.walk)return;const q=state.q;state.hinted=true;
-  const m=q.prompt.match(/([\d.]+)\/(\d+)/);state.walk={steps:walkSteps(parseIP(m[1]),Number(m[2])),i:0,msg:''};$('#walkBtn').disabled=true;renderWalk();focusWalk();};
+$('#hintBtn').onclick=()=>{if(state.checked||state.walk)return;state.hinted=true;
+  const h=$('#hint');h.innerHTML=`💡 ${state.q.hint}<br><button class="btn small" id="hintGuide">Open the guide →</button>`;h.hidden=false;
+  $('#hintGuide').onclick=()=>openTool('guide',GUIDE_FOR[state.q.mode]);
+  if(state.q.walk){state.walk={steps:state.q.walk(),i:0,msg:''};renderWalk();focusWalk();}
+  $('#hintBtn').disabled=true;};
 $('#skipBtn').onclick=()=>{if(!state.checked){state.streak=0;renderStats();}next();};
 $('#fields').addEventListener('keydown',e=>{
   if(e.key==='Enter'&&e.target.classList.contains('bit')){e.preventDefault();check();return;}
@@ -725,5 +814,5 @@ if(isDesktop())openTool('scratch');
 })();
 
 /* hooks for the automated tests */
-window.SS={walkSteps,GEN,state,WEAK,getWeak:()=>weak,pickWeak,next,check,show,isRight,parseIP,R,netCtx,diagNet,diagChart,diagHosts,diagBits,diagBinDec,diagMask,diagPrefix,diagNetworks,diagNewPrefix,diagSizeHosts,diagBits4Nets,diagNewMask,diagIncrement};
+window.SS={walkSteps,walkD2B,walkB2D,walkP2M,walkM2P,walkAnd,walkHosts,walkNets,walkSizeHosts,walkSizeNets,walkInc,GEN,state,WEAK,getWeak:()=>weak,pickWeak,next,check,show,isRight,parseIP,R,netCtx,diagNet,diagChart,diagHosts,diagBits,diagBinDec,diagMask,diagPrefix,diagNetworks,diagNewPrefix,diagSizeHosts,diagBits4Nets,diagNewMask,diagIncrement};
 })();

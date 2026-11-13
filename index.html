@@ -132,6 +132,7 @@ h1 span{color:var(--accent)}
 .wrow{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
 .winp{flex:1;min-width:150px;max-width:240px;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:8px 10px;font-family:var(--mono);font-size:16px;color:var(--text);outline:none}
 .winp:focus{border-color:var(--accent2)}
+.pv8{display:inline-flex;flex-wrap:nowrap;gap:2px;margin:4px 0}.pvb{display:inline-flex;flex-direction:column;align-items:center;min-width:1.75em;font-weight:700}.pvb small{font-size:10px;color:var(--muted);font-weight:500}
 .wmsg{margin-top:6px;color:#ffb3b6;font-size:14px}.wmsg:empty{display:none}
 .shake{animation:shk .25s}@keyframes shk{25%{transform:translateX(-4px)}75%{transform:translateX(4px)}}
 .coach{display:flex;flex-direction:column;gap:10px;margin-bottom:12px}
@@ -279,7 +280,6 @@ tr.me td{background:#3fb6a81a;color:#9ef0e4}
   .bitcol small{font-size:10px}
   .actions{display:grid;grid-template-columns:1fr 1fr}
   .actions #checkBtn{grid-column:1/-1;padding:13px}
-  .actions #walkBtn{grid-column:1/-1}
   pre.binblock{font-size:11.5px;padding:10px}
   table{font-size:12.5px}
   th,td{padding:5px 6px}
@@ -332,8 +332,7 @@ tr.me td{background:#3fb6a81a;color:#9ef0e4}
     <div class="walk" id="walk" hidden></div>
     <div class="actions">
       <button class="btn primary" id="checkBtn">Check <span class="kbd">Enter</span></button>
-      <button class="btn" id="hintBtn">Hint (½ points)</button>
-      <button class="btn" id="walkBtn" hidden>Walk me through it</button>
+      <button class="btn" id="hintBtn">Hint: step by step (½ points)</button>
       <button class="btn" id="skipBtn">Skip</button>
     </div>
     <div class="feedback" id="feedback"></div>
