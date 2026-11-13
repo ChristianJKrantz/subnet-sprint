@@ -582,6 +582,36 @@ setBig(store.get('ss_big',false));
 function showCard(){if(isDesktop())return;const c=$('.card');const y=c.getBoundingClientRect().top+window.scrollY-8;window.scrollTo({top:y,behavior:'smooth'});}
 function closeTools(){tools.classList.remove('open');document.body.classList.remove('sheet-open');$$('#dock button').forEach(b=>b.classList.remove('on'));if(document.activeElement)document.activeElement.blur();}
 $$('.ttab').forEach(b=>b.onclick=()=>openTool(b.dataset.t));
+
+/* Phone/tablet: the panel scrolls its own content by finger. iPhone Safari often hands swipes on a sliding
+   fixed panel to the page behind it, so the panel handles vertical swipes itself (with momentum) and never
+   lets them scroll the page. Horizontal swipes (wide tables) and drawing on the scratchpad are left alone. */
+(function(){
+  let pane=null,lastY=0,lastX=0,startX=0,startY=0,mode=null,vel=0,lastT=0,raf=0;
+  const stop=()=>{cancelAnimationFrame(raf);raf=0;};
+  tools.addEventListener('touchstart',e=>{
+    if(isDesktop()||e.touches.length!==1||e.target.closest('#padwrap'))return(mode='skip');
+    stop();const t=e.touches[0];startX=lastX=t.clientX;startY=lastY=t.clientY;lastT=performance.now();vel=0;mode=null;
+    pane=e.target.closest('.tpane');
+  },{passive:true});
+  tools.addEventListener('touchmove',e=>{
+    if(mode==='skip'||isDesktop())return;
+    const t=e.touches[0];
+    if(mode===null){const dx=Math.abs(t.clientX-startX),dy=Math.abs(t.clientY-startY);if(dx<6&&dy<6)return;mode=dx>dy?'x':'y';}
+    if(mode==='x')return;
+    e.preventDefault();
+    const dy=lastY-t.clientY,now=performance.now();
+    if(pane&&pane.scrollHeight>pane.clientHeight){pane.scrollTop+=dy;vel=0.8*(dy/Math.max(1,now-lastT))+0.2*vel;}
+    lastY=t.clientY;lastX=t.clientX;lastT=now;
+  },{passive:false});
+  tools.addEventListener('touchend',()=>{
+    if(mode!=='y'||!pane)return;const p=pane;let v=vel*16;
+    if(performance.now()-lastT>80||Math.abs(v)<1)return;
+    const step=()=>{p.scrollTop+=v;v*=0.95;if(Math.abs(v)>0.5&&p.scrollTop>0&&p.scrollTop<p.scrollHeight-p.clientHeight)raf=requestAnimationFrame(step);else raf=0;};
+    raf=requestAnimationFrame(step);
+  },{passive:true});
+})();
+
 $$('#dock button').forEach(b=>b.onclick=()=>{if(tools.classList.contains('open')&&tools.dataset.cur===b.dataset.t)closeTools();else openTool(b.dataset.t);});
 $('#tclose').onclick=closeTools;
 tools.dataset.cur='scratch';

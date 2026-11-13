@@ -125,6 +125,7 @@ The `tests/` folder has two [Playwright](https://playwright.dev/python/) scripts
 - **`test_practice.py`** runs 80 full walkthroughs at both levels (with deliberate wrong steps), checks that mistakes are logged to the right weak spot, that the Weak spots tab drills them, that right answers shrink them, and that the walkthrough fits a phone screen.
 - **`test_offline.py`** serves the site locally, loads it once, cuts the network, and plays a full question offline. It also checks that a new version is picked up when back online, and that the install button works on Chrome and gives iPhone directions.
 - **`test_security.py`** tries to inject code through every input and through tampered saved data, checks the Content Security Policy blocks inline and outside scripts, confirms nothing loads from other sites, and checks the page refuses to run inside another site's frame.
+- **`test_touch.py`** uses simulated finger swipes on a phone and tablet to check the Guide and Calculator panels scroll (with momentum) without moving the page behind them, and that tapping keys and drawing on the scratchpad still work.
 
 ```bash
 pip install playwright
@@ -135,6 +136,7 @@ python tests/test_feedback.py
 python tests/test_practice.py
 python tests/test_offline.py
 python tests/test_security.py
+python tests/test_touch.py
 ```
 
 ## Built with
