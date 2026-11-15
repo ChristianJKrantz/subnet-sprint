@@ -44,6 +44,18 @@ with sync_playwright() as pw:
     RULES=['Class A is 1','A is /8','starting at 128','place values (128','256 means it rolls','256 −','256 minus','32 −','Subtract','(it’s only','go up by your increment','multiple of the increment','Each 255 is 8','Try 1 × 8','first 1 place value','Subtract it from 256','The IP’s octet','Its last octet is','last octet is']
     real=[h for h in hits if not any(r in h for r in RULES)]
     ok(not real,f'no step or nudge states the answer it’s asking for ({len(hits)} matches were problem data or rule text) {real[:3]}')
+    # 1c. shortcuts belong to the current step and never contain its answer
+    tips=pg.evaluate("""(()=>{with(window.SS){const out={leak:[],count:0};
+      const strip=h=>String(h).replace(/<[^>]+>/g,' ');
+      for(let t=0;t<400;t++)for(const m of ['binary','prefix','anding','detective','formulas','worksheet']){const q=GEN[m]();
+        startWalk(q).steps.forEach(st=>{const tip=tipFor(st,q);if(!tip)return;out.count++;
+          const a=st.kind==='ip'?ipStr(st.ans):st.kind==='prefix'?'/'+st.ans:typeof st.ans==='number'&&st.ans>=10?String(st.ans):st.kind==='bits8'||st.kind==='bin32'?String(st.ans):null;
+          if(a&&new RegExp('(^|[^0-9./])'+a.replace(/[.^$*+?()[\\]{}|\\\\]/g,'\\\\$&')+'(?![0-9]|\\\\.[0-9])').test(strip(tip)))out.leak.push(strip(tip).slice(0,80)+' ⇐ '+a);});}
+      const q=genSheet({ip:'172.16.20.244',p:26,asPrefix:false});const st=startWalk(q).steps[0];
+      out.first=[String(st.q).replace(/<[^>]+>/g,''),String(tipFor(st,q)).replace(/<[^>]+>/g,'')];return out;}})()""")
+    ok(not tips['leak'],f"{tips['count']} shortcuts shown across every step type; none contains its step’s answer {tips['leak'][:2]}")
+    ok('binary' in tips['first'][0] and 'mask octet' in tips['first'][1] and 'add 24' not in tips['first'][1].lower(),
+       f"writing the mask octet in binary gets a binary tip, not a prefix tip: “{tips['first'][1][:70]}…”")
     # 2. UI: do the walkthrough for real on several questions of each type
     for mode in ['binary','prefix','anding','detective','formulas','worksheet']:
         pg.click(f'.tab[data-m="{mode}"]'); done=0

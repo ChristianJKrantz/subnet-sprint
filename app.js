@@ -780,32 +780,51 @@ function mirrorHTML(q,w,cur){
     <div class="dim msub">Chart shows the last octet of each address.</div>${post.map(row).join('')}</div>`;
 }
 
-/* ---------------- memory shortcuts shown with each question in the step-by-step ---------------- */
-const LADDER='<span class="mono">128 → 192 → 224 → 240 → 248 → 252 → 254 → 255</span>';
-function shortcutFor(q,i){
-  const f=q.fields[i],L=f.label;
-  if(f.cell){return ['Rows are just multiples of the increment: 0, inc, 2×inc … Keep adding the increment.',
-    'First usable = network <b>+ 1</b>.','Last usable = broadcast <b>− 1</b>.','Broadcast = the <b>next</b> row’s network <b>− 1</b>. Every row’s broadcast is one less than a multiple of the increment.'][f.cell.c];}
-  if(/^Subnet mask \(binary\)/.test(L))return 'The prefix <i>is</i> the count of 1s. 255 is always <span class="mono">11111111</span>, so only the last non-255 octet takes any work: it’s that many 1s followed by 0s.';
-  if(/^Subnet mask|^New subnet mask/.test(L))return `Memorise the mask ladder: ${LADDER}. Each step adds the next place value (64, 32, 16 …). Count how many bits go past the full 255s and climb that many steps (1 bit = 128).`;
-  if(/^Prefix/.test(L)&&q.mode==='prefix')return `Same ladder in reverse: ${LADDER}. The position on the ladder is how many bits that octet adds (192 is the 2nd step, so 2 bits). Add 8 for every 255.`;
-  if(/^Prefix \(CIDR\)/.test(L))return `Find the 4th octet on the ladder ${LADDER}: its position is the number of extra bits. Then add 24.`;
-  if(/increment/i.test(L))return 'The increment is the place value of the <b>last 1 bit</b> in the mask (or 256 − the mask octet). Start from /25 = 128 and halve it for every extra bit.';
-  if(/Hosts per network|Usable hosts/.test(L))return q.layout==='sheet'||/\/(2[5-9]|30)\b/.test(q.prompt)?'Fast way when the mask ends in the 4th octet: hosts = <b>increment − 2</b>.':'Memorise the powers of 2: 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024. Hosts = 2<sup>h</sup> − 2, where h is the number of 0s.';
-  if(/Total networks/.test(L))return 'Class defaults: A = /8, B = /16, C = /24 (one, two, three octets of 255). n = prefix − default. Anchor: 2<sup>10</sup> = 1,024, and every 10 more bits multiplies by 1,024 again. You can also just type it as 2^n.';
-  if(/Class default prefix/.test(L))return 'First octet: A is 1–126, B starts at <b>128</b>, C starts at <b>192</b>. Those are the first two steps of the mask ladder, which makes them easy to remember. A/B/C default to /8, /16, /24.';
-  if(/^Subnets$/.test(L))return 'Networks = 2<sup>n</sup> with no − 2. Know the doubling list cold: 2, 4, 8, 16, 32, 64.';
-  if(/^New prefix/.test(L))return 'Borrowed bits always <b>add</b> to the prefix; they never subtract.';
-  if(/^Bits borrowed/.test(L))return 'Smallest n where 2<sup>n</sup> ≥ subnets needed. Doubling list: 2, 4, 8, 16, 32, 64 … the position in the list is n.';
-  if(/^Prefix$/.test(L))return 'Hosts + 2, then round up to a power of 2: that’s the block size. The prefix is 32 minus the number of bits in that block.';
-  if(/Broadcast/.test(L))return 'Broadcast = the next network − 1. It’s always one less than a multiple of the increment.';
-  if(/gateway/i.test(L))return 'Gateway = first usable = network <b>+ 1</b>.';
-  if(/Last usable/.test(L))return 'Last usable = broadcast <b>− 1</b>.';
-  if(/Network address|Subnet \(network\)/.test(L))return 'Round the interesting octet <b>down</b> to a multiple of the increment, never up. Octets before it copy; octets after it become 0.';
-  if(/The (given )?IP is a/.test(L))return 'Look at the interesting octet. A multiple of the increment → <b>network</b>. One less than a multiple → <b>broadcast</b>. Anything else → <b>host</b>.';
-  if(/^Octet$/.test(L))return 'Place values: <span class="mono">128 64 32 16 8 4 2 1</span>. Going down the list, if it fits, write 1 and subtract; if not, write 0.';
-  if(/^Decimal value/.test(L))return 'Add the place values under each 1. Quick check: four 1s at the end always add to 15.';
-  return '';
+/* A shortcut for the step you're on (not the whole question). A tip is only shown if it doesn't contain
+   the answer to that step. */
+const PLACE='Place values: <span class="mono">128 64 32 16 8 4 2 1</span>. Going left to right: if it fits in what’s left, write 1 and subtract; if not, write 0.';
+function tipFor(st,q){
+  const t=st.q,k=st.kind;let tip='';
+  const ADD='Add up the place values (<span class="mono">128 64 32 16 8 4 2 1</span>) that sit above each 1.';
+  const MASKOCT='A mask octet is always some 1s followed by 0s, never mixed, so you only need to know how many 1s. Each step up the mask ladder (128 → 192 → 224 …) adds one more 1.';
+  if(/AND them|AND your two/.test(t))tip='Shortcut for ANDing with a mask: wherever the mask has a 1, copy the IP’s bit; wherever it has a 0, write 0.';
+  else if(k==='bits8')tip=/^1*0*$/.test(st.ans)&&/mask|leftover|next octet/i.test(t)?MASKOCT:PLACE;
+  else if(k==='bin32')tip='255 is always <span class="mono">11111111</span>, so full octets are easy. The total number of 1s in the whole mask is the prefix.';
+  else if(k==='role')tip='A multiple of the increment is a <b>network</b>. One less than a multiple is a <b>broadcast</b>. Anything else is a <b>host</b>.';
+  else if(k==='cls')tip='A is 1–126. B starts at <b>128</b> and C starts at <b>192</b>, the first two steps of the mask ladder.';
+  else if(k==='pow')tip='Anchor: 2<sup>10</sup> = 1,024. Every 10 more bits multiplies by 1,024 again, or just type it as 2^n.';
+  else if(/Borrowed bits n/.test(t))tip='n is only the bits <i>past</i> the class default: prefix − default.';
+  else if(/default prefix/.test(t))tip='Each class adds one more octet of 255: A has one, B has two, C has three. Each octet is 8 bits.';
+  else if(/Convert your AND result|in decimal|running total|leftmost|How many bits are|No bits are/.test(t))tip=ADD;
+  else if(/How many 1s are in the binary/.test(t))tip='Mask octets are 1s then 0s, so count from the left until the first 0.';
+  else if(/left over<\/b> after those full octets/.test(t))tip='It’s the remainder when you divide the prefix by 8.';
+  else if(/How many <b>full octets|full groups of eight/.test(t))tip='Every 8 ones fills one octet with 255.';
+  else if(/interesting/.test(t))tip='It’s the first octet from the left that isn’t 255. Octets before it are 255 and octets after it are 0.';
+  else if(/Increment = 256/.test(t))tip='The increment is also the place value of the last 1 bit in the mask. Starting from /25 = 128, it halves for every extra bit.';
+  else if(/round <b>down<\/b>/.test(t))tip='Networks always land on multiples of the increment. Round down to one, never up.';
+  else if(/next subnet starts one increment later/.test(t))tip='Just add the increment.';
+  else if(/How many 1s go in the 4th octet/.test(t))tip='Everything past /24 lives in the 4th octet, so it’s the prefix minus 24.';
+  else if(/place value/.test(t)&&k==='num')tip='These sums are the mask ladder: each extra 1 adds the next place value (64, then 32, then 16 …). After a few problems you’ll know them by heart.';
+  else if(/Prefix = 32 − h/.test(t))tip='Prefix + host bits always add up to 32.';
+  else if(/Count the 1s|Add the ones from the 255s/.test(t))tip='Each 255 is 8 ones. Prefix = 8 for every 255, plus the 1s in the partial octet.';
+  else if(/Host bits h/.test(t))tip='h is the number of 0s in the mask: 32 − the prefix.';
+  else if(/2<sup>h<\/sup> − 2|Usable hosts|Hosts per network/.test(t))tip=q.layout==='sheet'||/\/(2[5-9]|30)\b/.test(q.prompt)?'When the mask ends in the 4th octet, hosts = <b>increment − 2</b>. Good way to double-check.':'Powers of 2: 2, 4, 8, 16, 32, 64, 128, 256, 512, 1,024.';
+  else if(/2<sup>h<\/sup> = \?/.test(t))tip='Powers of 2: 2, 4, 8, 16, 32, 64, 128, 256, 512, 1,024.';
+  else if(/subtract 2/i.test(t))tip='The network and broadcast addresses can never be used by a host.';
+  else if(/2<sup>n<\/sup>|smallest number of/.test(t))tip='Doubling list: 2, 4, 8, 16, 32, 64, 128 … the position in the list is the number of bits.';
+  else if(/first usable|gateway/i.test(t))tip='First usable (the gateway) = network <b>+ 1</b>.';
+  else if(/last usable/i.test(t))tip='Last usable = broadcast <b>− 1</b>.';
+  else if(/broadcast/i.test(t)&&k==='ip')tip='Broadcast = next network <b>− 1</b>. It’s always one less than a multiple of the increment.';
+  else if(q.mode==='anding'&&k==='ip')tip='Under a 255 the IP octet copies straight down; under a 0 it becomes 0. Only the interesting octet needs the AND.';
+  else if(/row’s network|row 1’s network|network address/i.test(t)&&k==='ip')tip='Networks are always multiples of the increment. Octets before the interesting one copy from the IP; octets after it are 0.';
+  else if(/mask/i.test(t)&&k==='ip')tip='Full octets are 255, then the partial octet, then 0s.';
+  else if(/New prefix|prefix grows/.test(t))tip='Borrowed bits always add to the prefix.';
+  else if(/Does \d+ fit/.test(t))tip=PLACE;
+  if(!tip)return '';
+  const plain=String(tip).replace(/<[^>]+>/g,' ');
+  const ans=k==='ip'?[ipStr(st.ans)]:k==='prefix'?['/'+st.ans]:typeof st.ans==='number'&&st.ans>=10?[String(st.ans),st.ans.toLocaleString()]:k==='bits8'||k==='bin32'?[String(st.ans)]:[];
+  if(ans.some(a=>new RegExp('(^|[^0-9./])'+a.replace(/[.^$*+?()[\]{}|\\]/g,'\\$&')+'(?![0-9]|\\.[0-9])').test(plain)))return '';
+  return tip;
 }
 function setWalkView(on){
   state.walkView=on&&!!state.walk;const v=state.walkView;
@@ -825,7 +844,7 @@ function renderWalk(){
   else body=`<div class="wq"><div class="wq-h"><small>Question ${doneN+1} of ${total}</small><b>${q.fields[cur].label}</b></div><ol>`+w.steps.slice(s0,w.i+1).map((st,n)=>{
       if(s0+n<w.i)return `<li class="wok"><span>${st.q}</span><b class="g mono wans">✓ ${st.show||(st.kind==='ip'?ipStr(st.ans):st.kind==='prefix'?'/'+st.ans:shown(st.ans,st.kind))}</b></li>`;
       return `<li class="wcur${st.f!=null?' wfinal':''}"><span>${st.q}</span><div class="wrow"> <input id="winp" class="winp${st.kind==='bin32'?' wide':''}" autocomplete="off" spellcheck="false" inputmode="${['role','cls'].includes(st.kind)?'text':st.kind==='ip'||st.kind==='bin32'?'decimal':st.kind==='pow'?'text':'numeric'}" placeholder="${{ip:'e.g. 192.168.4.0',prefix:'e.g. /26',bits8:'8 digits, e.g. 01000000',bin32:'32 bits, dots optional',role:'network, host or broadcast',cls:'A, B or C',pow:'number or 2^n'}[st.kind]||'number'}"><button class="btn small primary" id="wchk">${st.f!=null?'Answer':'Check step'}</button><button class="btn small" id="wshow">Show me</button></div><div class="wmsg" id="wmsg">${w.msg||''}</div></li>`;
-    }).join('')+`</ol>${shortcutFor(q,cur)?`<div class="wshort"><b>⚡ Shortcut</b> ${shortcutFor(q,cur)}</div>`:''}</div>`;
+    }).join('')+`</ol>${tipFor(w.steps[w.i],q)?`<div class="wshort"><b>⚡ Shortcut</b> ${tipFor(w.steps[w.i],q)}</div>`:''}</div>`;
   box.innerHTML=`<div class="wk-title">Step by step <small>· counts as a hint (½ points)</small></div>${mirrorHTML(q,w,cur)}${body}
     <div class="wtip">💡 ${q.hint} <button class="btn small" id="hintGuide">Open the guide →</button></div>`;
   const hg=$('#hintGuide');if(hg)hg.onclick=()=>openTool('guide',GUIDE_FOR[q.mode]);
@@ -1127,5 +1146,5 @@ if(isDesktop())openTool('scratch');
 })();
 
 /* hooks for the automated tests */
-window.SS={startWalk,next,genSheet,walkSheet,genMaskBin,genRole,genClassNets,classOf,bin32,bits32,pow2,toRole,ipStr,walkSteps,walkD2B,walkB2D,walkP2M,walkM2P,walkAnd,walkHosts,walkNets,walkSizeHosts,walkSizeNets,walkInc,GEN,state,WEAK,getWeak:()=>weak,pickWeak,next,check,show,isRight,parseIP,R,netCtx,diagNet,diagChart,diagHosts,diagBits,diagBinDec,diagMask,diagPrefix,diagNetworks,diagNewPrefix,diagSizeHosts,diagBits4Nets,diagNewMask,diagIncrement};
+window.SS={startWalk,tipFor,next,genSheet,walkSheet,genMaskBin,genRole,genClassNets,classOf,bin32,bits32,pow2,toRole,ipStr,walkSteps,walkD2B,walkB2D,walkP2M,walkM2P,walkAnd,walkHosts,walkNets,walkSizeHosts,walkSizeNets,walkInc,GEN,state,WEAK,getWeak:()=>weak,pickWeak,next,check,show,isRight,parseIP,R,netCtx,diagNet,diagChart,diagHosts,diagBits,diagBinDec,diagMask,diagPrefix,diagNetworks,diagNewPrefix,diagSizeHosts,diagBits4Nets,diagNewMask,diagIncrement};
 })();
