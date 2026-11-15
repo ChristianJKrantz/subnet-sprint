@@ -22,21 +22,21 @@ with sync_playwright() as pw:
             n=ipaddress.ip_network(f'{ip}/{p}',strict=False)
             mask=str(n.netmask).split('.'); io=p//8 if p%8==0 else (p-1)//8
             neto=int(str(n.network_address).split('.')[io]); inc=256-int(mask[io])
-            exp=[str(io+1),mask[io],str(inc),str(neto),str(n.network_address),str(neto+inc),str(n.broadcast_address),str(32-p),str(n.num_addresses-2)]
+            exp=[str(io+1),mask[io],str(inc),str(neto),str(n.network_address),str(neto+inc),str(n.broadcast_address),str(n.network_address+1),str(n.broadcast_address-1),str(32-p),str(n.num_addresses-2)]
             pg.click('#hintBtn')
             for k,a in enumerate(exp):
                 if k==0 and random.random()<.5:   # one deliberate miss: should explain and stay on the step
                     pg.fill('#winp','9'); pg.press('#winp','Enter')
                     if not pg.inner_text('#wmsg').strip(): ok_walk=False
                 pg.fill('#winp',a); pg.press('#winp','Enter')
-            done=pg.locator('.wdone-all').count()==1 and pg.locator('.walk li.wok').count()==9 and pg.is_hidden('#fields')
-            pg.click('#wfill')
-            for i,v in enumerate([str(n.network_address),str(n.broadcast_address),str(n.network_address+1),str(n.broadcast_address-1),str(n.num_addresses-2)]): pg.fill(f'#f{i}',v)
-            pg.click('#checkBtn')
+            done=pg.locator('#wcheck').count()==1 and pg.is_hidden('#fields')
+            filled=pg.evaluate("[0,1,2,3,4].map(i=>document.getElementById('f'+i).value)")
+            done=done and filled==[str(n.network_address),str(n.broadcast_address),str(n.network_address+1),str(n.broadcast_address-1),str(n.num_addresses-2)]
+            pg.click('#wcheck')
             good='good' in pg.get_attribute('#feedback','class') and '+5' in pg.inner_text('#feedback')
             if not (ok_walk and done and good): ok(False,f'walkthrough {ip}/{p}'); break
             pg.click('#checkBtn')
-        else: ok(True,f'40 walkthroughs at {level} level: every step accepts the right answer, explains a wrong one, then the chart scores ½ points')
+        else: ok(True,f'40 walkthroughs at {level} level: every step accepts the right answer, explains a wrong one, fills each chart box as you go, then scores ½ points')
     pg.click('#level button[data-l="core"]')
     while pg.evaluate("window.SS.state.q.sub")=='role': pg.click('#skipBtn')
     pg.click('#hintBtn'); pg.fill('#winp','4'); pg.press('#winp','Enter'); pg.fill('#winp','255'); pg.press('#winp','Enter')

@@ -26,6 +26,9 @@ Works in any modern browser on desktop, tablet or phone. No install, no account,
 | **Mixed** | A random mix of everything |
 | **Weak spots** | Drills the mistakes you make most (see below) |
 
+### Shortcuts to memorise
+The Guide has a cheat-sheet section: the mask ladder (128 → 192 → 224 → 240 → 248 → 252 → 254 → 255) with each prefix's binary, increment and host count, the powers of 2 to know, the class ranges, and the chart rules.
+
 ### Worksheet mode
 Worksheet mode matches the class worksheet format: each problem gives an IP with a mask (as `/27` or `255.255.255.224`) and asks for every answer plus the network chart (network, useable host range and broadcast for each row, counting up from .0). The questions are laid out in the order you'd work them out: everything that comes straight from the mask first, then the chart, then the questions about the given IP that you read off the chart. The Tab key follows the same order, including network → broadcast → useable range within each chart row. It's checked box by box, with feedback on exactly what went wrong in each one, including chart cells that are only wrong because of an earlier mistake.
 
@@ -45,7 +48,7 @@ Total networks is counted from the IP's class default mask (10.x.x.x is Class A,
 <img src="docs/feedback.png" alt="Feedback after swapping the last usable and broadcast boxes, explaining each mistake" width="720">
 
 ### Step-by-step hints
-Every question has a **Hint** that swaps the answer boxes for a series of fill-in-the-blank steps, each checked before you move on. The steps never state the answer they're asking for: a wrong try gets a nudge toward the method, not the number. **Show me** reveals a step only if you ask, and **Fill in the answers** (or **Back to the answer boxes**) brings the answer boxes back. For example:
+Every question has a **Hint** that swaps the answer boxes for a step-by-step walkthrough built around the questions themselves. A small copy of the worksheet or chart stays at the top with the current question highlighted, and below it are the steps for that one question. Its last step is the answer, which goes straight into that box before moving on to the next question. Each question also shows a ⚡ shortcut that makes it quicker to remember. Each step is checked before you move on. The steps never state the answer they're asking for: a wrong try gets a nudge toward the method, not the number. **Show me** reveals a step only if you ask, and **Fill in the answers** (or **Back to the answer boxes**) brings the answer boxes back. For example:
 
 - **Decimal → binary:** for each place value from 128 down, does it fit in what's left? (1 or 0)
 - **Binary → decimal:** count the 1 bits, then keep a running total of their place values.

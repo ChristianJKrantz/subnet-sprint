@@ -126,7 +126,25 @@ h1 span{color:var(--accent)}
 @media (max-width:600px){.wk-row{grid-template-columns:minmax(0,1fr) 60px;}.wk-row small{grid-column:1/-1;margin-top:-4px}}
 .walk{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin:12px 0}
 .wk-title{font-weight:700;margin-bottom:6px}
-.wtip{font-size:14px;color:var(--muted);margin:0 0 12px;line-height:1.5}.wtip .btn{margin-left:4px}.wk-title small{color:var(--muted);font-weight:500}
+.wtip{font-size:13px;color:var(--muted);margin:14px 0 0;line-height:1.5}.wtip .btn{margin-left:4px}
+.mir{background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:8px 10px;margin:8px 0 12px;font-size:13px}
+.mrow{display:flex;justify-content:space-between;gap:10px;padding:3px 6px;border-radius:6px}.mrow .ml{color:var(--muted)}
+.mrow.cur{background:#5aa9ff1f}.mrow.cur .ml{color:var(--text);font-weight:700}
+.mrow{flex-wrap:wrap}.mv{font-family:var(--mono);text-align:right;margin-left:auto;white-space:nowrap}.mv wbr{display:inline}
+@media (max-width:520px){.mrow .mv{white-space:normal}}
+.walk .wans,.walk li span{overflow-wrap:anywhere}.mv.done{color:var(--good)}.mv.cur{color:var(--accent2);font-weight:800}
+.mchart{border-collapse:collapse;margin:8px 0 2px;width:100%}.mchart th{color:var(--muted);font-weight:600;text-align:left;padding:2px 6px;font-size:12px}
+.mchart td{padding:3px 6px;border-top:1px solid var(--line)}.mchart td .mv{display:inline-block;min-width:2.4em;text-align:left;padding:1px 4px;border-radius:5px}
+.mchart td .mv.cur{background:#5aa9ff26;outline:1px solid var(--accent2)}.mchart .ml{color:var(--muted);white-space:nowrap}
+.msub{font-size:11px;margin:0 0 6px 6px}
+.mchart .sm{display:none}
+@media (max-width:520px){.mchart .lg{display:none}.mchart .sm{display:inline}.mchart td,.mchart th{padding:3px 3px}.mchart td .mv{min-width:2em;padding:1px 2px}.mir{padding:6px}}
+.wq{border:1px solid var(--accent2);border-radius:12px;padding:10px 12px;background:var(--panel)}
+.wq-h{display:flex;flex-direction:column;margin-bottom:8px}.wq-h small{color:var(--muted);font-size:12px}.wq-h b{font-size:16px}
+.walk li.wfinal>span{font-weight:600}
+.wshort{margin-top:10px;padding:8px 10px;border-radius:8px;background:#e3b3411a;border:1px solid #e3b34155;font-size:13px;line-height:1.5}.wshort b:first-child{color:var(--warn);margin-right:4px}
+.winp.wide{max-width:none;min-width:min(100%,360px)}
+.wq-done{border:1px solid var(--good);border-radius:12px;padding:12px;background:#3fb9500f}.wk-title small{color:var(--muted);font-weight:500}
 .walk ol{margin:0;padding-left:22px;display:flex;flex-direction:column;gap:10px}
 .walk li{line-height:1.5}.walk li.wok{color:var(--muted)}.walk li.wok .wans{display:block;margin-top:2px}
 .walk li.wdone-all{list-style:'★ ';color:var(--text)}
@@ -453,6 +471,24 @@ tr.me td{background:#3fb6a81a;color:#9ef0e4}
         <li><b>Network, host or broadcast?</b> First address of its row = network. Last address = broadcast. Anything between = useable host.</li>
       </ol>
       <p class="dim">Work it top to bottom: everything above the chart comes from the mask, and everything about the given IP comes straight off the chart.</p>
+    </details>
+    <details id="g-short">
+      <summary>Shortcuts to memorise</summary>
+      <p><b>The mask ladder.</b> The only values a mask octet can take, in order. Each step adds the next place value:</p>
+      <table class="sol"><tr><th>Prefix (in an octet)</th><th>/25</th><th>/26</th><th>/27</th><th>/28</th><th>/29</th><th>/30</th></tr>
+        <tr><td>Mask octet</td><td>128</td><td>192</td><td>224</td><td>240</td><td>248</td><td>252</td></tr>
+        <tr><td>Binary</td><td class="mono">10000000</td><td class="mono">11000000</td><td class="mono">11100000</td><td class="mono">11110000</td><td class="mono">11111000</td><td class="mono">11111100</td></tr>
+        <tr><td>Increment</td><td>128</td><td>64</td><td>32</td><td>16</td><td>8</td><td>4</td></tr>
+        <tr><td>Hosts (inc − 2)</td><td>126</td><td>62</td><td>30</td><td>14</td><td>6</td><td>2</td></tr></table>
+      <ul>
+        <li>The same pattern repeats for /17–/23 (third octet) and /9–/15 (second octet): /18 is 255.255.<b>192</b>.0, just like /26 ends in 192.</li>
+        <li><b>Increment</b> = the value of the last 1 bit in the mask = 256 − the mask octet. It halves each time the prefix goes up by 1.</li>
+        <li><b>Hosts</b> = increment − 2 when the mask ends in the 4th octet. Otherwise 2<sup>h</sup> − 2.</li>
+        <li><b>Powers of 2:</b> 2, 4, 8, 16, 32, 64, 128, 256, 512, 1,024. Anchors: 2<sup>10</sup> = 1,024 and 2<sup>20</sup> = 1,048,576; step up or down by doubling or halving.</li>
+        <li><b>Classes:</b> A is 1–126 (/8), B starts at 128 (/16), C starts at 192 (/24). 128 and 192 are the first two steps of the mask ladder.</li>
+        <li><b>The chart:</b> networks are multiples of the increment. Broadcast = next network − 1. First usable = network + 1. Last usable = broadcast − 1.</li>
+        <li><b>Network, host or broadcast?</b> A multiple of the increment is a network; one less than a multiple is a broadcast; anything else is a host.</li>
+      </ul>
     </details>
     <details id="g-chart">
       <summary>Subnet Chart — step by step</summary>
