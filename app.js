@@ -499,39 +499,6 @@ function genSheet(fixed){
     walk:()=>walkSheet(ip,p,asPrefix,rows),explain:explainSheet(ip,p,rows)};
 }
 
-/* ---------------- worksheet readiness ---------------- */
-let sheet={streak:0,best:0,perfect:0,done:0};{const raw=store.get('ss_sheet',{});if(raw&&typeof raw==='object')for(const k of Object.keys(sheet)){const v=Number(raw[k]);if(Number.isFinite(v)&&v>=0)sheet[k]=Math.floor(v);}}
-let noHelp=store.get('ss_nohelp',false)===true;
-const GOAL=5;
-function applyNoHelp(){
-  const on=noHelp&&state.mode==='worksheet'&&!state.timed;
-  document.body.classList.toggle('nohelp',on);
-  $('#hintBtn').hidden=on;
-  $$('[data-t="guide"]').forEach(b=>{b.disabled=on;});
-  if(on&&!$('#t-guide').hidden&&typeof closeTools==='function')closeTools();
-}
-function renderSheetBox(){
-  const box=$('#sheetbox');if(state.mode!=='worksheet'||state.timed){box.hidden=true;applyNoHelp();return;}box.hidden=false;
-  const pct=Math.min(100,Math.round(100*sheet.streak/GOAL)),ready=sheet.best>=GOAL;
-  const stage=noHelp?3:sheet.perfect>0||sheet.done>=3?2:1;
-  box.innerHTML=`<div class="wk-h"><b>Exam readiness</b><label class="switch"><input type="checkbox" id="noHelpSw" ${noHelp?'checked':''}><span>No-help mode</span></label></div>
-  <ol class="path"><li class="${stage===1?'now':stage>1?'did':''}"><b>Learn:</b> use <b>Hint</b> to walk through each worksheet step by step.</li>
-  <li class="${stage===2?'now':stage>2?'did':''}"><b>Practice:</b> try full worksheets without hints and fix what the feedback flags.</li>
-  <li class="${stage===3?'now':''}"><b>Prove it:</b> turn on <b>No-help mode</b> (no hints or guide) and get ${GOAL} perfect worksheets in a row.</li></ol>
-  <div class="rd-row"><span>${noHelp?'Perfect no-help worksheets in a row':'Turn on No-help mode to start counting'}</span><b>${noHelp?`${sheet.streak} / ${GOAL}`:''}</b></div>
-  <div class="wk-bar rd"><i style="width:${noHelp?pct:0}%"></i></div>
-  <p class="dim">${ready?`🎉 You’ve hit ${GOAL} in a row (best ${sheet.best}). You can work these with no help. Keep it sharp with a few a day.`:sheet.best?`Best run so far: ${sheet.best}. `:''}${sheet.done?` Worksheets finished: ${sheet.done}, perfect: ${sheet.perfect}.`:''}</p>`;
-  $('#noHelpSw').onchange=e=>{noHelp=e.target.checked;store.set('ss_nohelp',noHelp);if(!noHelp){sheet.streak=0;store.set('ss_sheet',sheet);}renderSheetBox();};
-  applyNoHelp();
-}
-function noteSheet(q,all){
-  if(q.mode!=='worksheet')return;sheet.done++;
-  if(all&&!state.hinted)sheet.perfect++;
-  if(noHelp){if(all&&!state.hinted){sheet.streak++;sheet.best=Math.max(sheet.best,sheet.streak);}else sheet.streak=0;}
-  store.set('ss_sheet',sheet);renderSheetBox();
-  if(noHelp&&all&&sheet.streak===GOAL){const d=document.createElement('div');d.className='toast';d.textContent=`🎉 ${GOAL} perfect worksheets in a row with no help!`;document.body.appendChild(d);setTimeout(()=>d.remove(),4000);}
-}
-
 /* ---------------- worksheet layout ---------------- */
 function cellHTML(f,i){
   return `<div class="field cell" data-i="${i}"><input id="f${i}" aria-label="${f.label}" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" inputmode="decimal" enterkeyhint="next" placeholder="${['network','first','last','broadcast'][f.cell.c]}"><span class="fix"></span></div>`;
@@ -615,6 +582,7 @@ const WEAK={
   class_nets:['Total networks from the class default',[['formulas',5],['worksheet']]],
   chart_rows:['Filling in the network chart rows',[['worksheet']]],
 };
+try{localStorage.removeItem('ss_sheet');localStorage.removeItem('ss_nohelp');}catch(e){}
 let weak={};{const raw=store.get('ss_weak',{});if(raw&&typeof raw==='object')for(const t of Object.keys(raw))if(Object.prototype.hasOwnProperty.call(WEAK,t)){const w=Number(raw[t]&&raw[t].w),n=Number(raw[t]&&raw[t].n);weak[t]={w:Number.isFinite(w)?Math.min(6,Math.max(0,w)):0,n:Number.isFinite(n)?Math.max(0,Math.floor(n)):0};}}
 const saveWeak=()=>store.set('ss_weak',weak);
 function noteMisses(tags){tags.forEach(t=>{if(!WEAK[t])return;const e=weak[t]||(weak[t]={w:0,n:0});e.w=Math.min(e.w+1,6);e.n++;});saveWeak();}
@@ -822,7 +790,7 @@ function next(force){
   $('#fields').innerHTML=q.layout==='sheet'?sheetHTML(q):q.fields.map(fieldHTML).join('');
   $('#fields').classList.toggle('sheet',q.layout==='sheet');
   $$('#fields .choices').forEach(g=>g.querySelectorAll('.choice').forEach(b=>b.onclick=()=>{if(state.checked)return;g.querySelectorAll('.choice').forEach(x=>x.classList.toggle('on',x===b));}));
-  $('#level').hidden=state.mode==='worksheet'&&!state.timed;renderSheetBox();
+  $('#level').hidden=state.mode==='worksheet'&&!state.timed;
   $$('#fields .bit').forEach(b=>b.onclick=()=>{if(state.checked)return;b.classList.toggle('on');b.textContent=b.classList.contains('on')?'1':'0';});
   $('#hint').hidden=true;$('#feedback').className='feedback';$('#work').style.display='none';
   $('#checkBtn').innerHTML='Check <span class="kbd">Enter</span>';$('#hintBtn').disabled=false;
@@ -865,7 +833,6 @@ function check(){
   $('#work').innerHTML=coach+`<details class="full"${all?'':''}><summary>${all?'Show the work':'Full walkthrough'}</summary>${q.explain}</details>`;
   $('#work').style.display=all&&state.timed?'none':'block';
   $('#checkBtn').innerHTML='Next <span class="kbd">Enter</span>';$('#hintBtn').disabled=true;if(state.walk){$('#walk').querySelectorAll('input,button').forEach(x=>x.disabled=true);}
-  noteSheet(q,all);
   renderStats();renderTabs();renderWeak();
   if(!isDesktop())$('#feedback').scrollIntoView({block:'nearest',behavior:'smooth'});else $('#checkBtn').focus();
 }
@@ -914,7 +881,6 @@ $('#tClose').onclick=()=>{$('#overlay').classList.remove('on');next();};
 /* ---------------- tools panel ---------------- */
 const tools=$('#tools');
 function openTool(name,sec){
-  if(name==='guide'&&document.body.classList.contains('nohelp'))return;
   $$('.ttab').forEach(b=>b.classList.toggle('on',b.dataset.t===name));
   $$('.tpane').forEach(p=>p.hidden=p.id!=='t-'+name);
   const wasOpen=tools.classList.contains('open');
@@ -1077,5 +1043,5 @@ if(isDesktop())openTool('scratch');
 })();
 
 /* hooks for the automated tests */
-window.SS={next,genSheet,walkSheet,genMaskBin,genRole,genClassNets,classOf,bin32,bits32,pow2,toRole,getSheet:()=>sheet,ipStr,walkSteps,walkD2B,walkB2D,walkP2M,walkM2P,walkAnd,walkHosts,walkNets,walkSizeHosts,walkSizeNets,walkInc,GEN,state,WEAK,getWeak:()=>weak,pickWeak,next,check,show,isRight,parseIP,R,netCtx,diagNet,diagChart,diagHosts,diagBits,diagBinDec,diagMask,diagPrefix,diagNetworks,diagNewPrefix,diagSizeHosts,diagBits4Nets,diagNewMask,diagIncrement};
+window.SS={next,genSheet,walkSheet,genMaskBin,genRole,genClassNets,classOf,bin32,bits32,pow2,toRole,ipStr,walkSteps,walkD2B,walkB2D,walkP2M,walkM2P,walkAnd,walkHosts,walkNets,walkSizeHosts,walkSizeNets,walkInc,GEN,state,WEAK,getWeak:()=>weak,pickWeak,next,check,show,isRight,parseIP,R,netCtx,diagNet,diagChart,diagHosts,diagBits,diagBinDec,diagMask,diagPrefix,diagNetworks,diagNewPrefix,diagSizeHosts,diagBits4Nets,diagNewMask,diagIncrement};
 })();

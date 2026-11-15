@@ -1,5 +1,5 @@
 """Worksheet mode: the five problems from the class solutions guide must produce exactly the guide's answers,
-common mistakes get the matching explanation, and No-help mode / exam readiness behave correctly."""
+and common mistakes get the matching explanation."""
 import os, sys
 from playwright.sync_api import sync_playwright
 URL=os.environ.get('SUBNET_URL','file://'+os.path.abspath(os.path.join(os.path.dirname(__file__),'..','index.html')))
@@ -58,19 +58,7 @@ with sync_playwright() as pw:
     load(pg,GUIDE[3]); fill(pg,GUIDE[3],{16:'10.10.10.66',17:'10.10.10.67'}); pg.click('#checkBtn')
     ok('Right method for the network you wrote' in pg.inner_text('.ci[data-i="17"]'),'a chart cell that follows from an earlier wrong cell is recognised')
     pg.click('#checkBtn')
-    print('No-help mode and exam readiness')
-    pg.check('#noHelpSw'); pg.wait_for_timeout(100)
-    ok(pg.is_hidden('#hintBtn'),'No-help hides the Hint button')
-    ok(pg.is_disabled('#dock button[data-t="guide"], .ttab[data-t="guide"]') if pg.locator('.ttab[data-t="guide"]').is_visible() else True,'No-help disables the Guide')
-    pg.evaluate("window.SS.state&&0"); ok(pg.evaluate("document.body.classList.contains('nohelp')"),'No-help is on')
-    for k in range(5):
-        g=GUIDE[k%5]; load(pg,g); fill(pg,g); pg.click('#checkBtn'); pg.click('#checkBtn')
-    ok(pg.evaluate("window.SS.getSheet().streak")==5 and 'in a row' in pg.inner_text('#sheetbox'),'5 perfect no-help worksheets → readiness complete')
-    load(pg,GUIDE[0]); fill(pg,GUIDE[0],{2:'5'}); pg.click('#checkBtn'); pg.click('#checkBtn')
-    ok(pg.evaluate("window.SS.getSheet().streak")==0 and pg.evaluate("window.SS.getSheet().best")==5,'a mistake resets the run but keeps the best')
-    pg.reload(); pg.wait_for_timeout(300)
-    ok(pg.evaluate("window.SS.getSheet().best")==5 and pg.is_checked('#noHelpSw'),'readiness and No-help survive a reload')
-    pg.uncheck('#noHelpSw'); ok(pg.is_visible('#hintBtn'),'turning No-help off brings the Hint back')
+    ok(pg.locator('#sheetbox').count()==0 and 'readiness' not in pg.inner_text('body').lower(),'no Exam readiness panel or No-help toggle')
     load(pg,GUIDE[1]); pg.click('#hintBtn'); n=pg.evaluate("window.SS.state.walk.steps.length")
     ok(n>20,f'worksheet Hint walks through every part ({n-1} steps)')
     print('Phone')

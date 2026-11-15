@@ -78,8 +78,10 @@ with sync_playwright() as pw:
     before=pg.evaluate("window.SS.getWeak().round_up.w")
     for _ in range(6):
         if pg.evaluate("window.SS.state.q.target")!='round_up': break
-        f=pg.evaluate("window.SS.state.q.fields.map(f=>window.SS.show(f))")
-        for i,v in enumerate(f): pg.fill(f'#f{i}',v.replace(',',''))
+        f=pg.evaluate("window.SS.state.q.fields.map(f=>[f.type,f.type==='choice'?f.answer:window.SS.show(f)])")
+        for i,(t,v) in enumerate(f):
+            if t=='choice': pg.click(f'.field[data-i="{i}"] .choice[data-v="{v}"]')
+            else: pg.fill(f'#f{i}',v.replace(',',''))
         pg.click('#checkBtn'); pg.click('#checkBtn')
     after=pg.evaluate("window.SS.getWeak().round_up")
     ok(after['w']<before and after['w']==0,f'right answers shrink the weak spot ({before} → {after["w"]})')
