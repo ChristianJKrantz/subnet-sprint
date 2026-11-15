@@ -22,6 +22,7 @@ with sync_playwright() as pw:
     pg.reload(); pg.wait_for_timeout(500)
     ok(pg.title().startswith('Subnet Sprint'),'page reloads with the network off')
     pg.click('.tab[data-m="detective"]')
+    while pg.evaluate("window.SS.state.q.sub")=='role': pg.click('#skipBtn')
     f=pg.evaluate("window.SS.state.q.fields.map(f=>window.SS.show(f))")
     for i,v in enumerate(f): pg.fill(f'#f{i}',v.replace(',',''))
     pg.click('#checkBtn')

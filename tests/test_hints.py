@@ -40,7 +40,7 @@ with sync_playwright() as pw:
             if(re.test(tx))hits.push(q.mode+': '+tx+' ⇐ '+nd);}});}
       return hits;}})()""")
     # numbers that are part of the problem or of a rule (place values, class ranges, 256 − mask) are not leaks
-    RULES=['Class A is 1','A is /8','starting at 128','place values (128','256 means it rolls','256 −','256 minus','32 −','Subtract','(it’s only','go up by your increment','multiple of the increment','Each 255 is 8','Try 1 × 8','first 1 place value','Subtract it from 256','The IP’s octet']
+    RULES=['Class A is 1','A is /8','starting at 128','place values (128','256 means it rolls','256 −','256 minus','32 −','Subtract','(it’s only','go up by your increment','multiple of the increment','Each 255 is 8','Try 1 × 8','first 1 place value','Subtract it from 256','The IP’s octet','Its last octet is']
     real=[h for h in hits if not any(r in h for r in RULES)]
     ok(not real,f'no step or nudge states the answer it’s asking for ({len(hits)} matches were problem data or rule text) {real[:3]}')
     # 2. UI: do the walkthrough for real on several questions of each type

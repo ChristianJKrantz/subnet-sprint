@@ -21,13 +21,13 @@ Works in any modern browser on desktop, tablet or phone. No install, no account,
 | **Binary** | Decimal → binary (tap the 128 / 64 / 32 … bits) and binary → decimal |
 | **Prefix ↔ Mask** | `/26` → `255.255.255.192` and back, and masks written out in 32-bit binary |
 | **ANDing** | IP + mask → network address |
-| **Subnet Chart** | Given `IP/prefix`, fill in the network, default gateway, last usable, broadcast and usable hosts; plus quick “network, host or broadcast?” questions |
+| **Subnet Chart** | Given `IP/prefix`, fill in the network, broadcast, default gateway, last usable and usable hosts (in the order you work them out); plus quick “network, host or broadcast?” questions |
 | **Formulas** | Usable hosts (2ʰ − 2), subnets (2ⁿ), total networks from the class default (A /8, B /16, C /24), network increment, "smallest subnet for X hosts", "bits to borrow for N subnets" |
 | **Mixed** | A random mix of everything |
 | **Weak spots** | Drills the mistakes you make most (see below) |
 
 ### Worksheet mode
-Worksheet mode matches the class worksheet format: each problem gives an IP with a mask (as `/27` or `255.255.255.224`) and asks for every answer plus the network chart (network, useable host range and broadcast for each row, counting up from .0). It's checked box by box, with feedback on exactly what went wrong in each one, including chart cells that are only wrong because of an earlier mistake.
+Worksheet mode matches the class worksheet format: each problem gives an IP with a mask (as `/27` or `255.255.255.224`) and asks for every answer plus the network chart (network, useable host range and broadcast for each row, counting up from .0). The questions are laid out in the order you'd work them out: everything that comes straight from the mask first, then the chart, then the questions about the given IP that you read off the chart. The Tab key follows the same order, including network → broadcast → useable range within each chart row. It's checked box by box, with feedback on exactly what went wrong in each one, including chart cells that are only wrong because of an earlier mistake.
 
 Total networks is counted from the IP's class default mask (10.x.x.x is Class A, /8). The /24-baseline answer is also accepted for the worksheet, since some classes count it that way.
 

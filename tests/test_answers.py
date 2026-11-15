@@ -7,7 +7,7 @@ def expected(qtype, prompt):
     t=prompt
     if qtype.startswith('Subnet chart'):
         ip,p=re.search(r'(\d+\.\d+\.\d+\.\d+)/(\d+)',t).groups(); n=ipaddress.IPv4Network(f'{ip}/{p}',strict=False)
-        return [str(n.network_address),str(n.network_address+1),str(n.broadcast_address-1),str(n.broadcast_address),str(n.num_addresses-2)]
+        return [str(n.network_address),str(n.broadcast_address),str(n.network_address+1),str(n.broadcast_address-1),str(n.num_addresses-2)]
     if qtype=='ANDing':
         ip,m=re.findall(r'\d+\.\d+\.\d+\.\d+',t)[:2]; return [str(ipaddress.IPv4Network(f'{ip}/{m}',strict=False).network_address)]
     if qtype=='Prefix → mask':
@@ -36,11 +36,11 @@ def expected(qtype, prompt):
         role='network' if ipaddress.IPv4Address(ip)==n.network_address else 'broadcast' if ipaddress.IPv4Address(ip)==n.broadcast_address else 'host'
         first=int(ip.split('.')[0]); d=8 if first<128 else 16 if first<192 else 24
         bits='.'.join(format(int(o),'08b') for o in mask(p).split('.'))
-        out=[mask(p) if pm else '/'+str(p), bits, str(inc), str(n.network_address), str(n.broadcast_address), 'CHOICE:'+role, str(2**(p-d)), str(inc-2)]
+        out=[mask(p) if pm else '/'+str(p), bits, str(inc), str(inc-2), str(2**(p-d))]
         row=last//inc; blocks=256//inc; rows=min(blocks,max(3,row+2)); base=ipaddress.IPv4Address(ip.rsplit('.',1)[0]+'.0')
         for r in range(rows):
-            rn=base+r*inc; out+= [str(rn),str(rn+1),str(rn+inc-2),str(rn+inc-1)]
-        return out
+            rn=base+r*inc; out+= [str(rn),str(rn+inc-1),str(rn+1),str(rn+inc-2)]
+        return out+[str(n.network_address),str(n.broadcast_address),'CHOICE:'+role]
     if qtype=='Network, host or broadcast?':
         ips=re.findall(r'\d+\.\d+\.\d+\.\d+',t); pm=re.search(r'/(\d+)',t); ip=ips[0]
         n=ipaddress.IPv4Network(f'{ip}/{pm.group(1) if pm else ips[1]}',strict=False); a=ipaddress.IPv4Address(ip)

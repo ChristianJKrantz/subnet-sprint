@@ -31,7 +31,7 @@ with sync_playwright() as pw:
                 pg.fill('#winp',a); pg.press('#winp','Enter')
             done=pg.locator('.wdone-all').count()==1 and pg.locator('.walk li.wok').count()==9 and pg.is_hidden('#fields')
             pg.click('#wfill')
-            for i,v in enumerate([str(n.network_address),str(n.network_address+1),str(n.broadcast_address-1),str(n.broadcast_address),str(n.num_addresses-2)]): pg.fill(f'#f{i}',v)
+            for i,v in enumerate([str(n.network_address),str(n.broadcast_address),str(n.network_address+1),str(n.broadcast_address-1),str(n.num_addresses-2)]): pg.fill(f'#f{i}',v)
             pg.click('#checkBtn')
             good='good' in pg.get_attribute('#feedback','class') and '+5' in pg.inner_text('#feedback')
             if not (ok_walk and done and good): ok(False,f'walkthrough {ip}/{p}'); break

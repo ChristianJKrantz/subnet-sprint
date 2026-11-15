@@ -331,7 +331,8 @@ const GEN={
     if(sub==='role'||(!sub&&Math.random()<.25))return genRole();
     const p=randPrefix(),ip=randIP(),m=maskOf(p),net=(ip&m)>>>0,size=2**(32-p),bc=(net+size-1)>>>0;
     return {mode:'detective',walk:()=>walkSteps(ip,p),title:'Subnet chart',prompt:`Fill in the network chart for <b class="big">${ipStr(ip)}/${p}</b>`,
-      fields:[{type:'ip',label:'Subnet (network)',answer:net},{type:'ip',label:'Default gateway (1st usable)',answer:(net+1)>>>0},{type:'ip',label:'Last usable',answer:(bc-1)>>>0},{type:'ip',label:'Broadcast',answer:bc},{type:'num',label:'Usable hosts',answer:size-2}],diag:x=>diagChart(ip,p,x),
+      fields:[{type:'ip',label:'Subnet (network)',answer:net},{type:'ip',label:'Broadcast',answer:bc},{type:'ip',label:'Default gateway (1st usable)',answer:(net+1)>>>0},{type:'ip',label:'Last usable',answer:(bc-1)>>>0},{type:'num',label:'Usable hosts',answer:size-2}],
+      diag:x=>{const d=diagChart(ip,p,[x[0],x[2],x[3],x[1],x[4]]);return [d[0],d[3],d[1],d[2],d[4]];},
       hint:`Mask is ${ipStr(m)}. Increment = 256 − the octet that isn’t 255 or 0. List the subnets (0, inc, 2×inc…) and round the IP down to one of them.`,explain:explainSubnet(ip,p)};
   },
   formulas(sub){
@@ -441,9 +442,8 @@ function walkSheet(ip,p,asPrefix,rows){
     st.push({q:`Count the 1s: 24 from the three 255s, plus the 1s in your binary. Prefix = ?`,kind:'prefix',ans:p,bad:()=>'Add 24 to the number of 1s in your binary.'});
   }
   st.push({q:`Write the whole mask in binary (32 bits): 255 in binary for each of the first three octets, then your 4th octet.`,kind:'bin32',ans:bin32(m),bad:(u,raw)=>hBin32(p,raw)});
-  st.push(...walkBlock(ip,p).slice(2));
-  st.push({q:`Compare the IP (ends in .${ipo}) with the network and broadcast you just found. Is it the <b>network</b> (first address), the <b>broadcast</b> (last), or a usable <b>host</b> (in between)?`,kind:'role',ans:role,
-    bad:()=>'First address of the block = network, last = broadcast, anything in between = usable host.'});
+  const blk=walkBlock(ip,p); // [interesting, mask value, increment, round down, network, next subnet, broadcast]
+  st.push(blk[2]);
   st.push({q:`Host bits h = the number of 0s in the mask (32 − ${p}) = ?`,kind:'num',ans:h,bad:()=>`Count the 0s in your binary mask, or subtract ${p} from 32.`});
   st.push({q:`Hosts per network = 2<sup>h</sup> − 2 = ?`,kind:'num',ans:2**h-2,bad:u=>hHosts(h,u)});
   st.push({q:`For total networks, find the IP’s class from its first octet (<b>${oct(ip,0)}</b>). Class A is 1–126, B is 128–191, C is 192–223. Which class?`,kind:'cls',ans:c.c,bad:()=>`Find ${oct(ip,0)} in those three ranges.`});
@@ -455,16 +455,20 @@ function walkSheet(ip,p,asPrefix,rows){
       bad:()=>r===0?'Copy the first three octets of the IP and end it in .0.':'Take the row above’s last octet and add the increment.'});
     st.push({q:`Row ${r+1} broadcast = the next row’s network − 1. Broadcast address?`,kind:'ip',ans:(rn+inc-1)>>>0,bad:u=>u===nx?'That’s the next row’s network. Subtract 1.':'One less than the next row’s network.'});
   });
+  st.push({q:`Now the given IP. Its last octet is <b>${ipo}</b>. Which row’s network does it round <b>down</b> to? Type that row’s last octet.`,kind:'num',ans:ipo-ipo%inc,
+    bad:u=>u==null?'Enter a number.':u%inc?'Use one of the row networks from your chart (a multiple of the increment).':u>ipo?'Too high: always round down, never up.':'That row ends before the IP. Look one row further down.'});
+  st.push({q:`Write the <b>network address of the IP</b>: it’s that row’s network.`,kind:'ip',ans:net,bad:(u,raw)=>hNet(ip,p,3,u,raw)});
+  st.push({q:`Write the <b>broadcast address of the IP</b>: it’s that same row’s broadcast.`,kind:'ip',ans:bc,bad:(u,raw)=>hBc(ip,3,(net+inc)>>>0,u)});
+  st.push({q:`Compare the IP (ends in .${ipo}) with the network and broadcast you just found. Is it the <b>network</b> (first address), the <b>broadcast</b> (last), or a usable <b>host</b> (in between)?`,kind:'role',ans:role,
+    bad:()=>'First address of the block = network, last = broadcast, anything in between = usable host.'});
   return st.concat({done:true,q:`Each row’s useable host range runs from network + 1 to broadcast − 1. Everything else goes straight from your steps into the worksheet.`});
 }
 function explainSheet(ip,p,rows){
   const m=maskOf(p),mv=oct(m,3),inc=256-mv,net=(ip&m)>>>0,bc=(net+inc-1)>>>0,c=classOf(ip),n=p-c.d,h=32-p,ipo=oct(ip,3);
   const role=ipo===oct(net,3)?'network':ipo===oct(bc,3)?'broadcast':'host';
-  return `<table class="sol"><tr><td>Subnet mask</td><td class="mono">${ipStr(m)} = /${p}</td></tr><tr><td>Binary</td><td class="mono">${bin32(m)}</td></tr>
-  <tr><td>Increment</td><td class="mono">256 − ${mv} = ${inc}</td></tr><tr><td>Network</td><td class="mono">${ipStr(net)}</td></tr><tr><td>Broadcast</td><td class="mono">${ipStr(bc)}</td></tr>
-  <tr><td>The IP is a</td><td>${ROLES[role].toLowerCase()}</td></tr><tr><td>Total networks</td><td>Class ${c.c} default /${c.d} → n = ${p} − ${c.d} = ${n} → 2<sup>${n}</sup> = <b>${big(2**n)}</b>${c.d!==24?` <span class="dim">(2<sup>${p-24}</sup> = ${2**(p-24)} if your class counts from /24)</span>`:''}</td></tr>
-  <tr><td>Hosts per network</td><td>h = ${h} → 2<sup>${h}</sup> − 2 = <b>${2**h-2}</b></td></tr></table>
-  <table class="sol chartsol"><tr><th>Network</th><th>Useable host range</th><th>Broadcast</th></tr>${rows.map(rn=>`<tr class="${rn===net?'hl':''}"><td class="mono">${ipStr(rn)}</td><td class="mono">${ipStr(rn+1)} – ${ipStr(rn+inc-2)}</td><td class="mono">${ipStr(rn+inc-1)}</td></tr>`).join('')}</table>`;
+  return `<table class="sol"><tr><td>Subnet mask</td><td class="mono">${ipStr(m)} = /${p}</td></tr><tr><td>Binary</td><td class="mono">${bin32(m)}</td></tr><tr><td>Increment</td><td class="mono">256 − ${mv} = ${inc}</td></tr><tr><td>Hosts per network</td><td>h = ${h} → 2<sup>${h}</sup> − 2 = <b>${2**h-2}</b></td></tr><tr><td>Total networks</td><td>Class ${c.c} default /${c.d} → n = ${p} − ${c.d} = ${n} → 2<sup>${n}</sup> = <b>${big(2**n)}</b>${c.d!==24?` <span class="dim">(2<sup>${p-24}</sup> = ${2**(p-24)} if your class counts from /24)</span>`:''}</td></tr></table>
+  <table class="sol chartsol"><tr><th>Network</th><th>Useable host range</th><th>Broadcast</th></tr>${rows.map(rn=>`<tr class="${rn===net?'hl':''}"><td class="mono">${ipStr(rn)}</td><td class="mono">${ipStr(rn+1)} – ${ipStr(rn+inc-2)}</td><td class="mono">${ipStr(rn+inc-1)}</td></tr>`).join('')}</table>
+  <table class="sol"><tr><td>Network of the IP</td><td class="mono">${ipStr(net)}</td></tr><tr><td>Broadcast of the IP</td><td class="mono">${ipStr(bc)}</td></tr><tr><td>The IP is a</td><td>${ROLES[role].toLowerCase()}</td></tr></table>`;
 }
 function genSheet(fixed){
   const p=fixed?fixed.p:R(25,30),m=maskOf(p),inc=2**(32-p),blocks=256/inc;
@@ -476,25 +480,33 @@ function genSheet(fixed){
   const role=ip===net?'network':ip===bc?'broadcast':'host';
   const asPrefix=fixed?fixed.asPrefix:Math.random()<.5,nRows=Math.min(blocks,Math.max(3,Math.floor(oct(ip,3)/inc)+2));
   const rows=[...Array(nRows)].map((_,r)=>(base+r*inc)>>>0);
-  const fields=[asPrefix?{type:'ip',label:'Subnet mask (dotted decimal)',answer:m}:{type:'prefix',label:'Prefix (CIDR)',answer:p},
-    {type:'bin32',label:'Subnet mask (binary)',answer:bin32(m)},
-    {type:'num',label:'Network increment',answer:inc},
-    {type:'ip',label:'Network address of the IP',answer:net},
-    {type:'ip',label:'Broadcast address of the IP',answer:bc},
-    {type:'choice',label:'The given IP is a…',answer:role},
-    {type:'numalt',label:'Total networks (2ⁿ)',answer:2**(p-c.d),alt:c.d===24?[]:[2**(p-24)]},
-    {type:'num',label:'Hosts per network (2ʰ − 2)',answer:inc-2}];
-  rows.forEach((rn,r)=>['network','first usable','last usable','broadcast'].forEach((nm,col)=>
-    fields.push({type:'ip',cell:{r,c:col},label:`Row ${r+1} ${nm}`,answer:[rn,rn+1,rn+inc-2,rn+inc-1][col]>>>0})));
+  const fields=[asPrefix?{key:'mask',sec:'pre',type:'ip',label:'Subnet mask (dotted decimal)',answer:m}:{key:'mask',sec:'pre',type:'prefix',label:'Prefix (CIDR)',answer:p},
+    {key:'bin',sec:'pre',type:'bin32',label:'Subnet mask (binary)',answer:bin32(m)},
+    {key:'inc',sec:'pre',type:'num',label:'Network increment',answer:inc},
+    {key:'hosts',sec:'pre',type:'num',label:'Hosts per network (2ʰ − 2)',answer:inc-2},
+    {key:'nets',sec:'pre',type:'numalt',label:'Total networks (2ⁿ)',answer:2**(p-c.d),alt:c.d===24?[]:[2**(p-24)]}];
+  // chart cells in the order you can work them out: network, broadcast (next network − 1), then the usable range
+  rows.forEach((rn,r)=>[[0,'network'],[3,'broadcast'],[1,'first usable'],[2,'last usable']].forEach(([col,nm])=>
+    fields.push({key:'cell',type:'ip',cell:{r,c:col},label:`Row ${r+1} ${nm}`,answer:[rn,rn+1,rn+inc-2,rn+inc-1][col]>>>0})));
+  fields.push({key:'net',sec:'post',type:'ip',label:'Network address of the IP',answer:net},
+    {key:'bc',sec:'post',type:'ip',label:'Broadcast address of the IP',answer:bc},
+    {key:'role',sec:'post',type:'choice',label:'The given IP is a…',answer:role});
   return {mode:'worksheet',layout:'sheet',title:'Worksheet',
     prompt:asPrefix?`<b class="big">${ipStr(ip)}/${p}</b>`:`<b class="big">${ipStr(ip)}</b> <span class="sep">|</span> <b class="big">${ipStr(m)}</b>`,
     fields,
-    diag:x=>{const out=[asPrefix?diagMask(p,x[0]):diagPrefix(p,x[0]),diagBin32(p,x[1]),diagIncrement(p,x[2])];
-      const u3=parseIP(x[3]);out.push(u3===net?null:u3==null?badEntry(x[3],'ip'):diagNet(ip,p,u3,false));
-      out.push(parseIP(x[4])===bc?null:diagChart(ip,p,[x[3],'','',x[4],'0'])[3]);
-      out.push(diagRole(ip,p,role,x[5]));out.push(diagClassNets(ip,p,x[6],true));out.push(diagHosts(32-p,x[7]));
-      rows.forEach((rn,r)=>{const o=8+r*4,un=parseIP(x[o]),ub=parseIP(x[o+3]);for(let col=0;col<4;col++)out.push(diagCell(rn,inc,col,x[o+col],un,ub));});
-      return out;},
+    diag:x=>{const at=k=>x[fields.findIndex(f=>f.key===k)];
+      const cellAt=(r,c)=>x[fields.findIndex(f=>f.cell&&f.cell.r===r&&f.cell.c===c)];
+      return fields.map((f,i)=>{const v=x[i];switch(f.key){
+        case 'mask':return asPrefix?diagMask(p,v):diagPrefix(p,v);
+        case 'bin':return diagBin32(p,v);
+        case 'inc':return diagIncrement(p,v);
+        case 'hosts':return diagHosts(32-p,v);
+        case 'nets':return diagClassNets(ip,p,v,true);
+        case 'net':{const u=parseIP(v);return u===net?null:u==null?badEntry(v,'ip'):diagNet(ip,p,u,false);}
+        case 'bc':return parseIP(v)===bc?null:diagChart(ip,p,[at('net'),'','',v,'0'])[3];
+        case 'role':return diagRole(ip,p,role,v);
+        case 'cell':{const {r,c:col}=f.cell;return diagCell(rows[r],inc,col,v,parseIP(cellAt(r,0)),parseIP(cellAt(r,3)));}
+      }});},
     hint:'Mask → binary → increment (256 − the last mask octet). Count up by the increment from 0 to build the chart, find the IP’s row, then hosts = 2ʰ − 2 and networks = 2ⁿ from the class default.',
     walk:()=>walkSheet(ip,p,asPrefix,rows),explain:explainSheet(ip,p,rows)};
 }
@@ -504,10 +516,10 @@ function cellHTML(f,i){
   return `<div class="field cell" data-i="${i}"><input id="f${i}" aria-label="${f.label}" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" inputmode="decimal" enterkeyhint="next" placeholder="${['network','first','last','broadcast'][f.cell.c]}"><span class="fix"></span></div>`;
 }
 function sheetHTML(q){
-  const top=q.fields.map((f,i)=>f.cell?'':fieldHTML(f,i)).join('');
+  const sec=k=>q.fields.map((f,i)=>f.sec===k?fieldHTML(f,i):'').join('');
   const byRow={};q.fields.forEach((f,i)=>{if(f.cell)(byRow[f.cell.r]=byRow[f.cell.r]||[])[f.cell.c]=i;});
-  const rows=Object.keys(byRow).map(r=>{const ix=byRow[r];return `<div class="crow"><span class="rlab">Row ${Number(r)+1}</span><div class="cc" data-l="Network">${cellHTML(q.fields[ix[0]],ix[0])}</div><div class="cc rng" data-l="Useable host range">${cellHTML(q.fields[ix[1]],ix[1])}<span class="dash">–</span>${cellHTML(q.fields[ix[2]],ix[2])}</div><div class="cc" data-l="Broadcast">${cellHTML(q.fields[ix[3]],ix[3])}</div></div>`;}).join('');
-  return `<div class="ws-top">${top}</div><div class="ws-chart"><div class="ch-title">Network chart</div><div class="crow chead"><span class="rlab"></span><span>Network</span><span>Useable host range</span><span>Broadcast</span></div>${rows}</div>`;
+  const rows=Object.keys(byRow).map(r=>{const ix=byRow[r];return `<div class="crow"><span class="rlab">Row ${Number(r)+1}</span><div class="cc cnet" data-l="Network">${cellHTML(q.fields[ix[0]],ix[0])}</div><div class="cc cbc" data-l="Broadcast">${cellHTML(q.fields[ix[3]],ix[3])}</div><div class="cc rng" data-l="Useable host range">${cellHTML(q.fields[ix[1]],ix[1])}<span class="dash">–</span>${cellHTML(q.fields[ix[2]],ix[2])}</div></div>`;}).join('');
+  return `<div class="ws-top">${sec('pre')}</div><div class="ws-chart"><div class="ch-title">Network chart</div><div class="crow chead"><span class="rlab"></span><span>Network</span><span>Useable host range</span><span>Broadcast</span></div>${rows}</div><div class="ws-top ws-post"><div class="ch-title">The given IP</div>${sec('post')}</div>`;
 }
 
 /* ---------------- drills for the worksheet's extra skills ---------------- */
