@@ -21,14 +21,16 @@ with sync_playwright() as pw:
             ip,p=q.split('</b>')[0].split('>')[-1].split('/'); p=int(p)
             n=ipaddress.ip_network(f'{ip}/{p}',strict=False)
             mask=str(n.netmask).split('.'); io=p//8 if p%8==0 else (p-1)//8
-            exp=[str(io+1),mask[io],str(256-int(mask[io])),str(int(str(n.network_address).split('.')[io])),str(n.network_address),str(n.broadcast_address),str(n.num_addresses-2)]
+            neto=int(str(n.network_address).split('.')[io]); inc=256-int(mask[io])
+            exp=[str(io+1),mask[io],str(inc),str(neto),str(n.network_address),str(neto+inc),str(n.broadcast_address),str(32-p),str(n.num_addresses-2)]
             pg.click('#hintBtn')
             for k,a in enumerate(exp):
                 if k==0 and random.random()<.5:   # one deliberate miss: should explain and stay on the step
                     pg.fill('#winp','9'); pg.press('#winp','Enter')
                     if not pg.inner_text('#wmsg').strip(): ok_walk=False
                 pg.fill('#winp',a); pg.press('#winp','Enter')
-            done=pg.locator('.wdone-all').count()==1 and pg.locator('.walk li.wok').count()==7
+            done=pg.locator('.wdone-all').count()==1 and pg.locator('.walk li.wok').count()==9 and pg.is_hidden('#fields')
+            pg.click('#wfill')
             for i,v in enumerate([str(n.network_address),str(n.network_address+1),str(n.broadcast_address-1),str(n.broadcast_address),str(n.num_addresses-2)]): pg.fill(f'#f{i}',v)
             pg.click('#checkBtn')
             good='good' in pg.get_attribute('#feedback','class') and '+5' in pg.inner_text('#feedback')

@@ -428,36 +428,34 @@ function diagCell(rowNet,inc,c,raw,userNet,userBc){
   return T('chart_rows',`${M(ipStr(u))} isn’t right. ${how}`);
 }
 function walkSheet(ip,p,asPrefix,rows){
-  const m=maskOf(p),k=p-24,mv=oct(m,3),inc=256-mv,ipo=oct(ip,3),neto=ipo-ipo%inc,net=(ip&m)>>>0,bc=(net+inc-1)>>>0,c=classOf(ip),n=p-c.d,h=32-p;
-  const role=ipo===neto?'network':ipo===neto+inc-1?'broadcast':'host';
+  const m=maskOf(p),k=p-24,mv=oct(m,3),inc=256-mv,c=classOf(ip),n=p-c.d,h=32-p,ipo=oct(ip,3);
+  const net=(ip&m)>>>0,bc=(net+inc-1)>>>0,role=ip===net?'network':ip===bc?'broadcast':'host';
   const st=[];
   if(asPrefix){
-    st.push({q:`<b>/${p}</b>: the first three octets are full (24 ones = 255.255.255). How many 1s go in the 4th octet? ${p} − 24 = ?`,kind:'num',ans:k,bad:()=>`${p} − 24 = ?`});
-    st.push({q:`Add the first ${k} place value${k>1?'s':''} (128, 64, 32, 16, …). Total?`,kind:'num',ans:mv,bad:u=>k>1&&u===placeVals[k-1]?`That’s only the last one. Add all ${k}: ${placeVals.slice(0,k).join(' + ')}.`:`${placeVals.slice(0,k).join(' + ')} = ?`});
-    st.push({q:`Write the mask in dotted decimal.`,kind:'ip',ans:m,bad:(u,raw)=>String(diagMask(p,raw)||'')});
+    st.push({q:`<b>/${p}</b>: the first three octets are full (24 ones, 255.255.255). How many 1s go in the 4th octet?`,kind:'num',ans:k,bad:()=>`Subtract 24 from ${p}.`});
+    st.push({q:`Add up that many place values, starting at 128 (128, 64, 32 …). That’s the mask’s 4th octet.`,kind:'num',ans:mv,bad:u=>k>1&&u===placeVals[k-1]?'That’s only the last one. Add all of them, starting from 128.':`Add the first ${k} place value${k>1?'s':''}, starting at 128.`});
+    st.push({q:`Write the subnet mask in dotted decimal.`,kind:'ip',ans:m,bad:(u,raw)=>hMask(p,raw)});
+    st.push({q:`Write your 4th octet in binary (8 digits).`,kind:'bits8',ans:bin8(mv),bad:(u,raw)=>hBits(mv,raw)});
   }else{
-    st.push({q:`Write the mask’s 4th octet (<b>${mv}</b>) in binary.`,kind:'bits8',ans:bin8(mv),bad:(u,raw)=>isBits8(raw)?String(diagBits(mv,bits8(raw))):'Type 8 digits, each 0 or 1.'});
-    st.push({q:`Count the 1s: 24 from the three 255s, plus ${k} in ${M(bin8(mv))}. Prefix = ?`,kind:'prefix',ans:p,bad:()=>`24 + ${k} = ?`});
+    st.push({q:`Write the mask’s 4th octet (<b>${mv}</b>) in binary.`,kind:'bits8',ans:bin8(mv),bad:(u,raw)=>hBits(mv,raw)});
+    st.push({q:`Count the 1s: 24 from the three 255s, plus the 1s in your binary. Prefix = ?`,kind:'prefix',ans:p,bad:()=>'Add 24 to the number of 1s in your binary.'});
   }
-  st.push({q:`Write the whole mask in binary: three groups of ${M('11111111')}, then ${M(bin8(mv))}.`,kind:'bin32',ans:bin32(m),bad:(u,raw)=>String(diagBin32(p,raw)||'')});
-  st.push({q:`Increment = 256 − ${mv} = ?`,kind:'num',ans:inc,bad:u=>u===255-mv?'Use 256, not 255.':u===mv?'That’s the mask octet. Subtract it from 256.':`256 − ${mv} = ?`});
-  st.push({q:`Count up from 0 by ${inc}: 0, ${inc}, ${2*inc}${3*inc<256?', '+3*inc:''}… The IP ends in <b>${ipo}</b>. Which network value does it fall in (round <b>down</b>)?`,kind:'num',ans:neto,
-    bad:u=>u==null?'Enter a number.':u%inc?`${u} isn’t a multiple of ${inc}.`:u>ipo?'Too high: always round down.':`The block starting at ${u} ends at ${u+inc-1}, before ${ipo}. Keep counting.`});
-  st.push({q:`So the network address of the IP is ?`,kind:'ip',ans:net,bad:(u,raw)=>u==null?badEntry(raw,'ip'):String(diagNet(ip,p,u,false))});
-  st.push({q:`The next network is .${neto+inc}${neto+inc===256?' (the end of the octet)':''}. Broadcast = one less. Broadcast address of the IP = ?`,kind:'ip',ans:bc,bad:(u,raw)=>u==null?badEntry(raw,'ip'):u===((bc+1)>>>0)?'That’s the next network. Subtract 1.':`Network ${M(ipStr(net))} + ${inc} − 1.`});
-  st.push({q:`The IP ends in .${ipo}; its block runs .${neto} to .${neto+inc-1}. Is it the <b>network</b> (first), <b>broadcast</b> (last), or a usable <b>host</b> (in between)?`,kind:'role',ans:role,
-    bad:()=>`.${neto} is the network, .${neto+inc-1} is the broadcast, and anything between is a host. Where is .${ipo}?`});
-  st.push({q:`Host bits h = number of 0s in the mask = 32 − ${p} = ?`,kind:'num',ans:h,bad:()=>`32 − ${p} = ?`});
-  st.push({q:`Hosts per network = 2<sup>${h}</sup> − 2 = ?`,kind:'num',ans:2**h-2,bad:u=>u===2**h?'Subtract 2 (network and broadcast).':`2<sup>${h}</sup> = ${2**h}, then subtract 2.`});
-  st.push({q:`For total networks, find the IP’s class. First octet is <b>${oct(ip,0)}</b>. Class A is 1–126, B is 128–191, C is 192–223. Which class?`,kind:'cls',ans:c.c,bad:()=>`${oct(ip,0)} falls in ${c.range}.`});
-  st.push({q:`Class ${c.c}’s default mask is /?`,kind:'prefix',ans:c.d,bad:()=>'A → /8, B → /16, C → /24.'});
-  st.push({q:`Borrowed bits n = ${p} − ${c.d} = ?`,kind:'num',ans:n,bad:()=>`${p} − ${c.d} = ?`});
-  st.push({q:`Total networks = 2<sup>${n}</sup> = ? (you can type ${M('2^'+n)})`,kind:'pow',ans:2**n,bad:u=>u===2**n-2?'No − 2 for networks.':`Keep doubling ${n} times, or type 2^${n}.`});
-  rows.forEach((rn,r)=>{
-    st.push({q:`Chart row ${r+1}: ${r===0?'the first row starts at .0. Its network is':`count up ${inc} from the row above. Row ${r+1} network is`} ?`,kind:'ip',ans:rn,bad:()=>`Row ${r+1} starts at .${r*inc} (${r} × ${inc}).`});
-    st.push({q:`Row ${r+1} broadcast = next row’s network − 1 = ?`,kind:'ip',ans:(rn+inc-1)>>>0,bad:u=>u===((rn+inc)>>>0)?'That’s the next row’s network. Subtract 1.':`.${r*inc+inc} − 1 = .${r*inc+inc-1}`});
+  st.push({q:`Write the whole mask in binary (32 bits): 255 in binary for each of the first three octets, then your 4th octet.`,kind:'bin32',ans:bin32(m),bad:(u,raw)=>hBin32(p,raw)});
+  st.push(...walkBlock(ip,p).slice(2));
+  st.push({q:`Compare the IP (ends in .${ipo}) with the network and broadcast you just found. Is it the <b>network</b> (first address), the <b>broadcast</b> (last), or a usable <b>host</b> (in between)?`,kind:'role',ans:role,
+    bad:()=>'First address of the block = network, last = broadcast, anything in between = usable host.'});
+  st.push({q:`Host bits h = the number of 0s in the mask (32 − ${p}) = ?`,kind:'num',ans:h,bad:()=>`Count the 0s in your binary mask, or subtract ${p} from 32.`});
+  st.push({q:`Hosts per network = 2<sup>h</sup> − 2 = ?`,kind:'num',ans:2**h-2,bad:u=>hHosts(h,u)});
+  st.push({q:`For total networks, find the IP’s class from its first octet (<b>${oct(ip,0)}</b>). Class A is 1–126, B is 128–191, C is 192–223. Which class?`,kind:'cls',ans:c.c,bad:()=>`Find ${oct(ip,0)} in those three ranges.`});
+  st.push({q:`What is the default prefix for that class?`,kind:'prefix',ans:c.d,bad:()=>'Each class has its own default: A is /8, B is /16, C is /24.'});
+  st.push({q:`Borrowed bits n = ${p} − your default prefix = ?`,kind:'num',ans:n,bad:()=>`Subtract your default prefix from ${p}.`});
+  st.push({q:`Total networks = 2<sup>n</sup> = ? (you can type it as ${M('2^n')} with your n)`,kind:'pow',ans:2**n,bad:u=>u===2**n-2?'No − 2 for networks.':'Double 1, n times, or type 2^ and your n.'});
+  rows.forEach((rn,r)=>{const nx=(rn+inc)>>>0;
+    st.push({q:r===0?`Network chart, row 1: the chart always starts at .0. Write row 1’s network address.`:`Row ${r+1}: add the increment to the row above’s network. Network address?`,kind:'ip',ans:rn,
+      bad:()=>r===0?'Copy the first three octets of the IP and end it in .0.':'Take the row above’s last octet and add the increment.'});
+    st.push({q:`Row ${r+1} broadcast = the next row’s network − 1. Broadcast address?`,kind:'ip',ans:(rn+inc-1)>>>0,bad:u=>u===nx?'That’s the next row’s network. Subtract 1.':'One less than the next row’s network.'});
   });
-  return st.concat({done:true,q:`Each row’s useable range runs from network + 1 to broadcast − 1. Fill in the worksheet and chart above and press <b>Check</b>.`});
+  return st.concat({done:true,q:`Each row’s useable host range runs from network + 1 to broadcast − 1. Everything else goes straight from your steps into the worksheet.`});
 }
 function explainSheet(ip,p,rows){
   const m=maskOf(p),mv=oct(m,3),inc=256-mv,net=(ip&m)>>>0,bc=(net+inc-1)>>>0,c=classOf(ip),n=p-c.d,h=32-p,ipo=oct(ip,3);
@@ -551,10 +549,10 @@ function genMaskBin(){
   return {mode:'prefix',sub:'bin',title:'Mask → binary',prompt:`Write ${asPrefix?`<b class="big">/${p}</b>`:`<b class="big">${ipStr(m)}</b>`} as a 32-bit binary mask`,
     fields:[{type:'bin32',label:'Subnet mask (binary)',answer:bin32(m)}],diag:x=>[diagBin32(p,x[0])],
     hint:`${p} ones, then ${32-p} zeros, in four groups of 8.`,explain:explainMask(p),
-    walk:()=>{const full=Math.floor(p/8),part=p%8,st=[{q:`/${p} has ${p} ones. How many full groups of 8 ones (11111111) is that? (${p} ÷ 8, ignore the remainder)`,kind:'num',ans:full,bad:()=>`${full} × 8 = ${full*8}.`}];
-      if(part)st.push({q:`That leaves ${p} − ${full*8} = ${part} ones for the next octet. Write that octet in binary.`,kind:'bits8',ans:bin8(oct(m,full)),bad:(u,raw)=>isBits8(raw)?`${part} ones then ${8-part} zeros.`:'Type 8 digits, each 0 or 1.'});
-      st.push({q:`Write all 32 bits.`,kind:'bin32',ans:bin32(m),bad:(u,raw)=>String(diagBin32(p,raw)||'')});
-      return st.concat({done:true,q:`${M(bin32(m))}. Enter it above and press <b>Check</b>.`});}};
+    walk:()=>{const full=Math.floor(p/8),part=p%8,st=[{q:`/${p} has ${p} ones. How many full groups of eight 1s (11111111) is that?`,kind:'num',ans:full,bad:u=>u!=null&&u*8>p?`${u} × 8 is more than ${p}. Try fewer.`:`Try 1 × 8, 2 × 8, 3 × 8 … and stop before you pass ${p}.`}];
+      if(part)st.push({q:`The leftover 1s (${p} − your groups × 8) start the next octet. Write that octet in binary: the leftover 1s, then 0s to make 8 digits.`,kind:'bits8',ans:bin8(oct(m,full)),bad:(u,raw)=>!isBits8(raw)?'Type 8 digits, each 0 or 1.':'Start with the leftover 1s on the left, then fill with 0s.'});
+      st.push({q:`Write all 32 bits: your full groups of 1s${part?', your partial octet,':''} then 0s for the rest.`,kind:'bin32',ans:bin32(m),bad:(u,raw)=>hBin32(p,raw)});
+      return st.concat({done:true,q:`That’s the binary mask.`});}};
 }
 function genRole(){
   const p=randPrefix(),m=maskOf(p),size=2**(32-p),role=pick(['network','host','broadcast']);
@@ -563,7 +561,7 @@ function genRole(){
     prompt:`Is ${asPrefix?`<b class="big">${ipStr(ip)}/${p}</b>`:`<b class="big">${ipStr(ip)}</b> with mask <b>${ipStr(m)}</b>`} a network address, a usable host, or a broadcast address?`,
     fields:[{type:'choice',label:'The IP is a…',answer:role}],diag:x=>[diagRole(ip,p,role,x[0])],
     hint:'Find the IP’s block (network to broadcast). First address = network, last = broadcast, anything between = host.',explain:explainSubnet(ip,p),
-    walk:()=>walkSteps(ip,p).slice(0,6).concat({q:`So the IP’s block runs from the network to the broadcast. Is ${M(ipStr(ip))} the <b>network</b>, the <b>broadcast</b>, or a usable <b>host</b>?`,kind:'role',ans:role,bad:()=>'First address = network, last = broadcast, anything in between = host.'},{done:true,q:`It’s a <b>${ROLES[role].toLowerCase()}</b>. Pick it above and press <b>Check</b>.`})};
+    walk:()=>walkBlock(ip,p).concat({q:`Compare the IP with the network and broadcast you just found. Is it the <b>network</b> (first address), the <b>broadcast</b> (last), or a usable <b>host</b> (in between)?`,kind:'role',ans:role,bad:()=>'First address of the block = network, last = broadcast, anything in between = usable host.'},{done:true,q:`Pick your answer in the answer boxes.`})};
 }
 function genClassNets(){
   const t=pick(['A','A','B','C']),ip=t==='A'?parseIP(`10.${R(0,255)}.${R(0,255)}.${R(1,254)}`):t==='B'?parseIP(`172.${R(16,31)}.${R(0,255)}.${R(1,254)}`):parseIP(`192.168.${R(0,255)}.${R(1,254)}`);
@@ -574,11 +572,11 @@ function genClassNets(){
     diag:x=>[diagDefault(ip,x[0]),diagClassNets(ip,p,x[1],false)],
     hint:'Class A (1–126) → /8, B (128–191) → /16, C (192–223) → /24. n = prefix − default. Networks = 2ⁿ.',
     explain:`<p>First octet ${oct(ip,0)} → Class ${c.c} → default /${c.d}.</p><p>n = ${p} − ${c.d} = ${n} borrowed bits → 2<sup>${n}</sup> = <b class="g">${big(2**n)}</b> networks.</p>`,
-    walk:()=>[{q:`First octet is <b>${oct(ip,0)}</b>. Class A is 1–126, B is 128–191, C is 192–223. Which class?`,kind:'cls',ans:c.c,bad:()=>`${oct(ip,0)} falls in ${c.range}.`},
-      {q:`Class ${c.c}’s default mask is /?`,kind:'prefix',ans:c.d,bad:()=>'A → /8, B → /16, C → /24.'},
-      {q:`Borrowed bits n = ${p} − ${c.d} = ?`,kind:'num',ans:n,bad:()=>`${p} − ${c.d} = ?`},
-      {q:`Total networks = 2<sup>${n}</sup> = ? (you can type ${M('2^'+n)})`,kind:'pow',ans:2**n,bad:()=>`Keep doubling ${n} times, or type 2^${n}.`},
-      {done:true,q:`Default /${c.d}, and 2<sup>${n}</sup> = <b>${big(2**n)}</b> networks. Enter them above and press <b>Check</b>.`}]};
+    walk:()=>[{q:`First octet is <b>${oct(ip,0)}</b>. Class A is 1–126, B is 128–191, C is 192–223. Which class?`,kind:'cls',ans:c.c,bad:()=>`Find ${oct(ip,0)} in those three ranges.`},
+      {q:`What is the default prefix for that class?`,kind:'prefix',ans:c.d,bad:()=>'Each class has its own default: A is /8, B is /16, C is /24.'},
+      {q:`Borrowed bits n = ${p} − your default prefix = ?`,kind:'num',ans:n,bad:()=>`Subtract your default prefix from ${p}.`},
+      {q:`Total networks = 2<sup>n</sup> = ? (you can type it as ${M('2^n')} with your n)`,kind:'pow',ans:2**n,bad:u=>u===2**n-2?'No − 2 for networks.':'Double 1, n times, or type 2^ and your n.'},
+      {done:true,q:`Those are your two answers.`}]};
 }
 
 /* ---------------- weak spots ---------------- */
@@ -641,124 +639,150 @@ function renderWeak(){
 
 
 /* ---------------- step-by-step walkthroughs for every question type ---------------- */
-/* Each step: q (the prompt), kind ('num' | 'ip' | 'prefix' | 'bits8'), ans, bad(u,raw) → tailored message.
-   The last item is {done:true,q:...} telling the student what to enter in the real answer boxes. */
+/* Each step: q (the prompt), kind, ans, bad(u,raw) → a nudge. Steps and nudges never state the answer the
+   student is being asked for: they only restate numbers the student has already worked out in earlier steps,
+   plus the rules (place values, class ranges, 256 − mask …). "Show me" is the only way to reveal a step. */
 const isBits8=raw=>/^[01]{8}$/.test(String(raw).replace(/\s/g,''));
 const bits8=raw=>String(raw).replace(/\s/g,'');
 const pv8=b=>`<span class="mono pv8">${[...b].map((c,i)=>`<span class="pvb"><small>${placeVals[i]}</small>${c}</span>`).join('')}</span>`;
+const IPFMT='Four numbers from 0 to 255, separated by dots.';
+const hBits=(v,raw)=>{if(!isBits8(raw))return 'Type 8 digits, each 0 or 1.';const b=bits8(raw),u=parseInt(b,2);
+  if([...b].reverse().join('')===bin8(v))return 'You wrote it backwards: the 128 bit goes on the left.';
+  return `Your bits add up to ${u}, ${u>v?'more':'less'} than ${v}. Go place by place from 128: if the place value fits in what’s left, write 1 and subtract it; if not, write 0.`;};
+const hDec=raw=>toNum(raw)==null?'Enter a whole number.':'Add up the place values (128, 64, 32 …) of each bit that’s 1.';
+const hMask=(p,raw)=>{const u=parseIP(raw);if(u==null)return IPFMT;const q=maskPrefix(u);
+  return q<0?'That isn’t a valid mask: it’s 255s, then one partial octet, then 0s.':`That’s a /${q} mask (${q} ones). You need ${p} ones.`;};
+const hBin32=(p,raw)=>{const s=String(raw).replace(/[.\s]/g,'');if(!/^[01]+$/.test(s))return 'Use only 1s and 0s (dots between octets are optional).';
+  if(s.length!==32)return `That’s ${s.length} bits. A mask is 32 bits: four groups of 8.`;if(!/^1*0*$/.test(s))return 'A mask is all 1s first, then all 0s: no 1 after a 0.';
+  const q=s.indexOf('0')<0?32:s.indexOf('0');return `You have ${q} ones; /${p} needs ${p}.`;};
+const hHosts=(h,u)=>u===2**h?'Now subtract 2: the network and broadcast addresses can’t be used.':u===2*h?`2<sup>${h}</sup> means doubling ${h} times, not 2 × ${h}.`:`Work out 2<sup>${h}</sup> (double 1, ${h} times: 2, 4, 8 …), then subtract 2.`;
+function hNet(ip,p,io,u,raw){
+  if(u==null)return IPFMT;
+  for(let j=0;j<io;j++)if(oct(u,j)!==oct(ip,j))return `Octet ${j+1} copies straight down from the IP.`;
+  for(let j=io+1;j<4;j++)if(oct(u,j)!==0)return `Every octet after octet ${io+1} is 0 in the network address.`;
+  return `Octet ${io+1} should be the round-down value you found in the step before.`;
+}
+function hBc(ip,io,next,u){
+  if(u==null)return IPFMT;
+  if(u===next)return 'That’s the next subnet itself. Go back one address.';
+  for(let j=0;j<io;j++)if(oct(u,j)!==oct(ip,j))return `Octet ${j+1} copies straight down from the IP.`;
+  for(let j=io+1;j<4;j++)if(oct(u,j)!==255)return `Every octet after octet ${io+1} is 255 in a broadcast.`;
+  return `Octet ${io+1} is one less than the next subnet’s value from the step before.`;
+}
 function interestingStep(m,io){
   return {q:`The mask is ${M(ipStr(m))}. Which octet is the <b>interesting</b> one, the first from the left that isn’t 255? (1–4)`,kind:'num',ans:io+1,
-    bad:u=>u==null||u<1||u>4?'Enter a number from 1 to 4.':oct(m,u-1)===255?`Octet ${u} is 255: all network bits, so it just copies down. Keep moving right.`:`Octet ${u} isn’t the <i>first</i> one below 255. Read left to right: ${M(ipStr(m))}.`};
+    bad:u=>u==null||u<1||u>4?'Enter a number from 1 to 4.':oct(m,u-1)===255?`Octet ${u} is 255: all network bits, so it just copies down. Keep moving right.`:`Octet ${u} isn’t the <i>first</i> one below 255. Read the mask from the left.`};
 }
+const maskValStep=(m,io)=>({q:`What is the mask’s value in octet ${io+1}?`,kind:'num',ans:oct(m,io),bad:()=>`Read octet ${io+1} of ${M(ipStr(m))}, counting from the left.`});
+const incStep=mv=>({q:`Increment = 256 − ${mv} = ?`,kind:'num',ans:256-mv,bad:u=>u===255-mv?'Use 256, not 255.':u===mv?'That’s the mask value. Subtract it from 256.':`256 minus ${mv}.`});
 function walkD2B(v){
   const st=[];let rem=v;
   placeVals.forEach((pv,k)=>{const fits=rem>=pv,r=rem;
     st.push({q:`${k===0?`Start with ${v}. `:''}You have <b>${r}</b> left. Does ${pv} fit (is ${r} ≥ ${pv})? Type <b>1</b> for yes or <b>0</b> for no.`,kind:'num',ans:fits?1:0,show:fits?`1 → ${r} − ${pv} = ${r-pv} left`:'0',
-      bad:u=>u!==0&&u!==1?'Type 1 or 0.':fits?`${r} is at least ${pv}, so it fits: that bit is 1 (then ${r} − ${pv} = ${r-pv} is left).`:`${r} is less than ${pv}, so it doesn’t fit: that bit is 0.`});
+      bad:u=>u!==0&&u!==1?'Type 1 or 0.':`Compare the two numbers: is ${r} at least ${pv}? If it is, the bit is 1 and you subtract; if not, it’s 0.`});
     if(fits)rem-=pv;});
-  return st.concat({done:true,q:`Reading your answers left to right: ${pv8(bin8(v))}. Turn those bits on above and press <b>Check</b>.`});
+  return st.concat({done:true,q:`Reading your answers from the top: ${pv8(bin8(v))}.`});
 }
 function walkB2D(v){
   const b=bin8(v),ones=placeVals.filter((pv,k)=>b[k]==='1');
-  const st=[{q:`Write the place values over the bits:<br>${pv8(b)}<br>How many bits are <b>1</b>?`,kind:'num',ans:ones.length,bad:()=>`Count the 1s in ${M(b)}.`}];
+  const st=[{q:`Write the place values over the bits:<br>${pv8(b)}<br>How many bits are <b>1</b>?`,kind:'num',ans:ones.length,bad:()=>'Count the 1s.'}];
   let tot=0;ones.forEach((pv,i)=>{const prev=tot;tot+=pv;
-    st.push({q:i===0?`The first 1 is under <b>${pv}</b>. What does your running total start at?`:`The next 1 is under <b>${pv}</b>. Running total ${prev} + ${pv} = ?`,kind:'num',ans:tot,
-      bad:u=>i===0?`It’s just the place value of that bit.`:u===prev?`Add the ${pv}.`:u===pv?`Add it to your running total: ${prev} + ${pv}.`:`${prev} + ${pv} = ?`});});
-  if(!ones.length)st.push({q:'No bits are 1, so the value is ?',kind:'num',ans:0,bad:()=>'Nothing to add up: it’s 0.'});
-  return st.concat({done:true,q:`So ${M(b)} = <b>${v}</b>. Enter that above and press <b>Check</b>.`});
+    st.push({q:i===0?`Look at the leftmost 1. What is its place value? That’s where your running total starts.`:`Now the next 1 to the right. Add its place value to your running total (${prev}). New total?`,kind:'num',ans:tot,
+      bad:u=>i===0?'Read the small number above that 1.':u===prev?'You still need to add this bit’s place value.':'Add the place value above this 1 to your running total.'});});
+  if(!ones.length)st.push({q:'No bits are 1. So what is the value?',kind:'num',ans:0,bad:()=>'Nothing to add up.'});
+  return st.concat({done:true,q:`That last total is the decimal value.`});
 }
 function walkP2M(p){
   const full=Math.floor(p/8),part=p%8,m=maskOf(p),mv=part?oct(m,full):0;
-  const st=[{q:`/${p} means ${p} ones in a row, and each full octet holds 8. How many <b>full octets</b> of 255 is that? (${p} ÷ 8, ignore the remainder)`,kind:'num',ans:full,
-    bad:u=>u!=null&&u*8>p?`${u} × 8 = ${u*8}, which is more than ${p}.`:`${full} × 8 = ${full*8} fits; ${full+1} × 8 = ${(full+1)*8} would be too many.`}];
-  if(full<4)st.push({q:`That’s ${full} × 8 = ${full*8} ones. How many ones are <b>left over</b>? ${p} − ${full*8} = ?`,kind:'num',ans:part,bad:()=>`${p} − ${full*8} = ?`});
-  if(part)st.push({q:`Octet ${full+1} gets those ${part} ones from the left. Add the first ${part} place value${part>1?'s':''} (128, 64, 32, 16, …). Total?`,kind:'num',ans:mv,
-    bad:u=>part>1&&u===placeVals[part-1]?`That’s just the last one. Add <i>all</i> ${part}: ${placeVals.slice(0,part).join(' + ')}.`:`${placeVals.slice(0,part).join(' + ')} = ?`});
-  st.push({q:`Write the mask: ${full?`${full} octet${full>1?'s':''} of 255, then `:''}${part?`${mv}, then `:''}0 for the rest.`,kind:'ip',ans:m,bad:(u,raw)=>String(diagMask(p,raw)||'')});
-  return st.concat({done:true,q:`/${p} = ${M(ipStr(m))}. Enter it above and press <b>Check</b>.`});
+  const st=[{q:`/${p} means ${p} ones in a row, and each full octet holds 8. How many <b>full octets</b> of 255 is that?`,kind:'num',ans:full,
+    bad:u=>u!=null&&u*8>p?`${u} × 8 is more than ${p}. Try fewer.`:`Try 1 × 8, 2 × 8, 3 × 8 … and stop before you pass ${p}.`}];
+  if(full<4)st.push({q:`How many ones are <b>left over</b> after those full octets? (${p} − your full octets × 8)`,kind:'num',ans:part,bad:()=>`Multiply your full octets by 8 and subtract that from ${p}.`});
+  if(part)st.push({q:`The next octet gets those leftover ones from the left. Add up that many place values, starting at 128 (128, 64, 32 …). Total?`,kind:'num',ans:mv,
+    bad:u=>part>1&&u===placeVals[part-1]?`That’s only the last one. Add all of them, starting from 128.`:`Add the first ${part} place value${part>1?'s':''}, starting at 128.`});
+  st.push({q:`Write the mask: your full octets as 255, then${part?' the value you just added up, then':''} 0 for the rest.`,kind:'ip',ans:m,bad:(u,raw)=>hMask(p,raw)});
+  return st.concat({done:true,q:`That’s the mask.`});
 }
 function walkM2P(p){
   const full=Math.floor(p/8),part=p%8,m=maskOf(p),mv=part?oct(m,full):0;
-  const st=[{q:`The mask is ${M(ipStr(m))}. How many octets are <b>255</b>?`,kind:'num',ans:full,bad:()=>`Count the 255s in ${M(ipStr(m))}.`},
-    {q:`Each 255 is 8 ones. ${full} × 8 = ?`,kind:'num',ans:full*8,bad:()=>`${full} × 8 = ?`}];
-  if(part){st.push({q:`The next octet is <b>${mv}</b>. Write it in binary (8 digits).`,kind:'bits8',ans:bin8(mv),bad:(u,raw)=>isBits8(raw)?String(diagBits(mv,bits8(raw))):'Type 8 digits, each 0 or 1.'});
-    st.push({q:`${M(bin8(mv))} has how many 1s?`,kind:'num',ans:part,bad:()=>`Count the 1s in ${M(bin8(mv))}.`});}
-  st.push({q:`Prefix = ${full*8}${part?` + ${part}`:''} = ?`,kind:'prefix',ans:p,bad:()=>`${full*8}${part?` + ${part}`:''} = ?`});
-  return st.concat({done:true,q:`${M(ipStr(m))} is <b>/${p}</b>. Enter it above and press <b>Check</b>.`});
+  const st=[{q:`The mask is ${M(ipStr(m))}. How many octets are <b>255</b>?`,kind:'num',ans:full,bad:()=>'Count the octets that are exactly 255.'},
+    {q:`Each 255 is 8 ones. How many ones is that in total?`,kind:'num',ans:full*8,bad:()=>'Multiply your count of 255s by 8.'}];
+  if(part){st.push({q:`The next octet is <b>${mv}</b>. Write it in binary (8 digits).`,kind:'bits8',ans:bin8(mv),bad:(u,raw)=>hBits(mv,raw)});
+    st.push({q:`How many 1s are in the binary you just wrote?`,kind:'num',ans:part,bad:()=>'Count the 1s in your binary.'});}
+  st.push({q:`Add the ones from the 255s${part?' and the ones in the partial octet':''}. Prefix = ?`,kind:'prefix',ans:p,bad:()=>part?'Add your two counts together.':'That’s your total from the 255s.'});
+  return st.concat({done:true,q:`That’s the prefix.`});
 }
 function walkAnd(ip,p){
   const m=maskOf(p),io=p%8===0?p/8:Math.floor((p-1)/8),k=io+1,mv=oct(m,io),ipo=oct(ip,io),neto=ipo&mv,net=(ip&m)>>>0;
-  const st=[interestingStep(m,io),{q:`What is the mask’s value in octet ${k}?`,kind:'num',ans:mv,bad:u=>u===ipo?`That’s the IP’s octet. I want the mask’s: ${M(ipStr(m))}.`:`Octet ${k} of ${M(ipStr(m))}.`}];
-  if(mv===0)st.push({q:`Anything ANDed with 0 is 0. So octet ${k} of the network is ?`,kind:'num',ans:0,bad:()=>'Anything AND 0 = 0.'});
+  const st=[interestingStep(m,io),maskValStep(m,io)];
+  if(mv===0)st.push({q:`Anything ANDed with 0 is 0. So what is octet ${k} of the network?`,kind:'num',ans:0,bad:()=>'Anything AND 0 = 0.'});
   else{
-    st.push({q:`Write the IP’s octet ${k} (<b>${ipo}</b>) in binary.`,kind:'bits8',ans:bin8(ipo),bad:(u,raw)=>isBits8(raw)?String(diagBits(ipo,bits8(raw))):'Type 8 digits, each 0 or 1.'});
-    st.push({q:`Write the mask’s octet (<b>${mv}</b>) in binary.`,kind:'bits8',ans:bin8(mv),bad:(u,raw)=>isBits8(raw)?String(diagBits(mv,bits8(raw))):'Type 8 digits, each 0 or 1.'});
-    st.push({q:`AND them bit by bit: 1 only where <i>both</i> are 1.<br>${M(bin8(ipo))} &nbsp;IP<br>${M(bin8(mv))} &nbsp;mask`,kind:'bits8',ans:bin8(neto),
-      bad:(u,raw)=>!isBits8(raw)?'Type 8 digits, each 0 or 1.':bits8(raw)===bin8(ipo|mv)&&(ipo|mv)!==neto?'That’s OR (1 where <i>either</i> is 1). AND needs both.':'Go column by column: a column is 1 only if both rows have a 1.'});
-    st.push({q:`${M(bin8(neto))} in decimal = ?`,kind:'num',ans:neto,bad:(u,raw)=>String(diagBinDec(neto,raw)||'')});
+    st.push({q:`Write the IP’s octet ${k} (<b>${ipo}</b>) in binary.`,kind:'bits8',ans:bin8(ipo),bad:(u,raw)=>hBits(ipo,raw)});
+    st.push({q:`Write the mask’s octet (<b>${mv}</b>) in binary.`,kind:'bits8',ans:bin8(mv),bad:(u,raw)=>hBits(mv,raw)});
+    st.push({q:`AND your two binary numbers bit by bit: a column is 1 only where <i>both</i> are 1.`,kind:'bits8',ans:bin8(neto),
+      bad:(u,raw)=>!isBits8(raw)?'Type 8 digits, each 0 or 1.':bits8(raw)===bin8(ipo|mv)&&(ipo|mv)!==neto?'That’s OR (1 where <i>either</i> is 1). AND needs both.':'Go column by column: 1 only if the IP bit and the mask bit are both 1.'});
+    st.push({q:`Convert your AND result to decimal.`,kind:'num',ans:neto,bad:(u,raw)=>hDec(raw)});
   }
-  st.push({q:`Write the network address: copy the octets before ${k} from the IP, octet ${k} is ${neto}${io<3?', and every octet after it is 0':''}.`,kind:'ip',ans:net,
-    bad:(u,raw)=>u==null?badEntry(raw,'ip'):String(diagNet(ip,p,u,true))});
-  return st.concat({done:true,q:`The network is ${M(ipStr(net))}. Enter it above and press <b>Check</b>.`});
+  st.push({q:`Write the network address: copy the octets before ${k} from the IP, use your result for octet ${k}${io<3?', and 0 for every octet after it':''}.`,kind:'ip',ans:net,
+    bad:(u,raw)=>hNet(ip,p,io,u,raw)});
+  return st.concat({done:true,q:`That’s the network address.`});
 }
 function walkHosts(p){const h=32-p;
-  return [{q:`Host bits h = 32 − ${p} = ?`,kind:'num',ans:h,bad:u=>u===p?'That’s the network bits. Subtract from 32.':`32 − ${p} = ?`},
-    {q:`2<sup>${h}</sup> = ? (2 multiplied by itself ${h} times)`,kind:'num',ans:2**h,bad:u=>u===2*h?`That’s 2 × ${h}. Keep doubling instead: 2, 4, 8, 16, …`:`Double 1 a total of ${h} times: 2, 4, 8, 16, …`},
-    {q:`Take away the network address and the broadcast: ${(2**h).toLocaleString()} − 2 = ?`,kind:'num',ans:2**h-2,bad:()=>`${(2**h).toLocaleString()} − 2 = ?`},
-    {done:true,q:`A /${p} has <b>${(2**h-2).toLocaleString()}</b> usable hosts. Enter it above and press <b>Check</b>.`}];}
+  return [{q:`Host bits h = 32 − ${p} = ?`,kind:'num',ans:h,bad:u=>u===p?'That’s the network bits. Subtract the prefix from 32.':`Subtract ${p} from 32.`},
+    {q:`2<sup>h</sup> = ? (double 1, h times)`,kind:'num',ans:2**h,bad:u=>u===2*h?`That’s 2 × h. 2<sup>h</sup> means doubling: 2, 4, 8 …`:'Double 1 once for each host bit: 2, 4, 8 …'},
+    {q:`Take away the network address and the broadcast: subtract 2.`,kind:'num',ans:2**h-2,bad:()=>'Your 2<sup>h</sup> minus 2.'},
+    {done:true,q:`That’s the usable hosts.`}];}
 function walkNets(base,n){
-  return [{q:`Networks = 2<sup>n</sup>, where n is the bits you borrowed. 2<sup>${n}</sup> = ?`,kind:'num',ans:2**n,bad:u=>u===2**n-2?'No − 2 for networks.':u===2*n&&n!==2?`That’s 2 × ${n}. Keep doubling instead: 2, 4, 8, …`:`Double 1 a total of ${n} time${n>1?'s':''}: 2, 4, 8, …`},
-    {q:`The borrowed bits join the network side, so the prefix grows: /${base} + ${n} = ?`,kind:'prefix',ans:base+n,bad:u=>u===base-n?'It grows, it doesn’t shrink.':`${base} + ${n} = ?`},
-    {done:true,q:`<b>${2**n}</b> subnets, new prefix <b>/${base+n}</b>. Enter them above and press <b>Check</b>.`}];}
+  return [{q:`Networks = 2<sup>n</sup>, where n is the bits you borrowed (${n}). 2<sup>${n}</sup> = ?`,kind:'num',ans:2**n,bad:u=>u===2**n-2?'No − 2 for networks.':u===2*n&&n!==2?`That’s 2 × ${n}. 2<sup>${n}</sup> means doubling.`:`Double 1, ${n} time${n>1?'s':''}: 2, 4, 8 …`},
+    {q:`The borrowed bits join the network side, so the prefix grows. New prefix = ?`,kind:'prefix',ans:base+n,bad:u=>u===base-n?'It grows, it doesn’t shrink.':`Add the ${n} borrowed bits to /${base}.`},
+    {done:true,q:`Those are your two answers.`}];}
 function walkSizeHosts(H,h,p){
-  const st=[{q:`You need ${H} hosts. Try h = ${h-1} host bits: 2<sup>${h-1}</sup> − 2 = ?`,kind:'num',ans:2**(h-1)-2,bad:()=>`2<sup>${h-1}</sup> = ${2**(h-1)}, then subtract 2.`},
-    {q:`${2**(h-1)-2} is less than ${H}, too small. Try one more bit: 2<sup>${h}</sup> − 2 = ?`,kind:'num',ans:2**h-2,bad:()=>`2<sup>${h}</sup> = ${2**h}, then subtract 2.`},
-    {q:`${2**h-2} ≥ ${H} ✓, so you need h = ${h}. Prefix = 32 − ${h} = ?`,kind:'prefix',ans:p,bad:u=>u===h?'That’s the host bits. Prefix = 32 − h.':`32 − ${h} = ?`}];
-  return st.concat({done:true,q:`The smallest subnet for ${H} hosts is <b>/${p}</b>. Enter it above and press <b>Check</b>.`});
+  return [{q:`You need ${H} hosts. Find the smallest number of host bits h where 2<sup>h</sup> − 2 is at least ${H}. Try h = 1, 2, 3 … What’s the smallest h that works?`,kind:'num',ans:h,
+      bad:u=>u==null||u<1?'Enter a number of bits.':u<h?`2<sup>${u}</sup> − 2 = ${2**u-2}, not enough for ${H}. Try more bits.`:`That works, but a smaller h might too. Try one less.`},
+    {q:`Prefix = 32 − h = ?`,kind:'prefix',ans:p,bad:u=>u===h?'That’s the host bits. Prefix = 32 − h.':'Subtract your h from 32.'},
+    {done:true,q:`That’s the smallest subnet.`}];
 }
-function walkSizeNets(N,n,base){const p=base+n,st=[];
-  if(n>1)st.push({q:`You need ${N} subnets. Try n = ${n-1} borrowed bit${n>2?'s':''}: 2<sup>${n-1}</sup> = ?`,kind:'num',ans:2**(n-1),bad:()=>`Double 1 a total of ${n-1} time${n>2?'s':''}.`});
-  st.push({q:`${n>1?`${2**(n-1)} is less than ${N}. `:`You need ${N} subnets. `}Try n = ${n}: 2<sup>${n}</sup> = ?`,kind:'num',ans:2**n,bad:()=>`Double 1 a total of ${n} time${n>1?'s':''}.`});
-  st.push({q:`${2**n} ≥ ${N} ✓. So how many bits do you borrow?`,kind:'num',ans:n,bad:u=>u===2**n?`${2**n} is how many subnets you get. The bits borrowed is the exponent: n.`:`The first n that worked was ${n}.`});
-  st.push({q:`New prefix = /${base} + ${n} = ?`,kind:'prefix',ans:p,bad:()=>`${base} + ${n} = ?`});
-  st.push({q:`Write the mask for /${p}.`,kind:'ip',ans:maskOf(p),bad:(u,raw)=>String(diagMask(p,raw)||'')});
-  return st.concat({done:true,q:`Borrow <b>${n}</b> bits; the new mask is ${M(ipStr(maskOf(p)))}. Enter them above and press <b>Check</b>.`});}
+function walkSizeNets(N,n,base){const p=base+n;
+  return [{q:`You need ${N} subnets. Find the smallest number of borrowed bits n where 2<sup>n</sup> is at least ${N}. Try n = 1, 2, 3 … Smallest n?`,kind:'num',ans:n,
+      bad:u=>u==null||u<1?'Enter a number of bits.':u===2**n?'That’s how many subnets you’d get. The answer is the exponent, n.':u<n?`2<sup>${u}</sup> = ${2**u}, fewer than ${N}. Try more bits.`:`That works, but fewer bits might too. Try one less.`},
+    {q:`New prefix = /${base} + your n = ?`,kind:'prefix',ans:p,bad:()=>`Add your n to ${base}.`},
+    {q:`Write the mask for your new prefix.`,kind:'ip',ans:maskOf(p),bad:(u,raw)=>hMask(p,raw)},
+    {done:true,q:`Those are your two answers.`}];}
 function walkInc(p){const m=maskOf(p),io=Math.floor((p-1)/8),mv=oct(m,io);
-  return [interestingStep(m,io),{q:`What is the mask’s value in octet ${io+1}?`,kind:'num',ans:mv,bad:()=>`Octet ${io+1} of ${M(ipStr(m))}.`},
-    {q:`Increment = 256 − ${mv} = ?`,kind:'num',ans:256-mv,bad:u=>u===255-mv?'Use 256, not 255.':`256 − ${mv} = ?`},
-    {done:true,q:`The increment is <b>${256-mv}</b>. Enter it above and press <b>Check</b>.`}];}
+  return [interestingStep(m,io),maskValStep(m,io),incStep(mv),{done:true,q:`That’s the increment.`}];}
 
-/* ---------------- walk me through it (subnet chart) ---------------- */
-function walkSteps(ip,p){
-  const m=maskOf(p),io=p%8===0?p/8:Math.floor((p-1)/8),k=io+1,mv=oct(m,io),inc=256-mv,ipo=oct(ip,io),neto=Math.floor(ipo/inc)*inc;
-  const net=(ip&m)>>>0,size=2**(32-p),bc=(net+size-1)>>>0,nextNet=(net+size)>>>0,h=32-p;
-  const hl=x=>[0,1,2,3].map(j=>j===io?`<b>${oct(x,j)}</b>`:oct(x,j)).join('.');
-  const around=()=>{const lo=Math.max(0,neto-inc),hi=Math.min(256-inc,neto+2*inc),a=[];for(let x=lo;x<=hi;x+=inc)a.push(x);return (lo>0?'… ':'')+a.join(', ')+(hi<256-inc?' …':'');};
-  return [
-    {q:`/${p} as a mask is ${M(ipStr(m))}. Which octet is the <b>interesting</b> one, the first from the left that isn’t 255? (1–4)`,kind:'num',ans:k,
-     bad:u=>u==null||u<1||u>4?'Enter a number from 1 to 4.':oct(m,u-1)===255?`Octet ${u} of the mask is 255: all network bits, so it just copies down from the IP. Keep moving right.`:`Octet ${u} isn’t the <i>first</i> one that’s below 255. Read the mask left to right: ${M(ipStr(m))}.`},
-    {q:`What is the mask’s value in octet ${k}?`,kind:'num',ans:mv,
-     bad:u=>u===ipo?`That’s the IP’s octet ${k}. I want the <i>mask’s</i>: ${M(hl(m))}.`:`Look at octet ${k} of the mask: ${M(hl(m))}.`},
-    {q:`The increment is 256 − ${mv}. What is it?`,kind:'num',ans:inc,
-     bad:u=>u===255-mv?'Use 256, not 255.':u===mv?`That’s the mask value. Subtract it from 256.`:`256 − ${mv} = ?`},
-    {q:`The IP is ${M(hl(ip))}. In octet ${k}, subnets start at 0, ${inc}${2*inc<256?', '+2*inc:''}${3*inc<256?', '+3*inc:''}${4*inc<256?'…':''} Which start does ${ipo} round <b>down</b> to?`,kind:'num',ans:neto,
-     bad:u=>u==null?'Enter a number.':u%inc!==0?`${u} isn’t a multiple of ${inc}, so it isn’t a subnet start. Count by ${inc}: ${around(u)}.`:u>ipo?`${u} is above ${ipo}. Always round down: the network is never higher than the IP.`:`The block starting at ${u} only runs to ${u+inc-1}, which doesn’t reach ${ipo}. Keep counting: ${around(u)}.`},
-    {q:`Write the <b>network address</b>: octets before ${k} copy from the IP, octet ${k} is ${neto}${io<3?', and every octet after it is 0':''}.`,kind:'ip',ans:net,
-     bad:(u,raw)=>u==null?badEntry(raw,'ip'):String(diagNet(ip,p,u,false))},
-    {q:`The next subnet starts at ${neto+inc} in octet ${k}${neto+inc===256?' (256 means it rolls over into the octet before)':''}, so it’s ${M(ipStr(nextNet))}. The <b>broadcast</b> is the address right before that${io<3?': octet '+k+' is '+(neto+inc-1)+' and every octet after it is 255':''}. Write the broadcast.`,kind:'ip',ans:bc,
-     bad:(u,raw)=>u==null?badEntry(raw,'ip'):u===nextNet?`That’s the next subnet itself. Go back one address.`:u===((bc-1)>>>0)?'That’s one too low; it’s the last usable. The broadcast is the very last address in the block.':`Next subnet ${M(ipStr(nextNet))} minus 1.`},
-    {q:`Host bits = 32 − ${p} = ${h}. How many <b>usable hosts</b> is 2<sup>${h}</sup> − 2?`,kind:'num',ans:2**h-2,
-     bad:(u,raw)=>String(diagHosts(h,raw)||'')},
-  ].concat([{done:true,q:`You have everything for the chart. Network = ${M(ipStr(net))}. Gateway = network + 1. Last usable = broadcast − 1. Broadcast = ${M(ipStr(bc))}. Hosts = ${(2**h-2).toLocaleString()}. Fill them in above and press <b>Check</b>.`}]);
+/* the first part of the subnet chart method, shared by the chart, the role drill and the worksheet */
+function walkBlock(ip,p){
+  const m=maskOf(p),io=p%8===0?p/8:Math.floor((p-1)/8),k=io+1,mv=oct(m,io),inc=256-mv,ipo=oct(ip,io),neto=ipo-ipo%inc;
+  const net=(ip&m)>>>0,size=2**(32-p),bc=(net+size-1)>>>0,next=(net+size)>>>0;
+  return [interestingStep(m,io),maskValStep(m,io),incStep(mv),
+    {q:`The IP’s octet ${k} is <b>${ipo}</b>. In that octet, subnets start at 0 and go up by your increment. Which start does ${ipo} round <b>down</b> to?`,kind:'num',ans:neto,
+     bad:u=>u==null?'Enter a number.':u%inc?`That isn’t a multiple of the increment (${inc}).`:u>ipo?'Too high: always round down, never up.':`That block ends before ${ipo} (it’s only ${inc} wide). Keep counting up by ${inc}.`},
+    {q:`Write the <b>network address</b>: copy the octets before ${k}, use your round-down value for octet ${k}${io<3?', and 0 for every octet after it':''}.`,kind:'ip',ans:net,bad:(u,raw)=>hNet(ip,p,io,u,raw)},
+    {q:`The next subnet starts one increment later. What is octet ${k} of the next subnet? (256 means it rolls over into the octet before)`,kind:'num',ans:neto+inc,bad:()=>'Add the increment to your round-down value.'},
+    {q:`The <b>broadcast</b> is the last address before the next subnet. Write the broadcast address.`,kind:'ip',ans:bc,bad:(u,raw)=>hBc(ip,io,next,u)}];
+}
+
+function walkSteps(ip,p){const h=32-p;
+  return walkBlock(ip,p).concat([
+    {q:`Host bits h = 32 − ${p} = ?`,kind:'num',ans:h,bad:()=>`Subtract ${p} from 32.`},
+    {q:`Usable hosts = 2<sup>h</sup> − 2 = ?`,kind:'num',ans:2**h-2,bad:u=>hHosts(h,u)},
+    {done:true,q:`Now fill in the chart: your network and broadcast go in their boxes, the gateway is network + 1, the last usable is broadcast − 1, and the usable hosts is your last answer.`}]);}
+function setWalkView(on){
+  state.walkView=on&&!!state.walk;const v=state.walkView;
+  $('#fields').hidden=v;$('#checkBtn').hidden=v;$('#walk').hidden=!v;
+  $('#hintBtn').textContent=state.walk?(v?'← Back to the answer boxes':'Show my steps'):'Hint: step by step (½ points)';
+  if(v){renderWalk();focusWalk();}
 }
 function renderWalk(){
-  const w=state.walk,box=$('#walk');if(!w){box.hidden=true;box.innerHTML='';return;}box.hidden=false;
+  const w=state.walk,box=$('#walk');if(!w){box.hidden=true;box.innerHTML='';return;}box.hidden=!state.walkView;
   const shown=(v,k)=>k==='role'?ROLES[v]:k==='cls'?'Class '+v:typeof v==='number'&&v>255?v.toLocaleString():v;
-  box.innerHTML=`<div class="wk-title">Step by step</div><ol>`+w.steps.slice(0,w.i+1).map((st,n)=>{
-    if(st.done)return `<li class="wdone-all">${st.q}</li>`;
+  box.innerHTML=`<div class="wk-title">Step by step <small>· counts as a hint (½ points)</small></div><div class="wtip">💡 ${state.q.hint} <button class="btn small" id="hintGuide">Open the guide →</button></div><ol>`+w.steps.slice(0,w.i+1).map((st,n)=>{
+    if(st.done)return `<li class="wdone-all">${st.q}<div class="wrow"><button class="btn small primary" id="wfill">Fill in the answers →</button></div></li>`;
     if(n<w.i)return `<li class="wok"><span>${st.q}</span><b class="g mono wans">✓ ${st.show||(st.kind==='ip'?ipStr(st.ans):st.kind==='prefix'?'/'+st.ans:shown(st.ans,st.kind))}</b></li>`;
     return `<li class="wcur"><span>${st.q}</span><div class="wrow"><input id="winp" class="winp" autocomplete="off" spellcheck="false" inputmode="${['role','cls'].includes(st.kind)?'text':st.kind==='ip'||st.kind==='bin32'?'decimal':st.kind==='pow'?'text':'numeric'}" placeholder="${{ip:'e.g. 192.168.4.0',prefix:'e.g. /26',bits8:'8 digits, e.g. 01000000',bin32:'32 bits, dots optional',role:'network, host or broadcast',cls:'A, B or C',pow:'number or 2^n'}[st.kind]||'number'}"><button class="btn small primary" id="wchk">Check step</button><button class="btn small" id="wshow">Show me</button></div><div class="wmsg" id="wmsg">${w.msg||''}</div></li>`;
   }).join('')+`</ol>`;
+  const hg=$('#hintGuide');if(hg)hg.onclick=()=>openTool('guide',GUIDE_FOR[state.q.mode]);
+  const wf=$('#wfill');if(wf)wf.onclick=()=>{setWalkView(false);const f=$('#fields input:not([readonly]),#fields .bit,#fields .choice');if(f&&isDesktop())f.focus();$('#fields').scrollIntoView({block:'nearest',behavior:'smooth'});};
   const inp=$('#winp');if(!inp)return;
   inp.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();e.stopPropagation();walkCheck();}});
   $('#wchk').onclick=walkCheck;$('#wshow').onclick=()=>{w.i++;w.msg='';renderWalk();focusWalk();};
@@ -802,7 +826,7 @@ function next(force){
   $$('#fields .bit').forEach(b=>b.onclick=()=>{if(state.checked)return;b.classList.toggle('on');b.textContent=b.classList.contains('on')?'1':'0';});
   $('#hint').hidden=true;$('#feedback').className='feedback';$('#work').style.display='none';
   $('#checkBtn').innerHTML='Check <span class="kbd">Enter</span>';$('#hintBtn').disabled=false;
-  state.walk=null;renderWalk();
+  state.walk=null;setWalkView(false);renderWalk();
   if($('#autoClear').checked){strokes=[];redrawInk();$('#scratchText').value='';}
   const first=$('#fields input');if(first&&isDesktop())first.focus();
 }
@@ -818,6 +842,7 @@ function isRight(f,v){
 }
 const show=f=>f.type==='choice'?ROLES[f.answer]:f.type==='bin32'?f.answer:f.type==='numalt'?big(f.answer):f.type==='ip'?ipStr(f.answer):f.type==='prefix'?'/'+f.answer:f.type==='bits'?f.answer:Number(f.answer).toLocaleString();
 function check(){
+  if(state.walkView&&!state.checked)return;
   if(state.checked){next();if(!isDesktop())$('.card').scrollIntoView({block:'start',behavior:'smooth'});return;}
   const q=state.q;let all=true;const vals=q.fields.map((f,i)=>readField(f,$(`.field[data-i="${i}"]`)));const wrong=[];
   q.fields.forEach((f,i)=>{const el=$(`.field[data-i="${i}"]`);const ok=isRight(f,vals[i]);if(!ok)wrong.push(i);
@@ -845,11 +870,12 @@ function check(){
   if(!isDesktop())$('#feedback').scrollIntoView({block:'nearest',behavior:'smooth'});else $('#checkBtn').focus();
 }
 $('#checkBtn').onclick=check;
-$('#hintBtn').onclick=()=>{if(state.checked||state.walk)return;state.hinted=true;
+$('#hintBtn').onclick=()=>{if(state.checked)return;
+  if(state.walk){setWalkView(!state.walkView);if(!state.walkView)$('#fields').scrollIntoView({block:'nearest',behavior:'smooth'});return;}
+  state.hinted=true;
+  if(state.q.walk){state.walk={steps:state.q.walk(),i:0,msg:''};setWalkView(true);return;}
   const h=$('#hint');h.innerHTML=`💡 ${state.q.hint}<br><button class="btn small" id="hintGuide">Open the guide →</button>`;h.hidden=false;
-  $('#hintGuide').onclick=()=>openTool('guide',GUIDE_FOR[state.q.mode]);
-  if(state.q.walk){state.walk={steps:state.q.walk(),i:0,msg:''};renderWalk();focusWalk();}
-  $('#hintBtn').disabled=true;};
+  $('#hintGuide').onclick=()=>openTool('guide',GUIDE_FOR[state.q.mode]);$('#hintBtn').disabled=true;};
 $('#skipBtn').onclick=()=>{if(!state.checked){state.streak=0;renderStats();}next();};
 $('#fields').addEventListener('keydown',e=>{
   if(e.key==='Enter'&&e.target.classList.contains('bit')){e.preventDefault();check();return;}

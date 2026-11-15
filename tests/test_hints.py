@@ -17,7 +17,7 @@ with sync_playwright() as pw:
         const work=st.filter(s=>!s.done);if(work.some(s=>s.ans===undefined||typeof s.bad!=='function'||!s.q)){bad.push('incomplete step '+k);continue;}
         const answers=work.map(s=>s.ans);
         q.fields.forEach(f=>{const a=f.answer;
-          const ws=q.mode==='worksheet';const ipAns=work.filter(s=>s.kind==='ip').map(s=>s.ans);const hit=f.type==='bits'?work.map(s=>s.ans).join('')===a:answers.includes(a)||(q.mode==='detective'&&(a===((answers[4]+1)>>>0)||a===((answers[5]-1)>>>0)))||(ws&&f.cell&&(f.cell.c===1&&ipAns.includes((a-1)>>>0)||f.cell.c===2&&ipAns.includes((a+1)>>>0)));
+          const ws=q.mode==='worksheet';const ipAns=work.filter(s=>s.kind==='ip').map(s=>s.ans);const hit=f.type==='bits'?work.map(s=>s.ans).join('')===a:answers.includes(a)||(q.mode==='detective'&&q.sub!=='role'&&(ipAns.includes((a-1)>>>0)||ipAns.includes((a+1)>>>0)))||(ws&&f.cell&&(f.cell.c===1&&ipAns.includes((a-1)>>>0)||f.cell.c===2&&ipAns.includes((a+1)>>>0)));
           if(!hit)bad.push(`${k} field ${f.label} (${a}) not reached by the steps`);});
         // every wrong-answer message is non-empty and never throws
         work.forEach(s=>{for(const raw of ['', '999', '0', '1', '/5', '10.0.0.0', '11111111', 'abc']){let u=null;
@@ -26,6 +26,23 @@ with sync_playwright() as pw:
       return {bad:bad.slice(0,10),n:bad.length,kinds};}})()""")
     ok(r['n']==0,f"12,500 questions across {len(r['kinds'])} question types: every step leads to the real answer and handles junk input {r['bad']}")
     print('    types:',', '.join(sorted(r['kinds'])))
+
+    # 1b. no step gives away its own answer, in the question or in the nudge after a wrong try
+    hits=pg.evaluate("""(()=>{with(window.SS){const hits=[];
+      const fmt=(s)=>{const a=s.ans;if(s.kind==='ip')return [ipStr(a)];if(s.kind==='prefix')return ['/'+a];if(s.kind==='cls')return ['Class '+a];
+        if(s.kind==='bits8'||s.kind==='bin32')return [String(a),String(a).replace(/\\./g,'')];if(typeof a==='number'&&a>=10)return [String(a),a.toLocaleString()];return [];};
+      const strip=h=>String(h).replace(/<[^>]+>/g,' ').replace(/&nbsp;/g,' ');
+      for(let t=0;t<600;t++)for(const m of ['binary','prefix','anding','detective','formulas','worksheet']){state.level=t%2?'core':'stretch';const q=GEN[m]();
+        q.walk().forEach((s,i)=>{if(s.done)return;const needles=fmt(s);if(!needles.length)return;
+          const texts=[strip(s.q)];for(const raw of ['','7','999','1.2.3.4','00000000','/3','0','5','100','255.255.255.0','11111111','10.0.0.0'])
+            try{const u=s.kind==='ip'?parseIP(raw):s.kind==='num'&&/^\\d+$/.test(raw)?Number(raw):null;texts.push(strip(s.bad(u,raw)))}catch(e){}
+          for(const tx of texts)for(const nd of needles){const re=new RegExp('(^|[^0-9./])'+nd.replace(/[.^$*+?()[\\]{}|\\\\]/g,'\\\\$&')+'(?![0-9]|\\\\.[0-9])');
+            if(re.test(tx))hits.push(q.mode+': '+tx+' ⇐ '+nd);}});}
+      return hits;}})()""")
+    # numbers that are part of the problem or of a rule (place values, class ranges, 256 − mask) are not leaks
+    RULES=['Class A is 1','A is /8','starting at 128','place values (128','256 means it rolls','256 −','256 minus','32 −','Subtract','(it’s only','go up by your increment','multiple of the increment','Each 255 is 8','Try 1 × 8','first 1 place value','Subtract it from 256','The IP’s octet']
+    real=[h for h in hits if not any(r in h for r in RULES)]
+    ok(not real,f'no step or nudge states the answer it’s asking for ({len(hits)} matches were problem data or rule text) {real[:3]}')
     # 2. UI: do the walkthrough for real on several questions of each type
     for mode in ['binary','prefix','anding','detective','formulas','worksheet']:
         pg.click(f'.tab[data-m="{mode}"]'); done=0
@@ -41,7 +58,8 @@ with sync_playwright() as pw:
                     pg.press('#winp','Enter')
                     if not pg.inner_text('#wmsg').strip(): ok_q=False
                 pg.fill('#winp',ans); pg.press('#winp','Enter')
-            if pg.locator('.wdone-all').count()!=1: ok_q=False
+            if pg.locator('.wdone-all').count()!=1 or not pg.is_hidden('#fields'): ok_q=False
+            pg.click('#wfill')
             f=pg.evaluate("window.SS.state.q.fields.map(f=>f.type==='bits'||f.type==='choice'?f.answer:window.SS.show(f))")
             for i,(v,t) in enumerate(zip(f,pg.evaluate("window.SS.state.q.fields.map(f=>f.type)"))):
                 if t=='choice': pg.click(f'.field[data-i="{i}"] .choice[data-v="{v}"]')

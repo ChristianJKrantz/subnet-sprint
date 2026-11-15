@@ -50,7 +50,7 @@ Total networks is counted from the IP's class default mask (10.x.x.x is Class A,
 <img src="docs/feedback.png" alt="Feedback after swapping the last usable and broadcast boxes, explaining each mistake" width="720">
 
 ### Step-by-step hints
-Every question has a **Hint** that walks you through it as a series of fill-in-the-blank steps, each checked before you move on. A wrong step gets its own explanation, and **Show me** reveals a step if you're stuck. For example:
+Every question has a **Hint** that swaps the answer boxes for a series of fill-in-the-blank steps, each checked before you move on. The steps never state the answer they're asking for: a wrong try gets a nudge toward the method, not the number. **Show me** reveals a step only if you ask, and **Fill in the answers** (or **Back to the answer boxes**) brings the answer boxes back. For example:
 
 - **Decimal → binary:** for each place value from 128 down, does it fit in what's left? (1 or 0)
 - **Binary → decimal:** count the 1 bits, then keep a running total of their place values.
@@ -149,7 +149,7 @@ The `tests/` folder has two [Playwright](https://playwright.dev/python/) scripts
 - **`test_security.py`** tries to inject code through every input and through tampered saved data, checks the Content Security Policy blocks inline and outside scripts, confirms nothing loads from other sites, and checks the page refuses to run inside another site's frame.
 - **`test_touch.py`** uses simulated finger swipes on a phone and tablet to check the Guide and Calculator panels scroll (with momentum) without moving the page behind them, and that tapping keys and drawing on the scratchpad still work.
 - **`test_worksheet.py`** loads the five problems from the class solutions guide and checks every worksheet answer and chart row matches it, then checks 15 common mistakes get the right explanation, that No-help mode hides the help, and that exam readiness counts correctly and survives a reload.
-- **`test_hints.py`** generates 12,500 questions across all 11 question types and checks every hint's steps lead to the real answer and handle junk input, then works through 40 hints on screen with deliberate wrong steps and answers each question for half points.
+- **`test_hints.py`** generates 15,000 questions across every question type and checks every hint's steps lead to the real answer and handle junk input, scans every step and nudge to make sure none states the answer it's asking for, then works through 40 hints on screen with deliberate wrong steps and answers each question for half points.
 
 ```bash
 pip install playwright

@@ -29,10 +29,12 @@ with sync_playwright() as pw:
     while 'Prefix → mask' not in pg.text_content('#qtype'): pg.click('#skipBtn')
     import re,ipaddress
     p=int(re.search(r'/(\d+)',pg.inner_text('#prompt')).group(1))
-    pg.click('#hintBtn'); ok('hint box shows', pg.is_visible('#hint'))
+    pg.click('#hintBtn'); ok('Hint swaps the answer boxes for the steps', pg.is_visible('#walk') and pg.is_hidden('#fields') and pg.is_hidden('#checkBtn'))
     pg.click('#hintGuide'); pg.wait_for_timeout(500)
     ok('hint guide link opens Guide tab', pg.is_visible('#t-guide'))
     ok('hint guide link opens Prefix↔mask section', pg.evaluate("document.querySelector('#g-mask').open"))
+    pg.keyboard.press('Escape'); pg.click('#hintBtn'); ok('“Back to the answer boxes” brings them back', pg.is_visible('#fields') and pg.is_hidden('#walk') and 'Show my steps' in pg.inner_text('#hintBtn'))
+    pg.click('#hintBtn'); ok('“Show my steps” returns to the steps where you left off', pg.is_visible('#walk')); pg.click('#hintBtn')
     s0=int(pg.text_content('#sScore')); pg.fill('#f0',str(ipaddress.IPv4Network(f'0.0.0.0/{p}').netmask)); pg.click('#checkBtn')
     ok('hinted correct answer = +5', int(pg.text_content('#sScore'))==s0+5)
     ok('hint button disabled after check', pg.is_disabled('#hintBtn'))
