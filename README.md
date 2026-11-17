@@ -8,6 +8,8 @@ Practice binary conversion, prefix ↔ subnet mask, ANDing, full subnet charts, 
 
 Works in any modern browser on desktop, tablet or phone. No install, no account, no tracking.
 
+It has a green-on-black terminal look with falling "code rain" in the background. The rain pauses when the tab is hidden, and if your device is set to reduce motion it shows a still frame instead.
+
 ![Desktop view: a subnet chart question, with the mask and IP octets written in binary on the scratchpad](docs/desktop.png)
 
 ---

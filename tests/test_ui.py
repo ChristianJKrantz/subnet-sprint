@@ -66,7 +66,7 @@ with sync_playwright() as pw:
     pg.click('.ttab[data-t="scratch"]'); pg.wait_for_timeout(200)
     ok('bit grid drawn', pg.evaluate(GRID)>0)
     draw(pg); n1=pg.evaluate(INK); ok('drawing leaves ink', n1>0)
-    pg.click('.swatch[data-c="#5aa9ff"]'); draw(pg,150); n2=pg.evaluate(INK); ok('blue pen draws more', n2>n1)
+    pg.click('.swatch[data-c="#4dffd0"]'); draw(pg,150); n2=pg.evaluate(INK); ok('blue pen draws more', n2>n1)
     pg.click('#undo'); ok('undo removes last stroke', abs(pg.evaluate(INK)-n1)<n1*0.1)
     pg.click('#eraser'); bx=pg.locator('#ink').bounding_box(); pg.mouse.move(bx['x']+20,bx['y']+80); pg.mouse.down(); pg.mouse.move(bx['x']+200,bx['y']+95,steps=15); pg.mouse.up()
     ok('eraser removes ink', pg.evaluate(INK)<n1); pg.click('#eraser')

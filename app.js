@@ -1260,7 +1260,7 @@ tools.dataset.cur='scratch';
 
 /* ---------------- scratchpad ---------------- */
 const ink=$('#ink'),gridC=$('#grid'),ictx=ink.getContext('2d'),gctx=gridC.getContext('2d');
-let strokes=[],cur=null,penColor='#e6edf3',erasing=false,showGrid=store.get('ss_grid',true);
+let strokes=[],cur=null,penColor='#d4ffe2',erasing=false,showGrid=store.get('ss_grid',true);
 $('#guideToggle').classList.toggle('on',showGrid);
 function sizePad(){
   const r=$('#padwrap').getBoundingClientRect();if(!r.width||!r.height)return;const d=window.devicePixelRatio||1;
@@ -1271,9 +1271,9 @@ function drawGrid(){
   const r=$('#padwrap').getBoundingClientRect();gctx.clearRect(0,0,r.width,r.height);if(!showGrid)return;
   const vals=[128,64,32,16,8,4,2,1];const w=r.width/8;
   gctx.font='600 12px "JetBrains Mono", monospace';gctx.textAlign='center';gctx.textBaseline='top';
-  vals.forEach((v,i)=>{gctx.fillStyle='#4b5869';gctx.fillText(v,w*i+w/2,8);
-    if(i>0){gctx.strokeStyle='#1f2835';gctx.lineWidth=1;gctx.beginPath();gctx.moveTo(Math.round(w*i)+.5,4);gctx.lineTo(Math.round(w*i)+.5,r.height-4);gctx.stroke();}});
-  gctx.strokeStyle='#26303e';gctx.beginPath();gctx.moveTo(4,28.5);gctx.lineTo(r.width-4,28.5);gctx.stroke();
+  vals.forEach((v,i)=>{gctx.fillStyle='#3d7a52';gctx.fillText(v,w*i+w/2,8);
+    if(i>0){gctx.strokeStyle='#0b2a16';gctx.lineWidth=1;gctx.beginPath();gctx.moveTo(Math.round(w*i)+.5,4);gctx.lineTo(Math.round(w*i)+.5,r.height-4);gctx.stroke();}});
+  gctx.strokeStyle='#123d22';gctx.beginPath();gctx.moveTo(4,28.5);gctx.lineTo(r.width-4,28.5);gctx.stroke();
 }
 function drawStroke(s,from){
   ictx.globalCompositeOperation=s.erase?'destination-out':'source-over';
@@ -1369,4 +1369,26 @@ if(isDesktop())openTool('scratch');
 
 /* hooks for the automated tests */
 window.SS={problemFrom,buildPrint,getFlow:()=>state.flow,flowAnswer,setLayout:v=>{layoutPref=v;store.set('ss_layout',v);},startWalk,tipFor,next,genSheet,walkSheet,genMaskBin,genRole,genClassNets,classOf,bin32,bits32,pow2,toRole,ipStr,walkSteps,walkD2B,walkB2D,walkP2M,walkM2P,walkAnd,walkHosts,walkNets,walkSizeHosts,walkSizeNets,walkInc,GEN,state,WEAK,getWeak:()=>weak,pickWeak,next,check,show,isRight,parseIP,R,netCtx,diagNet,diagChart,diagHosts,diagBits,diagBinDec,diagMask,diagPrefix,diagNetworks,diagNewPrefix,diagSizeHosts,diagBits4Nets,diagNewMask,diagIncrement};
+})();
+
+/* ---------------- matrix code rain (decorative; pauses when hidden, off for reduced motion) ---------------- */
+(function(){
+  const cv=document.getElementById('rain');if(!cv||!cv.getContext)return;
+  const ctx=cv.getContext('2d'),glyphs='01アイウエオカキクケコサシスセソタチツテトナニヌネノ0123456789ABCDEF./';
+  let cols=[],fs=16,w=0,h=0,last=0,raf=0;
+  const reduce=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)');
+  function size(){const d=Math.min(window.devicePixelRatio||1,2);w=innerWidth;h=innerHeight;cv.width=w*d;cv.height=h*d;ctx.setTransform(d,0,0,d,0,0);
+    fs=w<600?14:16;const n=Math.ceil(w/fs);cols=Array.from({length:n},()=>Math.random()*-h/fs);ctx.fillStyle='#010804';ctx.fillRect(0,0,w,h);}
+  function frame(t){raf=requestAnimationFrame(frame);if(t-last<60)return;last=t;
+    ctx.fillStyle='rgba(1,8,4,0.12)';ctx.fillRect(0,0,w,h);ctx.font=fs+'px "JetBrains Mono",monospace';
+    for(let i=0;i<cols.length;i++){const y=cols[i]*fs;if(y>0){const ch=glyphs[(Math.random()*glyphs.length)|0];
+      ctx.fillStyle='#b8ffd0';ctx.fillText(ch,i*fs,y);ctx.fillStyle='#00ff66';ctx.fillText(glyphs[(Math.random()*glyphs.length)|0],i*fs,y-fs);}
+      cols[i]+=1;if(y>h&&Math.random()>.975)cols[i]=Math.random()*-20;}}
+  function staticFrame(){size();ctx.font=fs+'px "JetBrains Mono",monospace';for(let i=0;i<cols.length;i++){const n=(Math.random()*h/fs)|0;
+    for(let k=0;k<n;k++){ctx.fillStyle=`rgba(0,255,102,${(k/n)*.5})`;ctx.fillText(glyphs[(Math.random()*glyphs.length)|0],i*fs,k*fs);}}}
+  function start(){cancelAnimationFrame(raf);if(reduce&&reduce.matches){staticFrame();return;}size();raf=requestAnimationFrame(frame);}
+  addEventListener('resize',()=>{clearTimeout(start.t);start.t=setTimeout(start,200);});
+  document.addEventListener('visibilitychange',()=>{if(document.hidden)cancelAnimationFrame(raf);else start();});
+  if(reduce&&reduce.addEventListener)reduce.addEventListener('change',start);
+  start();
 })();
