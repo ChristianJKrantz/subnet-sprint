@@ -1,10 +1,10 @@
 /* Subnet Sprint service worker: keeps a copy of the game on the device so it works offline.
    Pages are network-first (you always get the newest version when online, the saved copy when not).
    Fonts and icons are cache-first since they never change. Only this site's own files are ever handled or cached. */
-const CACHE = 'subnet-sprint-v9';
+const CACHE = 'subnet-sprint-v10';
 const FONTS = ['inter-latin-400', 'inter-latin-500', 'inter-latin-600', 'inter-latin-700', 'inter-latin-800',
   'jetbrains-mono-latin-400', 'jetbrains-mono-latin-600', 'jetbrains-mono-latin-700'].map(f => `fonts/${f}-normal.woff2`);
-const CORE = ['./', 'index.html', 'app.js', 'manifest.webmanifest', 'icon.svg?v=2', 'icon-192.png?v=2', 'icon-512.png?v=2', 'apple-touch-icon.png?v=2', ...FONTS];
+const CORE = ['./', 'index.html', 'app.js', 'manifest.webmanifest?v=3', 'icon.svg?v=3', 'icon-192.png?v=3', 'icon-512.png?v=3', 'apple-touch-icon.png?v=3', ...FONTS];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(CORE)).then(() => self.skipWaiting()));
