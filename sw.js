@@ -1,7 +1,7 @@
 /* Subnet Sprint service worker: keeps a copy of the game on the device so it works offline.
    Pages are network-first (you always get the newest version when online, the saved copy when not).
    Fonts and icons are cache-first since they never change. Only this site's own files are ever handled or cached. */
-const CACHE = 'subnet-sprint-v5';
+const CACHE = 'subnet-sprint-v6';
 const FONTS = ['inter-latin-400', 'inter-latin-500', 'inter-latin-600', 'inter-latin-700', 'inter-latin-800',
   'jetbrains-mono-latin-400', 'jetbrains-mono-latin-600', 'jetbrains-mono-latin-700'].map(f => `fonts/${f}-normal.woff2`);
 const CORE = ['./', 'index.html', 'app.js', 'manifest.webmanifest', 'icon.svg', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png', ...FONTS];
