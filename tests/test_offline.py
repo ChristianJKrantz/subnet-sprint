@@ -14,7 +14,7 @@ def ok(c,msg):
     if not c: fails.append(msg)
 m=json.load(open(os.path.join(ROOT,'manifest.webmanifest')))
 ok(m['display']=='standalone' and any(i['sizes']=='512x512' for i in m['icons']) and any(i.get('purpose')=='maskable' for i in m['icons']),'manifest is installable (standalone, 192/512 + maskable icons)')
-ok(all(os.path.exists(os.path.join(ROOT,i['src'])) for i in m['icons']),'every manifest icon exists')
+ok(all(os.path.exists(os.path.join(ROOT,i['src'].split('?')[0])) for i in m['icons']),'every manifest icon exists')
 with sync_playwright() as pw:
     b=pw.chromium.launch(); ctx=b.new_context(); pg=ctx.new_page(); errs=[]; pg.on('pageerror',lambda e:errs.append(str(e)))
     pg.goto(URL); pg.evaluate("navigator.serviceWorker.ready"); pg.reload(); pg.wait_for_timeout(500)
