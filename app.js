@@ -107,6 +107,12 @@ function blocksAround(c,uo){
   if((hi-lo)/c.inc>6){lo=Math.max(0,c.neto-c.inc);hi=Math.min(256-c.inc,c.neto+2*c.inc);}
   const a=[];for(let x=lo;x<=hi;x+=c.inc)a.push(x===c.neto?`<b>${x}</b>`:x);return (lo>0?'… ':'')+a.join(', ')+(hi<256-c.inc?' …':'');
 }
+function copyTypo(u,ref,io){
+  const bad=[];for(let k=0;k<io;k++)if(oct(u,k)!==oct(ref,k))bad.push(k);if(!bad.length)return null;
+  const fix=bad.map(k=>`octet ${k+1} should be ${oct(ref,k)}, not ${oct(u,k)}`).join(', and ');
+  const pre=[0,1,2].slice(0,io).map(k=>oct(ref,k)).join('.');
+  return T('copy_octets',`Check for a typo: ${fix}. The mask is 255 in ${io>1?'octets 1–'+io:'octet 1'}, so ${io>1?'they':'it'} copy straight down from the IP unchanged (${M(pre+'.')}). Every address in this problem starts that way.`);
+}
 function diagNet(ip,p,u,isAnd){
   const c=netCtx(ip,p);const o=c.io+1;const later=c.io<3?` Every octet after octet ${o} becomes 0.`:'';
   if(u===ip)return T('copied_ip',`That’s the IP address you were given, not its network. The network address is where the IP’s block starts: round octet ${o} (${c.ipo}) down to a multiple of ${c.inc} → ${c.neto}.${later}`);
@@ -156,19 +162,20 @@ function diagChart(ip,p,vals){
         :T('swap',`${M(ipStr(x))} is ${what[j]}, so it goes in the <b>${nm[j]}</b> box. ${how[i]}`));continue;}
     let msg=null;const un=u[0],ub=u[3];
     if(i===0)msg=diagNet(ip,p,x,false);
-    if(i===1){
+    else if(!((i===1&&un!=null&&x===((un+1)>>>0))||(i===2&&ub!=null&&x===((ub-1)>>>0))||(i===3&&un!=null&&x===((un+c.size-1)>>>0))))msg=copyTypo(x,ip,c.io);
+    if(!msg&&i===1){
       if(un!=null&&!right[0]&&x===((un+1)>>>0))msg=`This is network + 1 for the network you wrote (${M(ipStr(un))}), so your method here is right. Only the network is off. With the correct network, the gateway is ${G(ipStr(ans[1]))}.`;
       else if(x===ip)msg=T('copied_ip',`That’s the IP from the question. The gateway is the first usable address in its subnet: network + 1 = ${G(ipStr(ans[1]))}.`);
       else if(x===((c.net+2)>>>0))msg=T('off_by_one',`Off by one. The gateway is network <b>+ 1</b>: ${M(ipStr(c.net))} + 1 = ${G(ipStr(ans[1]))}.`);
       else if(x===((c.net-1)>>>0))msg=T('off_by_one',`That’s one <i>below</i> the network, which belongs to the previous subnet. The gateway is network + 1 = ${G(ipStr(ans[1]))}.`);
     }
-    if(i===2){
+    if(!msg&&i===2){
       if(ub!=null&&!right[3]&&x===((ub-1)>>>0))msg=`This is broadcast − 1 for the broadcast you wrote (${M(ipStr(ub))}), so your method here is right. Only the broadcast is off. With the correct broadcast, the last usable is ${G(ipStr(ans[2]))}.`;
       else if(x===nextNet)msg=T('next_subnet',`That’s the next subnet’s network address. Count back from it: − 1 is the broadcast (${M(ipStr(c.bc))}), − 2 is the last usable, ${G(ipStr(ans[2]))}.`);
       else if(x===((c.bc-2)>>>0))msg=T('off_by_one',`Off by one. The last usable is broadcast <b>− 1</b>: ${M(ipStr(c.bc))} − 1 = ${G(ipStr(ans[2]))}.`);
       else if(oct(x,3)===254)msg=T('assume_255',`The last usable only ends in .254 when the broadcast ends in .255 <i>and</i> the octets before it match. Here the broadcast is ${M(ipStr(c.bc))}, so the last usable is ${G(ipStr(ans[2]))}.`);
     }
-    if(i===3){
+    if(!msg&&i===3){
       if(un!=null&&!right[0]&&x===((un+c.size-1)>>>0))msg=`This is the right broadcast for the network you wrote (${M(ipStr(un))}), so your method here is right. Only the network is off. With the correct network, the broadcast is ${G(ipStr(c.bc))}.`;
       else if(x===nextNet)msg=T('next_subnet',`That’s the <i>next</i> subnet’s network address. The broadcast is the address just before it: ${M(ipStr(nextNet))} − 1 = ${G(ipStr(c.bc))}.`);
       else if(x===((c.bc+1)>>>0)||x===((c.bc-2)>>>0))msg=T('off_by_one',`Off by one. Broadcast = next subnet − 1 = ${M(ipStr(nextNet))} − 1 = ${G(ipStr(c.bc))}.`);
@@ -413,13 +420,15 @@ function diagDefault(ip,raw){
 function diagCell(rowNet,inc,c,raw,userNet,userBc){
   const rowBc=(rowNet+inc-1)>>>0,want=[rowNet,(rowNet+1)>>>0,(rowBc-1)>>>0,rowBc][c],u=parseIP(raw);if(u===want)return null;
   const r=oct(rowNet,3)/inc+1,nextNet=(rowNet+inc)>>>0;
-  const how=[`Rows count up by the increment from 0 (0, ${inc}, ${2*inc}…), so row ${r} starts at ${G(ipStr(rowNet))}.`,
+  const seq=[0,inc,2*inc].filter(x=>x<256).join(', ')+(3*inc<256?'…':'');
+  const how=[`Rows count up by the increment from 0 (${seq}), so row ${r} starts at ${G(ipStr(rowNet))}.`,
     `First usable = network + 1 = ${G(ipStr(want))}.`,`Last usable = broadcast − 1 = ${G(ipStr(want))}.`,
     `Broadcast = next row’s network − 1 = ${M(ipStr(nextNet))} − 1 = ${G(ipStr(want))}.`][c];
   if(u==null)return badEntry(raw,'ip')+' '+how;
   if(c===1&&userNet!=null&&userNet!==rowNet&&u===((userNet+1)>>>0))return `Right method for the network you wrote in this row; only that network is off. ${how}`;
   if(c===2&&userBc!=null&&userBc!==rowBc&&u===((userBc-1)>>>0))return `Right method for the broadcast you wrote in this row; only that broadcast is off. ${how}`;
   if(c===3&&userNet!=null&&userNet!==rowNet&&u===((userNet+inc-1)>>>0))return `Right method for the network you wrote in this row; only that network is off. ${how}`;
+  {const ty=copyTypo(u,rowNet,3);if(ty)return ty;}
   if(c===0&&oct(u,3)%inc===0)return T('chart_rows',`${M(ipStr(u))} is a real network, but it belongs to a different row. ${how}`);
   if(c===0)return T('chart_rows',`Network addresses are multiples of the increment (${inc}). ${how}`);
   if(c===1&&u===rowNet)return T('chart_rows',`That’s the network address itself, which can’t be used. ${how}`);
