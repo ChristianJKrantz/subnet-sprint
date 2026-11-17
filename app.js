@@ -451,7 +451,7 @@ function walkSheet(ip,p,asPrefix,rows){
     st.push(binStep);
     st.push({q:`Count the 1s: 24 from the three 255s, plus the 1s in your binary. Prefix = ?`,kind:'prefix',ans:p,f:0,bad:()=>'Add 24 to the number of 1s in your binary.'});
   }
-  st.push({q:`Write the whole mask in binary (32 bits): 255 in binary for each of the first three octets, then your 4th octet.`,kind:'bin32',ans:bin32(m),f:1,bad:(u,raw)=>hBin32(p,raw)});
+  st.push({q:`Now the binary mask. The first three octets are 255 = <span class="mono">11111111</span> each (already filled in), so type the 8 bits of your 4th octet.`,kind:'bin32',ans:bin32(m),f:1,bad:(u,raw)=>hBin32(p,raw)});
   st.push({...incStep(mv),f:2});
   st.push({q:`Host bits h = the number of 0s in the mask (32 − ${p}) = ?`,kind:'num',ans:h,bad:()=>`Count the 0s in your binary mask, or subtract ${p} from 32.`});
   st.push({q:`Hosts per network = 2<sup>h</sup> − 2 = ?`,kind:'num',ans:2**h-2,f:3,bad:u=>hHosts(h,u)});
@@ -492,12 +492,12 @@ function genSheet(fixed){
   const asPrefix=fixed?fixed.asPrefix:Math.random()<.5,nRows=Math.min(blocks,Math.max(3,Math.floor(oct(ip,3)/inc)+2));
   const rows=[...Array(nRows)].map((_,r)=>(base+r*inc)>>>0);
   const fields=[asPrefix?{key:'mask',sec:'pre',type:'ip',label:'Subnet mask (dotted decimal)',answer:m}:{key:'mask',sec:'pre',type:'prefix',label:'Prefix (CIDR)',answer:p},
-    {key:'bin',sec:'pre',type:'bin32',label:'Subnet mask (binary)',answer:bin32(m)},
+    {key:'bin',sec:'pre',type:'bin32',pre:'11111111.11111111.11111111.',label:'Subnet mask (binary)',answer:bin32(m)},
     {key:'inc',sec:'pre',type:'num',label:'Network increment',answer:inc},
     {key:'hosts',sec:'pre',type:'num',label:'Hosts per network (2ʰ − 2)',answer:inc-2}];
   // chart cells in the order you can work them out: network, broadcast (next network − 1), then the usable range
   rows.forEach((rn,r)=>[[0,'network'],[3,'broadcast'],[1,'first usable'],[2,'last usable']].forEach(([col,nm])=>
-    fields.push({key:'cell',type:'ip',cell:{r,c:col},label:`Row ${r+1} ${nm}`,answer:[rn,rn+1,rn+inc-2,rn+inc-1][col]>>>0})));
+    fields.push({key:'cell',type:'ip',cell:{r,c:col},pre:ipStr(rn).replace(/\d+$/,''),label:`Row ${r+1} ${nm}`,answer:[rn,rn+1,rn+inc-2,rn+inc-1][col]>>>0})));
   fields.push({key:'net',sec:'post',type:'ip',label:'Network address of the IP',answer:net},
     {key:'bc',sec:'post',type:'ip',label:'Broadcast address of the IP',answer:bc},
     {key:'role',sec:'post',type:'choice',label:'The given IP is a…',answer:role},
@@ -523,14 +523,19 @@ function genSheet(fixed){
 }
 
 /* ---------------- worksheet layout ---------------- */
+function expandCell(f,raw){
+  if(!f||!f.pre||raw==null)return raw;const t=String(raw).trim();
+  if(f.type==='bin32'){const b=t.replace(/\s+/g,'').match(/^\.?([01]{1,9})$/);return b?f.pre+b[1]:raw;}
+  const m=t.match(/^\.?(\d{1,3})$/);return m?f.pre+m[1]:raw;
+}
 function cellHTML(f,i){
-  return `<div class="field cell" data-i="${i}"><input id="f${i}" aria-label="${f.label}" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" inputmode="decimal" enterkeyhint="next" placeholder="${['network','first','last','broadcast'][f.cell.c]}"><span class="fix"></span></div>`;
+  return `<div class="field cell" data-i="${i}"><input id="f${i}" aria-label="${f.label}" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" inputmode="numeric" enterkeyhint="next" placeholder="${['network','first','last','broadcast'][f.cell.c]} .__"><span class="fix"></span></div>`;
 }
 function sheetHTML(q){
   const sec=k=>q.fields.map((f,i)=>f.sec===k?fieldHTML(f,i):'').join('');
   const byRow={};q.fields.forEach((f,i)=>{if(f.cell)(byRow[f.cell.r]=byRow[f.cell.r]||[])[f.cell.c]=i;});
   const rows=Object.keys(byRow).map(r=>{const ix=byRow[r];return `<div class="crow"><span class="rlab">Row ${Number(r)+1}</span><div class="cc cnet" data-l="Network">${cellHTML(q.fields[ix[0]],ix[0])}</div><div class="cc cbc" data-l="Broadcast">${cellHTML(q.fields[ix[3]],ix[3])}</div><div class="cc rng" data-l="Useable host range">${cellHTML(q.fields[ix[1]],ix[1])}<span class="dash">–</span>${cellHTML(q.fields[ix[2]],ix[2])}</div></div>`;}).join('');
-  return `<div class="ws-top">${sec('pre')}</div><div class="ws-chart"><div class="ch-title">Network chart</div><div class="crow chead"><span class="rlab"></span><span>Network</span><span>Useable host range</span><span>Broadcast</span></div>${rows}</div><div class="ws-top ws-post"><div class="ch-title">The given IP</div>${sec('post')}</div><div class="ws-top ws-post"><div class="ch-title">The whole address space</div>${sec('end')}</div>`;
+  return `<div class="ws-top">${sec('pre')}</div><div class="ws-chart"><div class="ch-title">Network chart</div>${(()=>{const c=q.fields.find(f=>f.pre);return c?`<div class="ch-note">Every address here starts <b class="mono">${c.pre}</b>, so just type the last octet.</div>`:'';})()}<div class="crow chead"><span class="rlab"></span><span>Network</span><span>Useable host range</span><span>Broadcast</span></div>${rows}</div><div class="ws-top ws-post"><div class="ch-title">The given IP</div>${sec('post')}</div><div class="ws-top ws-post"><div class="ch-title">The whole address space</div>${sec('end')}</div>`;
 }
 
 /* ---------------- drills for the worksheet's extra skills ---------------- */
@@ -772,7 +777,7 @@ function fillField(i,ans){
   const f=state.q.fields[i],el=$(`.field[data-i="${i}"]`);if(!el)return;
   if(f.type==='choice'){el.querySelectorAll('.choice').forEach(b=>b.classList.toggle('on',b.dataset.v===ans));return;}
   if(f.type==='bits'){[...String(ans)].forEach((c,k)=>{const b=el.querySelector(`.bit[data-k="${k}"]`);if(b){b.classList.toggle('on',c==='1');b.textContent=c;}});return;}
-  el.querySelector('input').value=f.type==='ip'?ipStr(ans):f.type==='prefix'?'/'+ans:String(ans);
+  el.querySelector('input').value=f.pre?(f.type==='bin32'?String(ans).split('.').pop():String(oct(ans,3))):f.type==='ip'?ipStr(ans):f.type==='prefix'?'/'+ans:String(ans);
 }
 const fieldShow=(f,ans)=>f.type==='ip'?ipStr(ans):f.type==='prefix'?'/'+ans:f.type==='choice'?ROLES[ans]:typeof ans==='number'?big(ans):String(ans);
 function mirrorHTML(q,w,cur){
@@ -870,7 +875,7 @@ function walkAdvance(){
 function focusWalk(){const i=$('#winp')||$('#wcheck');if(i){if(isDesktop())i.focus();i.scrollIntoView({block:'nearest',behavior:'smooth'});}}
 function walkCheck(){
   const w=state.walk,st=w.steps[w.i],raw=$('#winp').value;
-  const u=st.kind==='ip'?parseIP(raw):st.kind==='prefix'?toPre(raw):st.kind==='bits8'?(isBits8(raw)?bits8(raw):null):st.kind==='bin32'?bits32(raw):st.kind==='role'?toRole(raw):st.kind==='cls'?(/^\s*(class\s*)?[abc]\s*$/i.test(raw)?raw.trim().slice(-1).toUpperCase():null):st.kind==='pow'?pow2(raw):toNum(raw);
+  const u=parseStep(st,raw);
   if(u===st.ans){walkAdvance();return;}
   w.msg=isBlank(raw)?'Type an answer, or press “Show me”.':st.bad(u,raw);renderWalk();
   const i=$('#winp');i.value=raw;i.classList.add('shake');focusWalk();
@@ -889,6 +894,7 @@ const flowOn=q=>layoutPref==='flow'&&q.fields.length>1&&!state.timed;
 const SECNAME={pre:'From the mask',post:'The given IP',end:'Total networks'};
 function groupSteps(steps,n){const g=[...Array(n)].map(()=>[]);let cur=[];steps.forEach(st=>{cur.push(st);if(st.f!=null){g[st.f]=cur;cur=[];}});return g;}
 function parseStep(st,raw){
+  if((st.kind==='ip'||st.kind==='bin32')&&st.f!=null&&state.q)raw=expandCell(state.q.fields[st.f],raw);
   return st.kind==='ip'?parseIP(raw):st.kind==='prefix'?toPre(raw):st.kind==='bits8'?(isBits8(raw)?bits8(raw):null):st.kind==='bin32'?bits32(raw)
     :st.kind==='role'?toRole(raw):st.kind==='cls'?(/^\s*(class\s*)?[abc]\s*$/i.test(raw)?raw.trim().slice(-1).toUpperCase():null):st.kind==='pow'?pow2(raw):toNum(raw);
 }
@@ -924,6 +930,7 @@ function flowSheet(q,F,cur){
   return parts.length?`<div class="fsheet">${parts.join('')}</div>`:'';
 }
 function flowInput(f){
+  if(f.pre)return `<div class="fc-row${f.type==='bin32'?' long':''}"><span class="fc-pre mono" aria-hidden="true">${f.pre}</span><input id="fin" class="oct" aria-label="${f.label}: last ${f.type==='bin32'?'8 bits':'octet'}" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" inputmode="numeric" enterkeyhint="go" placeholder="${f.type==='bin32'?'8 bits':'octet'}"><button class="btn primary" id="fok">Check</button></div>`;
   if(f.type==='choice')return `<div class="choices fc-choices">${Object.entries(ROLES).map(([k,v])=>`<button type="button" class="choice" data-v="${k}">${v}</button>`).join('')}</div>`;
   const ph=f.type==='ip'?'e.g. 192.168.4.0':f.type==='prefix'?'/26':f.type==='bin32'?'32 ones and zeros (dots optional)':f.type==='numalt'?'number or 2^n':'number';
   const im=f.type==='ip'||f.type==='bin32'?'decimal':f.type==='num'?'numeric':'text';
@@ -957,15 +964,16 @@ function renderFlow(){
   if(si){si.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();e.stopPropagation();flowStep(si.value);}});$('#wschk').onclick=()=>flowStep(si.value);$('#wsshow').onclick=()=>flowStep(null,true);}
 }
 function focusFlow(){const el=$('#wsin')||$('#fin')||$('#fcard .choice');if(!el)return;if(isDesktop())el.focus({preventScroll:true});$('#fcard').scrollIntoView({block:'nearest',behavior:'smooth'});}
-function flowAnswer(raw){
+function flowAnswer(typed){
   const q=state.q,F=state.flow,i=F.k,f=q.fields[i];if(state.checked||!f)return;
+  const raw=expandCell(f,typed);
   if(isBlank(raw)){F.msg='Type an answer first.';renderFlow();focusFlow();return;}
   if(isRight(f,raw)){flowAdvance(true);return;}
   let d=null;try{const vals=q.fields.map((g,j)=>j===i?raw:j<i?show(g):'');d=q.diag(vals)[i];}catch(e){}
   if(!F.miss[i]){F.miss[i]=true;F.firstVal[i]=raw;F.firstMsg[i]=d;if(d&&d.tag)noteMisses([d.tag]);}
   // nudge without giving the answer away: the worked answer stays hidden until "Show the answer"
   F.msg=(d?String(d):'That’s not it.').replace(/<b class="g mono">[^<]*<\/b>/g,'<b class="g mono">?</b>')+' <span class="dim">Try again, or use Hint.</span>';
-  renderFlow();const el=$('#fin');if(el){el.value=raw;el.classList.add('shake');}focusFlow();
+  renderFlow();const el=$('#fin');if(el){el.value=typed;el.classList.add('shake');}focusFlow();
 }
 function flowStep(raw,reveal){
   const q=state.q,F=state.flow,S=F.step,st=F.groups[S.i][S.j];
@@ -1090,6 +1098,7 @@ function fieldHTML(f,i){
   if(f.type==='choice')return `<div class="field" data-i="${i}"><label>${f.label}</label><div class="inrow"><div class="choices">${Object.entries(ROLES).map(([k,v])=>`<button type="button" class="choice" data-v="${k}">${v}</button>`).join('')}</div><span class="fix"></span></div></div>`;
   const ph=f.type==='ip'?'e.g. 192.168.4.0':f.type==='prefix'?'/26':f.type==='bin32'?'32 ones and zeros (dots optional)':f.type==='numalt'?'number or 2^n':'number';
   const im=f.type==='num'?'numeric':'decimal';
+  if(f.pre&&f.type==='bin32')return `<div class="field wide" data-i="${i}"><label for="f${i}">${f.label}</label><div class="inrow"><span class="fpre mono">${f.pre}</span><input id="f${i}" class="oct8" autocomplete="off" spellcheck="false" inputmode="numeric" enterkeyhint="next" placeholder="8 bits"><span class="fix"></span></div></div>`;
   return `<div class="field${f.type==='bin32'?' wide':''}" data-i="${i}"><label for="f${i}">${f.label}</label><div class="inrow"><input id="f${i}" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" inputmode="${im}" enterkeyhint="${i<state.q.fields.length-1?'next':'done'}" placeholder="${ph}"><span class="fix"></span></div></div>`;
 }
 function next(force){
@@ -1111,7 +1120,7 @@ function next(force){
   const first=$('#fields input');if(first&&isDesktop())first.focus();
   startFlow();syncTeachTools();
 }
-function readField(f,el){if(f.type==='choice'){const b=el.querySelector('.choice.on');return b?b.dataset.v:'';}if(f.type==='bits')return $$(`.field[data-i="${el.dataset.i}"] .bit`).map(b=>b.classList.contains('on')?'1':'0').join('');return el.querySelector('input').value;}
+function readField(f,el){if(f.type==='choice'){const b=el.querySelector('.choice.on');return b?b.dataset.v:'';}if(f.type==='bits')return $$(`.field[data-i="${el.dataset.i}"] .bit`).map(b=>b.classList.contains('on')?'1':'0').join('');return expandCell(f,el.querySelector('input').value);}
 function isRight(f,v){
   if(f.type==='bits')return v===f.answer;
   if(f.type==='choice')return toRole(v)===f.answer;
