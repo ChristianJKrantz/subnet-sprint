@@ -1357,7 +1357,8 @@ if(isDesktop())openTool('scratch');
     if(deferred){deferred.prompt();await deferred.userChoice.catch(()=>{});deferred=null;btn.hidden=true;return;}
     if($('.iospop'))return;
     const p=document.createElement('div');p.className='iospop';
-    p.innerHTML=`<div>To install on iPhone or iPad, open this page in <b>Safari</b>, tap the <b>Share</b> button <span aria-hidden="true">(□↑)</span>, then <b>Add to Home Screen</b>.</div><div class="row"><button class="btn small">Got it</button></div>`;
+    const other=/CriOS|FxiOS|EdgiOS|OPiOS|OPT\/|DuckDuckGo|GSA\//.test(navigator.userAgent);
+    p.innerHTML=`<div>${other?'You’re in a browser other than Safari, and adding from here usually gives a plain-letter icon. ':''}To install on iPhone or iPad, open this page in <b>Safari</b>, tap the <b>Share</b> button <span aria-hidden="true">(□↑)</span>, then <b>Add to Home Screen</b>.</div><div class="row"><button class="btn small">Got it</button></div>`;
     p.querySelector('button').onclick=()=>p.remove();document.body.appendChild(p);};
   if('serviceWorker' in navigator&&(location.protocol==='https:'||location.hostname==='localhost'||location.hostname==='127.0.0.1')){
     const first=!navigator.serviceWorker.controller;
