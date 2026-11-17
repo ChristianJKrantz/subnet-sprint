@@ -83,6 +83,18 @@ with sync_playwright() as pw:
     s2.click('#checkBtn'); s2.wait_for_timeout(80)
     ok('10.113.133.' in s2.inner_text('.ws-chart') and 'good' in s2.get_attribute('#feedback','class'),'Full sheet: the chart says the fixed part, and last octets alone score as right')
     s2.close(); pg.click('#checkBtn') if pg.is_visible('#checkBtn') else None
+    print('Dotted-decimal mask takes just the last octet')
+    pg.evaluate("window.SS.next(window.SS.genSheet({ip:'10.113.133.211',p:26,asPrefix:true}))")
+    ok(pg.inner_text('.fc-pre')=='255.255.255.','the mask box shows 255.255.255. as a fixed label')
+    pg.fill('#fin','128'); pg.press('#fin','Enter'); pg.wait_for_timeout(30)
+    ok(pg.inner_text('.fc-q')=='Subnet mask (dotted decimal)' and pg.locator('.fc-msg.on').count()==1,'a wrong last octet gets a nudge')
+    pg.fill('#fin','192'); pg.press('#fin','Enter'); pg.wait_for_timeout(30)
+    ok(pg.inner_text('.fc-q')=='Subnet mask (binary)' and '255.255.255.192' in pg.inner_text('.fsheet'),'typing 192 answers it, and the sheet shows the full mask')
+    s3=b.new_page(); s3.goto(URL+'?ip=10.113.133.211&mask=26&layout=sheet'); s3.wait_for_timeout(300)
+    s3.evaluate("window.SS.next(window.SS.genSheet({ip:'10.113.133.211',p:26,asPrefix:true}))"); s3.wait_for_timeout(100)
+    ok(s3.inner_text('.field[data-i="0"] .fpre')=='255.255.255.','Full sheet shows 255.255.255. in front of the mask box')
+    s3.close()
+    pg.click('#checkBtn') if pg.is_visible('#checkBtn') else None
     print('Other multi-part questions')
     pg.click('.tab[data-m="detective"]')
     while pg.evaluate("window.SS.state.q.fields.length")<2: pg.click('#skipBtn')

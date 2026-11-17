@@ -445,7 +445,7 @@ function walkSheet(ip,p,asPrefix,rows){
   if(asPrefix){
     st.push({q:`<b>/${p}</b>: the first three octets are full (24 ones, 255.255.255). How many 1s go in the 4th octet?`,kind:'num',ans:k,bad:()=>`Subtract 24 from ${p}.`});
     st.push({q:`Add up that many place values, starting at 128 (128, 64, 32 …). That’s the mask’s 4th octet.`,kind:'num',ans:mv,bad:u=>k>1&&u===placeVals[k-1]?'That’s only the last one. Add all of them, starting from 128.':`Add the first ${k} place value${k>1?'s':''}, starting at 128.`});
-    st.push({q:`Write the subnet mask in dotted decimal.`,kind:'ip',ans:m,f:0,bad:(u,raw)=>hMask(p,raw)});
+    st.push({q:`Write the subnet mask in dotted decimal. The first three octets are 255 (already filled in), so type the 4th octet you just added up.`,kind:'ip',ans:m,f:0,bad:(u,raw)=>hMask(p,raw)});
     st.push({...binStep,q:`Write the mask’s 4th octet (the value you added up) in binary.`});
   }else{
     st.push(binStep);
@@ -491,7 +491,7 @@ function genSheet(fixed){
   const role=ip===net?'network':ip===bc?'broadcast':'host';
   const asPrefix=fixed?fixed.asPrefix:Math.random()<.5,nRows=Math.min(blocks,Math.max(3,Math.floor(oct(ip,3)/inc)+2));
   const rows=[...Array(nRows)].map((_,r)=>(base+r*inc)>>>0);
-  const fields=[asPrefix?{key:'mask',sec:'pre',type:'ip',label:'Subnet mask (dotted decimal)',answer:m}:{key:'mask',sec:'pre',type:'prefix',label:'Prefix (CIDR)',answer:p},
+  const fields=[asPrefix?{key:'mask',sec:'pre',type:'ip',pre:'255.255.255.',label:'Subnet mask (dotted decimal)',answer:m}:{key:'mask',sec:'pre',type:'prefix',label:'Prefix (CIDR)',answer:p},
     {key:'bin',sec:'pre',type:'bin32',pre:'11111111.11111111.11111111.',label:'Subnet mask (binary)',answer:bin32(m)},
     {key:'inc',sec:'pre',type:'num',label:'Network increment',answer:inc},
     {key:'hosts',sec:'pre',type:'num',label:'Hosts per network (2ʰ − 2)',answer:inc-2}];
@@ -1098,7 +1098,7 @@ function fieldHTML(f,i){
   if(f.type==='choice')return `<div class="field" data-i="${i}"><label>${f.label}</label><div class="inrow"><div class="choices">${Object.entries(ROLES).map(([k,v])=>`<button type="button" class="choice" data-v="${k}">${v}</button>`).join('')}</div><span class="fix"></span></div></div>`;
   const ph=f.type==='ip'?'e.g. 192.168.4.0':f.type==='prefix'?'/26':f.type==='bin32'?'32 ones and zeros (dots optional)':f.type==='numalt'?'number or 2^n':'number';
   const im=f.type==='num'?'numeric':'decimal';
-  if(f.pre&&f.type==='bin32')return `<div class="field wide" data-i="${i}"><label for="f${i}">${f.label}</label><div class="inrow"><span class="fpre mono">${f.pre}</span><input id="f${i}" class="oct8" autocomplete="off" spellcheck="false" inputmode="numeric" enterkeyhint="next" placeholder="8 bits"><span class="fix"></span></div></div>`;
+  if(f.pre&&!f.cell)return `<div class="field${f.type==='bin32'?' wide':''}" data-i="${i}"><label for="f${i}">${f.label}</label><div class="inrow"><span class="fpre mono">${f.pre}</span><input id="f${i}" class="oct8" autocomplete="off" spellcheck="false" inputmode="numeric" enterkeyhint="next" placeholder="${f.type==='bin32'?'8 bits':'octet'}"><span class="fix"></span></div></div>`;
   return `<div class="field${f.type==='bin32'?' wide':''}" data-i="${i}"><label for="f${i}">${f.label}</label><div class="inrow"><input id="f${i}" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" inputmode="${im}" enterkeyhint="${i<state.q.fields.length-1?'next':'done'}" placeholder="${ph}"><span class="fix"></span></div></div>`;
 }
 function next(force){
