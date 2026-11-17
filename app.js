@@ -430,7 +430,7 @@ function diagCell(rowNet,inc,c,raw,userNet,userBc){
 }
 function walkSheet(ip,p,asPrefix,rows){
   const m=maskOf(p),k=p-24,mv=oct(m,3),inc=256-mv,c=classOf(ip),n=p-c.d,h=32-p,ipo=oct(ip,3);
-  const net=(ip&m)>>>0,bc=(net+inc-1)>>>0,role=ip===net?'network':ip===bc?'broadcast':'host',P=5+4*rows.length;
+  const net=(ip&m)>>>0,bc=(net+inc-1)>>>0,role=ip===net?'network':ip===bc?'broadcast':'host',P=4+4*rows.length;
   const binStep={q:`Write the mask’s 4th octet (<b>${mv}</b>) in binary.`,kind:'bits8',ans:bin8(mv),bad:(u,raw)=>hBits(mv,raw)};
   const st=[];
   if(asPrefix){
@@ -446,11 +446,7 @@ function walkSheet(ip,p,asPrefix,rows){
   st.push({...incStep(mv),f:2});
   st.push({q:`Host bits h = the number of 0s in the mask (32 − ${p}) = ?`,kind:'num',ans:h,bad:()=>`Count the 0s in your binary mask, or subtract ${p} from 32.`});
   st.push({q:`Hosts per network = 2<sup>h</sup> − 2 = ?`,kind:'num',ans:2**h-2,f:3,bad:u=>hHosts(h,u)});
-  st.push({q:`Find the IP’s class from its first octet (<b>${oct(ip,0)}</b>). Class A is 1–126, B is 128–191, C is 192–223. Which class?`,kind:'cls',ans:c.c,bad:()=>`Find ${oct(ip,0)} in those three ranges.`});
-  st.push({q:`What is the default prefix for that class?`,kind:'prefix',ans:c.d,bad:()=>'Each class has its own default: A is /8, B is /16, C is /24.'});
-  st.push({q:`Borrowed bits n = ${p} − your default prefix = ?`,kind:'num',ans:n,bad:()=>`Subtract your default prefix from ${p}.`});
-  st.push({q:`Total networks = 2<sup>n</sup> = ? (you can type it as ${M('2^n')} with your n)`,kind:'pow',ans:2**n,f:4,bad:u=>u===2**n-2?'No − 2 for networks.':'Double 1, n times, or type 2^ and your n.'});
-  rows.forEach((rn,r)=>{const b=5+4*r,nx=(rn+inc)>>>0,rb=(rn+inc-1)>>>0;
+  rows.forEach((rn,r)=>{const b=4+4*r,nx=(rn+inc)>>>0,rb=(rn+inc-1)>>>0;
     st.push({q:r===0?`The chart always starts at .0. Write row 1’s network address.`:`Add the increment to the row above’s network. Write row ${r+1}’s network address.`,kind:'ip',ans:rn,f:b,
       bad:u=>u==null?IPFMT:r===0?'Copy the first three octets of the IP and end it in .0.':'Take the row above’s last octet and add the increment.'});
     st.push({q:`A row’s broadcast is the next row’s network − 1. Write row ${r+1}’s broadcast.`,kind:'ip',ans:rb,f:b+1,bad:u=>u==null?IPFMT:u===nx?'That’s the next row’s network. Subtract 1.':'One less than the next row’s network.'});
@@ -463,14 +459,18 @@ function walkSheet(ip,p,asPrefix,rows){
   st.push({q:`The broadcast address of the IP is that same row’s broadcast. Write it.`,kind:'ip',ans:bc,f:P+1,bad:(u,raw)=>hBc(ip,3,(net+inc)>>>0,u)});
   st.push({q:`Compare the IP (ends in .${ipo}) with that row’s network and broadcast. Is it the <b>network</b> (first address), the <b>broadcast</b> (last), or a usable <b>host</b> (in between)?`,kind:'role',ans:role,f:P+2,
     bad:()=>'First address of the row = network, last = broadcast, anything in between = usable host.'});
+  st.push({q:`Find the IP’s class from its first octet (<b>${oct(ip,0)}</b>). Class A is 1–126, B is 128–191, C is 192–223. Which class?`,kind:'cls',ans:c.c,bad:()=>`Find ${oct(ip,0)} in those three ranges.`});
+  st.push({q:`What is the default prefix for that class?`,kind:'prefix',ans:c.d,bad:()=>'Each class has its own default: A is /8, B is /16, C is /24.'});
+  st.push({q:`Borrowed bits n = ${p} − your default prefix = ?`,kind:'num',ans:n,bad:()=>`Subtract your default prefix from ${p}.`});
+  st.push({q:`Total networks = 2<sup>n</sup> = ? (you can type it as ${M('2^n')} with your n)`,kind:'pow',ans:2**n,f:P+3,bad:u=>u===2**n-2?'No − 2 for networks.':'Double 1, n times, or type 2^ and your n.'});
   return st;
 }
 function explainSheet(ip,p,rows){
   const m=maskOf(p),mv=oct(m,3),inc=256-mv,net=(ip&m)>>>0,bc=(net+inc-1)>>>0,c=classOf(ip),n=p-c.d,h=32-p,ipo=oct(ip,3);
   const role=ipo===oct(net,3)?'network':ipo===oct(bc,3)?'broadcast':'host';
-  return `<table class="sol"><tr><td>Subnet mask</td><td class="mono">${ipStr(m)} = /${p}</td></tr><tr><td>Binary</td><td class="mono">${bin32(m)}</td></tr><tr><td>Increment</td><td class="mono">256 − ${mv} = ${inc}</td></tr><tr><td>Hosts per network</td><td>h = ${h} → 2<sup>${h}</sup> − 2 = <b>${2**h-2}</b></td></tr><tr><td>Total networks</td><td>Class ${c.c} default /${c.d} → n = ${p} − ${c.d} = ${n} → 2<sup>${n}</sup> = <b>${big(2**n)}</b>${c.d!==24?` <span class="dim">(2<sup>${p-24}</sup> = ${2**(p-24)} if your class counts from /24)</span>`:''}</td></tr></table>
+  return `<table class="sol"><tr><td>Subnet mask</td><td class="mono">${ipStr(m)} = /${p}</td></tr><tr><td>Binary</td><td class="mono">${bin32(m)}</td></tr><tr><td>Increment</td><td class="mono">256 − ${mv} = ${inc}</td></tr><tr><td>Hosts per network</td><td>h = ${h} → 2<sup>${h}</sup> − 2 = <b>${2**h-2}</b></td></tr></table>
   <table class="sol chartsol"><tr><th>Network</th><th>Useable host range</th><th>Broadcast</th></tr>${rows.map(rn=>`<tr class="${rn===net?'hl':''}"><td class="mono">${ipStr(rn)}</td><td class="mono">${ipStr(rn+1)} – ${ipStr(rn+inc-2)}</td><td class="mono">${ipStr(rn+inc-1)}</td></tr>`).join('')}</table>
-  <table class="sol"><tr><td>Network of the IP</td><td class="mono">${ipStr(net)}</td></tr><tr><td>Broadcast of the IP</td><td class="mono">${ipStr(bc)}</td></tr><tr><td>The IP is a</td><td>${ROLES[role].toLowerCase()}</td></tr></table>`;
+  <table class="sol"><tr><td>Network of the IP</td><td class="mono">${ipStr(net)}</td></tr><tr><td>Broadcast of the IP</td><td class="mono">${ipStr(bc)}</td></tr><tr><td>The IP is a</td><td>${ROLES[role].toLowerCase()}</td></tr><tr><td>Total networks</td><td>Class ${c.c} default /${c.d} → n = ${p} − ${c.d} = ${n} → 2<sup>${n}</sup> = <b>${big(2**n)}</b>${c.d!==24?` <span class="dim">(2<sup>${p-24}</sup> = ${2**(p-24)} if your class counts from /24)</span>`:''}</td></tr></table>`;
 }
 function genSheet(fixed){
   const p=fixed?fixed.p:R(25,30),m=maskOf(p),inc=2**(32-p),blocks=256/inc;
@@ -485,14 +485,14 @@ function genSheet(fixed){
   const fields=[asPrefix?{key:'mask',sec:'pre',type:'ip',label:'Subnet mask (dotted decimal)',answer:m}:{key:'mask',sec:'pre',type:'prefix',label:'Prefix (CIDR)',answer:p},
     {key:'bin',sec:'pre',type:'bin32',label:'Subnet mask (binary)',answer:bin32(m)},
     {key:'inc',sec:'pre',type:'num',label:'Network increment',answer:inc},
-    {key:'hosts',sec:'pre',type:'num',label:'Hosts per network (2ʰ − 2)',answer:inc-2},
-    {key:'nets',sec:'pre',type:'numalt',label:'Total networks (2ⁿ)',answer:2**(p-c.d),alt:c.d===24?[]:[2**(p-24)]}];
+    {key:'hosts',sec:'pre',type:'num',label:'Hosts per network (2ʰ − 2)',answer:inc-2}];
   // chart cells in the order you can work them out: network, broadcast (next network − 1), then the usable range
   rows.forEach((rn,r)=>[[0,'network'],[3,'broadcast'],[1,'first usable'],[2,'last usable']].forEach(([col,nm])=>
     fields.push({key:'cell',type:'ip',cell:{r,c:col},label:`Row ${r+1} ${nm}`,answer:[rn,rn+1,rn+inc-2,rn+inc-1][col]>>>0})));
   fields.push({key:'net',sec:'post',type:'ip',label:'Network address of the IP',answer:net},
     {key:'bc',sec:'post',type:'ip',label:'Broadcast address of the IP',answer:bc},
-    {key:'role',sec:'post',type:'choice',label:'The given IP is a…',answer:role});
+    {key:'role',sec:'post',type:'choice',label:'The given IP is a…',answer:role},
+    {key:'nets',sec:'end',type:'numalt',label:'Total networks (2ⁿ)',answer:2**(p-c.d),alt:c.d===24?[]:[2**(p-24)]});
   return {mode:'worksheet',layout:'sheet',title:'Worksheet',
     prompt:asPrefix?`<b class="big">${ipStr(ip)}/${p}</b>`:`<b class="big">${ipStr(ip)}</b> <span class="sep">|</span> <b class="big">${ipStr(m)}</b>`,
     fields,
@@ -521,7 +521,7 @@ function sheetHTML(q){
   const sec=k=>q.fields.map((f,i)=>f.sec===k?fieldHTML(f,i):'').join('');
   const byRow={};q.fields.forEach((f,i)=>{if(f.cell)(byRow[f.cell.r]=byRow[f.cell.r]||[])[f.cell.c]=i;});
   const rows=Object.keys(byRow).map(r=>{const ix=byRow[r];return `<div class="crow"><span class="rlab">Row ${Number(r)+1}</span><div class="cc cnet" data-l="Network">${cellHTML(q.fields[ix[0]],ix[0])}</div><div class="cc cbc" data-l="Broadcast">${cellHTML(q.fields[ix[3]],ix[3])}</div><div class="cc rng" data-l="Useable host range">${cellHTML(q.fields[ix[1]],ix[1])}<span class="dash">–</span>${cellHTML(q.fields[ix[2]],ix[2])}</div></div>`;}).join('');
-  return `<div class="ws-top">${sec('pre')}</div><div class="ws-chart"><div class="ch-title">Network chart</div><div class="crow chead"><span class="rlab"></span><span>Network</span><span>Useable host range</span><span>Broadcast</span></div>${rows}</div><div class="ws-top ws-post"><div class="ch-title">The given IP</div>${sec('post')}</div>`;
+  return `<div class="ws-top">${sec('pre')}</div><div class="ws-chart"><div class="ch-title">Network chart</div><div class="crow chead"><span class="rlab"></span><span>Network</span><span>Useable host range</span><span>Broadcast</span></div>${rows}</div><div class="ws-top ws-post"><div class="ch-title">The given IP</div>${sec('post')}</div><div class="ws-top ws-post"><div class="ch-title">The whole address space</div>${sec('end')}</div>`;
 }
 
 /* ---------------- drills for the worksheet's extra skills ---------------- */
@@ -867,6 +867,205 @@ function walkCheck(){
   const i=$('#winp');i.value=raw;i.classList.add('shake');focusWalk();
 }
 
+
+/* ---------------- one question at a time ("flow") ----------------
+   Multi-part questions are asked one box at a time in the order you'd work them out. Each answer is checked on
+   the spot: right answers drop into the growing answer sheet above, a wrong try gets a nudge (the answer itself is
+   hidden until you ask for it), and Hint walks through just the current box. The finished sheet is scored like
+   a normal check, counting what you got right on the first try. */
+let layoutPref=store.get('ss_layout','flow');if(layoutPref!=='flow'&&layoutPref!=='sheet')layoutPref='flow';
+// a link can choose the layout: ?layout=sheet or ?layout=flow (remembered from then on)
+try{const lp=new URLSearchParams(location.search).get('layout');if(lp==='flow'||lp==='sheet'){layoutPref=lp;store.set('ss_layout',lp);}}catch(e){}
+const flowOn=q=>layoutPref==='flow'&&q.fields.length>1&&!state.timed;
+const SECNAME={pre:'From the mask',post:'The given IP',end:'Total networks'};
+function groupSteps(steps,n){const g=[...Array(n)].map(()=>[]);let cur=[];steps.forEach(st=>{cur.push(st);if(st.f!=null){g[st.f]=cur;cur=[];}});return g;}
+function parseStep(st,raw){
+  return st.kind==='ip'?parseIP(raw):st.kind==='prefix'?toPre(raw):st.kind==='bits8'?(isBits8(raw)?bits8(raw):null):st.kind==='bin32'?bits32(raw)
+    :st.kind==='role'?toRole(raw):st.kind==='cls'?(/^\s*(class\s*)?[abc]\s*$/i.test(raw)?raw.trim().slice(-1).toUpperCase():null):st.kind==='pow'?pow2(raw):toNum(raw);
+}
+function startFlow(){
+  const q=state.q;syncLayoutSeg();
+  if(!flowOn(q)){state.flow=null;$('#flow').hidden=true;$('#flow').innerHTML='';$('#fields').hidden=false;$('#checkBtn').hidden=false;$('#hintBtn').hidden=false;return;}
+  state.flow={k:0,miss:{},firstVal:{},firstMsg:{},hinted:{},groups:q.walk?groupSteps(startWalk(q).steps,q.fields.length):null,step:null,msg:'',justDone:null};
+  $('#fields').hidden=true;$('#flow').hidden=false;$('#checkBtn').hidden=true;$('#hintBtn').hidden=true;
+  renderFlow();focusFlow();
+}
+const ipCell=v=>`<span class="ipf">${ipStr(v)}</span><span class="ips">.${oct(v,3)}</span>`;
+function flowSheet(q,F,cur){
+  const n=q.fields.length,end=cur<0?n:cur;
+  const val=i=>{const f=q.fields[i];return f.cell?ipCell(f.answer):f.type==='bin32'?String(f.answer).replace(/\./g,'.<wbr>'):fieldShow(f,f.answer);};
+  const mark=i=>F.miss[i]?'<span class="fs-x" title="Missed on the first try">✗</span>':F.hinted[i]?'<span class="fs-h" title="Answered with the hint">💡</span>':'<span class="fs-c">✓</span>';
+  const row=i=>`<div class="fs-row${F.miss[i]?' miss':''}${i===F.justDone?' pop':''}"><span class="fs-l">${q.fields[i].label}</span><span class="fs-vm"><span class="fs-v mono">${val(i)}</span>${mark(i)}</span></div>`;
+  if(q.layout!=='sheet'){const done=[...Array(end).keys()];return done.length?`<div class="fsheet">${done.map(row).join('')}</div>`:'';}
+  const parts=[];let lastSec=null,chartDone=false;
+  for(let i=0;i<n;i++){const f=q.fields[i];
+    if(f.cell){if(chartDone)continue;chartDone=true;
+      const rows={};q.fields.forEach((g,j)=>{if(g.cell)(rows[g.cell.r]=rows[g.cell.r]||{})[g.cell.c]=j;});
+      const first=Math.min(...Object.values(rows).flatMap(o=>Object.values(o)));
+      if(first>=end&&first!==cur)continue;
+      const cellHTML=j=>j<end?`<span class="fs-cv${F.miss[j]?' miss':''}${j===F.justDone?' pop':''}">${ipCell(q.fields[j].answer)}</span>`:j===cur?'<span class="fs-cur">?</span>':'';
+      const trs=Object.keys(rows).filter(r=>Math.min(...Object.values(rows[r]))<=Math.max(end,cur)).map(r=>{const o=rows[r];
+        return `<tr><td class="fs-rl">Row ${Number(r)+1}</td><td>${cellHTML(o[0])}</td><td>${cellHTML(o[1])}<span class="dim"> – </span>${cellHTML(o[2])}</td><td>${cellHTML(o[3])}</td></tr>`;}).join('');
+      parts.push(`<div class="fs-sec">Network chart</div><table class="fs-chart"><tr><th></th><th><span class="lg">Network</span><span class="sm">Net</span></th><th><span class="lg">Useable host range</span><span class="sm">Usable</span></th><th><span class="lg">Broadcast</span><span class="sm">Bcast</span></th></tr>${trs}</table>`);
+      continue;}
+    if(i>=end)continue;
+    if(f.sec&&f.sec!==lastSec){parts.push(`<div class="fs-sec">${SECNAME[f.sec]}</div>`);lastSec=f.sec;}
+    parts.push(row(i));
+  }
+  return parts.length?`<div class="fsheet">${parts.join('')}</div>`:'';
+}
+function flowInput(f){
+  if(f.type==='choice')return `<div class="choices fc-choices">${Object.entries(ROLES).map(([k,v])=>`<button type="button" class="choice" data-v="${k}">${v}</button>`).join('')}</div>`;
+  const ph=f.type==='ip'?'e.g. 192.168.4.0':f.type==='prefix'?'/26':f.type==='bin32'?'32 ones and zeros (dots optional)':f.type==='numalt'?'number or 2^n':'number';
+  const im=f.type==='ip'||f.type==='bin32'?'decimal':f.type==='num'?'numeric':'text';
+  return `<div class="fc-row"><input id="fin" class="${f.type==='bin32'?'wide':''}" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" inputmode="${im}" enterkeyhint="go" placeholder="${ph}"><button class="btn primary" id="fok">Check</button></div>`;
+}
+function flowSteps(q,F,i){
+  const S=F.step,g=F.groups[i];if(!S||S.i!==i||!g)return '';
+  const shown=(st)=>st.show||(st.kind==='ip'?ipStr(st.ans):st.kind==='prefix'?'/'+st.ans:st.kind==='role'?ROLES[st.ans]:st.kind==='cls'?'Class '+st.ans:typeof st.ans==='number'&&st.ans>255?st.ans.toLocaleString():st.ans);
+  const st=g[S.j],tip=tipFor(st,q);
+  return `<div class="fc-steps"><div class="fc-steps-h">Step by step <small>· ½ points for this question</small></div><ol>${g.slice(0,S.j).map(x=>`<li class="wok"><span>${x.q}</span><b class="g mono wans">✓ ${shown(x)}</b></li>`).join('')}
+    <li class="wcur${st.f!=null?' wfinal':''}"><span>${st.q}</span>${st.f!=null?`<div class="dim fc-note">This answers the question above.</div>`:''}<div class="wrow"><input id="wsin" class="winp${st.kind==='bin32'?' wide':''}" autocomplete="off" spellcheck="false" inputmode="${['role','cls','pow','prefix'].includes(st.kind)?'text':st.kind==='ip'||st.kind==='bin32'?'decimal':'numeric'}" placeholder="${{ip:'e.g. 192.168.4.0',prefix:'e.g. /26',bits8:'8 digits',bin32:'32 bits, dots optional',role:'network, host or broadcast',cls:'A, B or C',pow:'number or 2^n'}[st.kind]||'number'}"><button class="btn small primary" id="wschk">${st.f!=null?'Answer':'Check step'}</button><button class="btn small" id="wsshow">Show me</button></div><div class="wmsg">${S.msg||''}</div>${tip?`<div class="wshort"><b>⚡ Shortcut</b> ${tip}</div>`:''}</li></ol></div>`;
+}
+function renderFlow(){
+  const q=state.q,F=state.flow,box=$('#flow');if(!F)return;
+  const n=q.fields.length,cur=state.checked||F.k>=n?-1:F.k;
+  let card='';
+  if(cur>=0){const f=q.fields[cur];
+    const where=f.cell?`Network chart · Row ${f.cell.r+1}`:f.sec?SECNAME[f.sec]:'';
+    card=`<div class="fcard" id="fcard" data-i="${cur}"><div class="fc-h"><small>Question ${cur+1} of ${n}${where?` · ${where}`:''}</small><div class="fc-bar"><i style="width:${Math.round(100*cur/n)}%"></i></div></div>
+      <label class="fc-q" for="fin">${f.label}</label>${flowInput(f)}<div class="fc-msg${F.msg?' on':''}">${F.msg||''}</div>
+      <div class="fc-acts">${F.groups&&F.groups[cur]&&!(F.step&&F.step.i===cur)?'<button class="btn small" id="fhint">💡 Hint: step by step</button>':''}${F.miss[cur]?'<button class="btn small" id="freveal">Show the answer</button>':''}</div>
+      ${flowSteps(q,F,cur)}</div>`;}
+  box.innerHTML=flowSheet(q,F,cur)+card;
+  if(cur<0)return;
+  const inp=$('#fin');
+  if(inp){inp.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();e.stopPropagation();flowAnswer(inp.value);}});$('#fok').onclick=()=>flowAnswer(inp.value);}
+  $$('#fcard .fc-choices .choice').forEach(b=>b.onclick=()=>flowAnswer(b.dataset.v));
+  const h=$('#fhint');if(h)h.onclick=()=>{F.step={i:cur,j:0,msg:''};renderFlow();focusFlow();};
+  const rv=$('#freveal');if(rv)rv.onclick=()=>flowAdvance();
+  const si=$('#wsin');
+  if(si){si.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();e.stopPropagation();flowStep(si.value);}});$('#wschk').onclick=()=>flowStep(si.value);$('#wsshow').onclick=()=>flowStep(null,true);}
+}
+function focusFlow(){const el=$('#wsin')||$('#fin')||$('#fcard .choice');if(!el)return;if(isDesktop())el.focus({preventScroll:true});$('#fcard').scrollIntoView({block:'nearest',behavior:'smooth'});}
+function flowAnswer(raw){
+  const q=state.q,F=state.flow,i=F.k,f=q.fields[i];if(state.checked||!f)return;
+  if(isBlank(raw)){F.msg='Type an answer first.';renderFlow();focusFlow();return;}
+  if(isRight(f,raw)){flowAdvance(true);return;}
+  let d=null;try{const vals=q.fields.map((g,j)=>j===i?raw:j<i?show(g):'');d=q.diag(vals)[i];}catch(e){}
+  if(!F.miss[i]){F.miss[i]=true;F.firstVal[i]=raw;F.firstMsg[i]=d;if(d&&d.tag)noteMisses([d.tag]);}
+  // nudge without giving the answer away: the worked answer stays hidden until "Show the answer"
+  F.msg=(d?String(d):'That’s not it.').replace(/<b class="g mono">[^<]*<\/b>/g,'<b class="g mono">?</b>')+' <span class="dim">Try again, or use Hint.</span>';
+  renderFlow();const el=$('#fin');if(el){el.value=raw;el.classList.add('shake');}focusFlow();
+}
+function flowStep(raw,reveal){
+  const q=state.q,F=state.flow,S=F.step,st=F.groups[S.i][S.j];
+  if(!reveal){if(isBlank(raw)){S.msg='Type an answer, or press “Show me”.';renderFlow();focusFlow();return;}
+    const u=parseStep(st,raw);if(u!==st.ans){S.msg=st.bad(u,raw);renderFlow();const el=$('#wsin');if(el){el.value=raw;el.classList.add('shake');}focusFlow();return;}}
+  state.hinted=true;F.hinted[S.i]=true;
+  if(st.f!=null){F.step=null;flowAdvance(true);return;}
+  S.j++;S.msg='';renderFlow();focusFlow();
+}
+function flowAdvance(){
+  const q=state.q,F=state.flow,i=F.k;
+  fillField(i,q.fields[i].answer);F.justDone=i;F.k++;F.msg='';F.step=null;
+  if(F.k>=q.fields.length){check();return;}
+  renderFlow();focusFlow();
+}
+function syncLayoutSeg(){
+  const seg=$('#layoutSeg'),q=state.q,show=q&&q.fields.length>1&&!state.timed;seg.hidden=!show;
+  $$('#layoutSeg button').forEach(b=>b.classList.toggle('on',b.dataset.v===layoutPref));
+}
+$$('#layoutSeg button').forEach(b=>b.onclick=()=>{if(layoutPref===b.dataset.v)return;layoutPref=b.dataset.v;store.set('ss_layout',layoutPref);if(state.q&&!state.checked)next(state.q);else syncLayoutSeg();});
+
+
+/* ---------------- teaching tools: your own problem, share link, print, present ---------------- */
+function parseMaskInput(raw){
+  const s=String(raw).trim();if(!s)return null;
+  const pm=s.match(/^\/?(\d{1,2})$/);if(pm){const p=Number(pm[1]);return p>=0&&p<=32?{p,asPrefix:true}:null;}
+  const u=parseIP(s);if(u==null)return null;const p=maskPrefix(u);return p<0?null:{p,asPrefix:false};
+}
+function problemFrom(ipRaw,maskRaw){
+  const ip=parseIP(String(ipRaw).trim());if(ip==null)return {err:'That IP address isn’t valid: four numbers from 0 to 255, separated by dots.'};
+  const mk=parseMaskInput(maskRaw);if(!mk)return {err:'That mask isn’t valid. Use a prefix like /27 or a mask like 255.255.255.224.'};
+  if(mk.p<25||mk.p>30)return {err:'The worksheet chart works in the 4th octet, so use a mask from /25 (255.255.255.128) to /30 (255.255.255.252).'};
+  const a=oct(ip,0);if(a===0||a===127||a>=224)return {err:'Use a Class A, B or C address (first octet 1–126, 128–191 or 192–223) so total networks can be worked out.'};
+  return {ip:ipStr(ip),p:mk.p,asPrefix:mk.asPrefix};
+}
+function shareURL(pr){
+  const u=new URL(location.href);u.search='';u.hash='';
+  u.searchParams.set('ip',pr.ip);u.searchParams.set('mask',pr.asPrefix?String(pr.p):ipStr(maskOf(pr.p)));return u.toString();
+}
+function loadProblem(pr){
+  if(state.timed)return;
+  if(state.mode!=='worksheet'){state.mode='worksheet';renderTabs();}
+  next(genSheet(pr));state.custom=pr;
+  try{history.replaceState(null,'',shareURL(pr));}catch(e){}
+}
+function renderOwnBox(){
+  const box=$('#ownbox');
+  box.innerHTML=`<div class="own-h"><b>Work a specific problem</b><button class="btn small" id="ownClose" aria-label="Close">✕</button></div>
+  <p class="dim">Enter an IP and mask, for example from your class handout. It loads as a worksheet, and the link below opens this exact problem on anyone’s device.</p>
+  <div class="own-row"><label>IP address<input id="ownIp" autocomplete="off" spellcheck="false" inputmode="decimal" placeholder="10.10.10.18"></label>
+  <label>Mask<input id="ownMask" autocomplete="off" spellcheck="false" placeholder="/29 or 255.255.255.248"></label>
+  <button class="btn primary" id="ownGo">Load problem</button></div><div class="own-msg" id="ownMsg"></div>
+  <div class="own-share" id="ownShare" hidden><span class="dim">Share this problem:</span> <input id="ownLink" readonly> <button class="btn small" id="ownCopy">Copy link</button></div>`;
+  const go=()=>{const pr=problemFrom($('#ownIp').value,$('#ownMask').value);
+    if(pr.err){$('#ownMsg').textContent=pr.err;$('#ownMsg').className='own-msg bad';return;}
+    loadProblem(pr);$('#ownMsg').textContent=`Loaded ${pr.ip} ${pr.asPrefix?'/'+pr.p:ipStr(maskOf(pr.p))}.`;$('#ownMsg').className='own-msg good';
+    $('#ownShare').hidden=false;$('#ownLink').value=shareURL(pr);};
+  $('#ownGo').onclick=go;[$('#ownIp'),$('#ownMask')].forEach(i=>i.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();e.stopPropagation();go();}}));
+  $('#ownClose').onclick=()=>{box.hidden=true;};
+  $('#ownCopy').onclick=async()=>{const l=$('#ownLink');l.select();let ok=false;try{await navigator.clipboard.writeText(l.value);ok=true;}catch(e){try{ok=document.execCommand('copy');}catch(_){}}
+    $('#ownCopy').textContent=ok?'Copied ✓':'Select and copy';setTimeout(()=>{$('#ownCopy').textContent='Copy link';},1800);};
+}
+/* printable worksheets with a separate answer key */
+function printProblemHTML(q,n,key){
+  const val=f=>key?(f.type==='choice'?ROLES[f.answer]:fieldShow(f,f.answer)):'';
+  const top=q.fields.filter(f=>!f.cell&&f.sec!=='end'&&f.key!=='net'&&f.key!=='bc'&&f.key!=='role');
+  const ipf=q.fields.filter(f=>['net','bc','role'].includes(f.key)),endf=q.fields.filter(f=>f.sec==='end');
+  const rows={};q.fields.forEach(f=>{if(f.cell)(rows[f.cell.r]=rows[f.cell.r]||{})[f.cell.c]=f;});
+  const line=f=>`<tr><td>${f.label}</td><td class="pp-a${f.type==='bin32'?' pp-bin':''}">${f.type==='choice'&&!key?'network &nbsp;/&nbsp; host &nbsp;/&nbsp; broadcast':val(f)}</td></tr>`;
+  const extra=key&&endf[0]&&endf[0].alt&&endf[0].alt.length?`<div class="pp-note">Total networks counted from the class default. Counting from /24 instead: ${big(endf[0].alt[0])}.</div>`:'';
+  return `<section class="pp"><div class="pp-head"><b>Problem ${n}</b><span class="pp-given">${q.prompt.replace(/<span class="sep">\|<\/span>/,'&nbsp;|&nbsp;').replace(/<[^>]+>/g,' ').replace(/\s+/g,' ').trim()}</span></div>
+    <table class="pp-ws">${top.map(line).join('')}</table>
+    <table class="pp-chart"><tr><th></th><th>Network</th><th>Useable host range</th><th>Broadcast</th></tr>${Object.keys(rows).map(r=>{const o=rows[r];
+      return `<tr><td>Row ${Number(r)+1}</td><td>${val(o[0])}</td><td>${key?`${val(o[1])} – ${val(o[2])}`:'&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;–'}</td><td>${val(o[3])}</td></tr>`;}).join('')}</table>
+    <table class="pp-ws">${ipf.concat(endf).map(line).join('')}</table>${extra}</section>`;
+}
+function buildPrint(count,withKey,includeCurrent){
+  const qs=[];if(includeCurrent&&state.q&&state.q.layout==='sheet')qs.push(state.custom?genSheet(state.custom):state.q);
+  while(qs.length<count)qs.push(genSheet());
+  const sheet=`<div class="pp-title"><h2>Subnetting worksheet</h2><div>Name ______________________ &nbsp; Date ____________</div></div>
+    <p class="pp-intro">For each IP and mask, find the subnet mask in dotted decimal or as a prefix, the mask in binary, the network increment, the hosts per network, the network chart (start at .0), the network and broadcast address of the IP, whether the IP is a network, host or broadcast address, and the total networks counted from the IP’s class default mask.</p>
+    ${qs.map((q,i)=>printProblemHTML(q,i+1,false)).join('')}`;
+  const key=withKey?`<div class="pp-key"><div class="pp-title"><h2>Answer key</h2></div>${qs.map((q,i)=>printProblemHTML(q,i+1,true)).join('')}</div>`:'';
+  $('#printArea').innerHTML=sheet+key;
+}
+function renderPrintBox(){
+  const box=$('#printbox');
+  box.innerHTML=`<div class="own-h"><b>Print worksheets</b><button class="btn small" id="prClose" aria-label="Close">✕</button></div>
+  <p class="dim">Random problems in the class worksheet format, two to a page, with the answer key on separate pages.</p>
+  <div class="own-row"><label>Problems<select id="prN">${[2,4,6,8,10].map(n=>`<option${n===4?' selected':''}>${n}</option>`).join('')}</select></label>
+  <label class="chk"><input type="checkbox" id="prKey" checked> Answer key</label>
+  <label class="chk"><input type="checkbox" id="prCur"> Start with this problem</label>
+  <button class="btn primary" id="prGo">Print</button></div>`;
+  $('#prClose').onclick=()=>{box.hidden=true;};
+  $('#prGo').onclick=()=>{buildPrint(Number($('#prN').value),$('#prKey').checked,$('#prCur').checked);document.body.classList.add('printing');setTimeout(()=>{window.print();},50);};
+}
+window.addEventListener('afterprint',()=>document.body.classList.remove('printing'));
+function syncTeachTools(){
+  const ws=state.mode==='worksheet'&&!state.timed;
+  $('#ownBtn').hidden=!ws;$('#printBtn').hidden=!ws;
+  if(!ws){$('#ownbox').hidden=true;$('#printbox').hidden=true;}
+}
+$('#ownBtn').onclick=()=>{const b=$('#ownbox');if(b.hidden){renderOwnBox();b.hidden=false;$('#printbox').hidden=true;if(state.custom){$('#ownIp').value=state.custom.ip;$('#ownMask').value=state.custom.asPrefix?'/'+state.custom.p:ipStr(maskOf(state.custom.p));}$('#ownIp').focus();}else b.hidden=true;};
+$('#printBtn').onclick=()=>{const b=$('#printbox');if(b.hidden){renderPrintBox();b.hidden=false;$('#ownbox').hidden=true;}else b.hidden=true;};
+$('#presentBtn').onclick=()=>{const on=!document.body.classList.contains('present');document.body.classList.toggle('present',on);$('#presentBtn').classList.toggle('on',on);$('#presentBtn').setAttribute('aria-pressed',on);};
+function problemFromURL(){
+  try{const sp=new URLSearchParams(location.search);if(!sp.has('ip'))return null;const pr=problemFrom(sp.get('ip'),sp.get('mask')||'');return pr.err?null:pr;}catch(e){return null;}
+}
+
 /* ---------------- game rendering ---------------- */
 function renderTabs(){
   $('#tabs').innerHTML=MODES.map(m=>{const c=state.per[m.id];return `<button class="tab ${state.mode===m.id?'on':''}" data-m="${m.id}" ${state.timed?'disabled':''}>${m.name}${c.t?`<span class="ct">${c.r}/${c.t}</span>`:''}</button>`;}).join('');
@@ -889,6 +1088,7 @@ function next(force){
   if(mode==='weak'){target=pickWeak();if(target){const g=pick(WEAK[target][1]);mode=g[0];sub=g[1]===''?undefined:g[1];lvl=g[2];}else mode=pick(['binary','prefix','anding','detective','formulas']);}
   const keep=state.level;if(lvl)state.level=lvl;const q=force||GEN[mode](sub);state.level=keep;q.target=target;
   state.q=q;state.checked=false;state.hinted=false;
+  if(!force){state.custom=null;if(location.search)try{history.replaceState(null,'',location.pathname);}catch(e){}}
   $('#qtype').innerHTML=q.title+(target?` <span class="drill">· drilling: ${WEAK[target][0]}</span>`:'');renderWeak();$('#prompt').innerHTML=q.prompt;$('#miniQ').innerHTML=q.prompt.replace(/<br>/g,' ');
   $('#fields').innerHTML=q.layout==='sheet'?sheetHTML(q):q.fields.map(fieldHTML).join('');
   $('#fields').classList.toggle('sheet',q.layout==='sheet');
@@ -900,6 +1100,7 @@ function next(force){
   state.walk=null;setWalkView(false);renderWalk();
   if($('#autoClear').checked){strokes=[];redrawInk();$('#scratchText').value='';}
   const first=$('#fields input');if(first&&isDesktop())first.focus();
+  startFlow();syncTeachTools();
 }
 function readField(f,el){if(f.type==='choice'){const b=el.querySelector('.choice.on');return b?b.dataset.v:'';}if(f.type==='bits')return $$(`.field[data-i="${el.dataset.i}"] .bit`).map(b=>b.classList.contains('on')?'1':'0').join('');return el.querySelector('input').value;}
 function isRight(f,v){
@@ -914,9 +1115,10 @@ function isRight(f,v){
 const show=f=>f.type==='choice'?ROLES[f.answer]:f.type==='bin32'?f.answer:f.type==='numalt'?big(f.answer):f.type==='ip'?ipStr(f.answer):f.type==='prefix'?'/'+f.answer:f.type==='bits'?f.answer:Number(f.answer).toLocaleString();
 function check(){
   if(state.walkView&&!state.checked)return;
+  if(state.flow&&!state.checked&&state.flow.k<state.q.fields.length)return;
   if(state.checked){next();if(!isDesktop())$('.card').scrollIntoView({block:'start',behavior:'smooth'});return;}
-  const q=state.q;let all=true;const vals=q.fields.map((f,i)=>readField(f,$(`.field[data-i="${i}"]`)));const wrong=[];
-  q.fields.forEach((f,i)=>{const el=$(`.field[data-i="${i}"]`);const ok=isRight(f,vals[i]);if(!ok)wrong.push(i);
+  const q=state.q,F=state.flow;let all=true;const vals=q.fields.map((f,i)=>readField(f,$(`.field[data-i="${i}"]`)));const wrong=[];
+  q.fields.forEach((f,i)=>{const el=$(`.field[data-i="${i}"]`);const ok=F?!F.miss[i]:isRight(f,vals[i]);if(!ok)wrong.push(i);
     el.classList.add(ok?'ok':'no');if(!ok){all=false;el.querySelector('.fix').textContent='→ '+show(f);}
     el.querySelectorAll('input').forEach(x=>{x.readOnly=true;x.blur();});el.querySelectorAll('.choice').forEach(x=>x.disabled=true);});
   state.checked=true;state.tried++;state.per[q.mode].t++;const agg=state.timed?'mixed':(state.mode==='mixed'||state.mode==='weak')?state.mode:null;if(agg)state.per[agg].t++;
@@ -925,17 +1127,18 @@ function check(){
     $('#feedback').className='feedback good';$('#feedback').textContent=pick(['Correct!','Nailed it.','Clean.','Exactly right.','Yep — that’s it.'])+` +${pts}${state.streak>2?`  ·  🔥 ${state.streak} in a row`:''}`;
     if(state.timed)state.timed.right++;
   } else {state.streak=0;$('#feedback').className='feedback bad';
-    $('#feedback').textContent=wrong.length===q.fields.length?'Not quite. Here’s what went wrong:':`${q.fields.length-wrong.length} of ${q.fields.length} right. Here’s what went wrong:`;}
+    $('#feedback').textContent=F?`${q.fields.length-wrong.length} of ${q.fields.length} right on the first try. Here’s what tripped you up:`:wrong.length===q.fields.length?'Not quite. Here’s what went wrong:':`${q.fields.length-wrong.length} of ${q.fields.length} right. Here’s what went wrong:`;}
   if(state.timed)state.timed.tried++;
   let coach='';
-  if(!all){let d=[];try{d=q.diag?q.diag(vals):[];}catch(e){d=[];}
-    noteMisses([...new Set(wrong.map(i=>d[i]&&d[i].tag).filter(Boolean))]);
+  if(!all){let d=[];try{d=F?q.fields.map((f,i)=>F.firstMsg[i]||null):q.diag?q.diag(vals):[];}catch(e){d=[];}
+    if(F)wrong.forEach(i=>{vals[i]=F.firstVal[i]??'';});else noteMisses([...new Set(wrong.map(i=>d[i]&&d[i].tag).filter(Boolean))]);
     const chipShown=new Set();
     coach='<div class="coach">'+wrong.map(i=>{const f=q.fields[i];const typed=isBlank(vals[i])?'(blank)':f.type==='choice'?ROLES[vals[i]]:f.type==='bits'?vals[i]:String(vals[i]).trim();
       return `<div class="ci" data-i="${i}"><div class="ch"><b>${f.label}</b><span>you put <s class="mono">${esc(typed)}</s> → <b class="g mono">${show(f)}</b></span></div><p>${d[i]||'Compare with the full walkthrough below.'}</p>${d[i]&&d[i].tag&&WEAK[d[i].tag]&&!chipShown.has(d[i].tag)&&chipShown.add(d[i].tag)?`<span class="wk-chip">Logged to weak spots: ${WEAK[d[i].tag][0]}</span>`:''}</div>`;}).join('')+'</div>';}
   $('#work').innerHTML=coach+`<details class="full"${all?'':''}><summary>${all?'Show the work':'Full walkthrough'}</summary>${q.explain}</details>`;
   $('#work').style.display=all&&state.timed?'none':'block';
   $('#checkBtn').innerHTML='Next <span class="kbd">Enter</span>';$('#hintBtn').disabled=true;if(state.walk){$('#walk').querySelectorAll('input,button').forEach(x=>x.disabled=true);}
+  if(F){$('#checkBtn').hidden=false;renderFlow();}
   renderStats();renderTabs();renderWeak();
   if(!isDesktop())$('#feedback').scrollIntoView({block:'nearest',behavior:'smooth'});else $('#checkBtn').focus();
 }
@@ -957,7 +1160,7 @@ $('#fields').addEventListener('keydown',e=>{
 });
 document.addEventListener('keydown',e=>{
   if($('#overlay').classList.contains('on'))return;
-  if(e.target.closest&&(e.target.closest('.tools')||e.target.closest('#fields')))return;
+  if(e.target.closest&&(e.target.closest('.tools')||e.target.closest('#fields')||e.target.closest('#flow')))return;
   if(e.target.tagName==='TEXTAREA'||e.target.tagName==='INPUT')return;
   if(e.key==='Enter'&&!e.target.closest('summary')&&!e.target.closest('button')){e.preventDefault();check();return;}
   if(/^[1-8]$/.test(e.key)&&!state.checked){const b=$(`.bit[data-k="${Number(e.key)-1}"]`);if(b)b.click();}
@@ -1119,7 +1322,8 @@ $('#partRows').innerHTML=[1,2,3,4,5,6,7,8].map(n=>{const v=(0xFF00>>n)&255;retur
 
 const setDockH=()=>{const d=$('#dock');const h=d.offsetHeight;if(h)document.documentElement.style.setProperty('--dock-h',h+'px');};
 new ResizeObserver(setDockH).observe($('#dock'),{box:'border-box'});setTimeout(setDockH,500);window.addEventListener('resize',setDockH);setDockH();
-renderTabs();renderStats();next();
+renderTabs();renderStats();
+{const up=problemFromURL();if(up){state.mode='worksheet';renderTabs();next(genSheet(up));state.custom=up;}else next();}
 if(isDesktop())openTool('scratch');
 
 /* ---------------- install + offline ---------------- */
@@ -1146,5 +1350,5 @@ if(isDesktop())openTool('scratch');
 })();
 
 /* hooks for the automated tests */
-window.SS={startWalk,tipFor,next,genSheet,walkSheet,genMaskBin,genRole,genClassNets,classOf,bin32,bits32,pow2,toRole,ipStr,walkSteps,walkD2B,walkB2D,walkP2M,walkM2P,walkAnd,walkHosts,walkNets,walkSizeHosts,walkSizeNets,walkInc,GEN,state,WEAK,getWeak:()=>weak,pickWeak,next,check,show,isRight,parseIP,R,netCtx,diagNet,diagChart,diagHosts,diagBits,diagBinDec,diagMask,diagPrefix,diagNetworks,diagNewPrefix,diagSizeHosts,diagBits4Nets,diagNewMask,diagIncrement};
+window.SS={problemFrom,buildPrint,getFlow:()=>state.flow,flowAnswer,setLayout:v=>{layoutPref=v;store.set('ss_layout',v);},startWalk,tipFor,next,genSheet,walkSheet,genMaskBin,genRole,genClassNets,classOf,bin32,bits32,pow2,toRole,ipStr,walkSteps,walkD2B,walkB2D,walkP2M,walkM2P,walkAnd,walkHosts,walkNets,walkSizeHosts,walkSizeNets,walkInc,GEN,state,WEAK,getWeak:()=>weak,pickWeak,next,check,show,isRight,parseIP,R,netCtx,diagNet,diagChart,diagHosts,diagBits,diagBinDec,diagMask,diagPrefix,diagNetworks,diagNewPrefix,diagSizeHosts,diagBits4Nets,diagNewMask,diagIncrement};
 })();

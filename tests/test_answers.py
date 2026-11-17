@@ -1,5 +1,6 @@
 import re, ipaddress, math, sys
 from playwright.sync_api import sync_playwright
+import sheet_layout  # noqa: F401  (Full sheet layout for these tests)
 import os
 URL=os.environ.get('SUBNET_URL','file://'+os.path.abspath(os.path.join(os.path.dirname(__file__),'..','index.html')))
 def mask(p): return str(ipaddress.IPv4Network(f'0.0.0.0/{p}').netmask)
@@ -36,11 +37,11 @@ def expected(qtype, prompt):
         role='network' if ipaddress.IPv4Address(ip)==n.network_address else 'broadcast' if ipaddress.IPv4Address(ip)==n.broadcast_address else 'host'
         first=int(ip.split('.')[0]); d=8 if first<128 else 16 if first<192 else 24
         bits='.'.join(format(int(o),'08b') for o in mask(p).split('.'))
-        out=[mask(p) if pm else '/'+str(p), bits, str(inc), str(inc-2), str(2**(p-d))]
+        out=[mask(p) if pm else '/'+str(p), bits, str(inc), str(inc-2)]
         row=last//inc; blocks=256//inc; rows=min(blocks,max(3,row+2)); base=ipaddress.IPv4Address(ip.rsplit('.',1)[0]+'.0')
         for r in range(rows):
             rn=base+r*inc; out+= [str(rn),str(rn+inc-1),str(rn+1),str(rn+inc-2)]
-        return out+[str(n.network_address),str(n.broadcast_address),'CHOICE:'+role]
+        return out+[str(n.network_address),str(n.broadcast_address),'CHOICE:'+role,str(2**(p-d))]
     if qtype=='Network, host or broadcast?':
         ips=re.findall(r'\d+\.\d+\.\d+\.\d+',t); pm=re.search(r'/(\d+)',t); ip=ips[0]
         n=ipaddress.IPv4Network(f'{ip}/{pm.group(1) if pm else ips[1]}',strict=False); a=ipaddress.IPv4Address(ip)

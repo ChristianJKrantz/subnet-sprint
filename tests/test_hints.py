@@ -2,6 +2,7 @@
 accepts the right input and explains a wrong one, and finishing a question after the hint scores half points."""
 import os, sys, random
 from playwright.sync_api import sync_playwright
+import sheet_layout  # noqa: F401  (Full sheet layout for these tests)
 URL=os.environ.get('SUBNET_URL','file://'+os.path.abspath(os.path.join(os.path.dirname(__file__),'..','index.html')))
 fails=[]
 def ok(c,msg):

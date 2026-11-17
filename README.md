@@ -2,7 +2,7 @@
 
 **An interactive study game for IPv4 network addressing and subnetting.**
 
-Practice binary conversion, prefix ↔ subnet mask, ANDing, full subnet charts, and the host/network formulas. Every question is randomly generated, every answer comes with a worked solution, and it has a built-in scratchpad, calculator and step-by-step guide, so you don't need pen and paper.
+Practice binary conversion, prefix ↔ subnet mask, ANDing, full subnet charts, and the host/network formulas. Every question is randomly generated, every answer comes with a worked solution, and it has a built-in scratchpad, calculator and step-by-step guide, so you don't need pen and paper. Instructors can also load their own problems, share them as a link, print worksheets with an answer key, and project a problem in Present mode.
 
 ### ▶ [Play it here](https://christianjkrantz.github.io/subnet-sprint/)
 
@@ -30,7 +30,31 @@ Works in any modern browser on desktop, tablet or phone. No install, no account,
 The Guide has a cheat-sheet section: the mask ladder (128 → 192 → 224 → 240 → 248 → 252 → 254 → 255) with each prefix's binary, increment and host count, the powers of 2 to know, the class ranges, and the chart rules.
 
 ### Worksheet mode
-Worksheet mode matches the class worksheet format: each problem gives an IP with a mask (as `/27` or `255.255.255.224`) and asks for every answer plus the network chart (network, useable host range and broadcast for each row, counting up from .0). The questions are laid out in the order you'd work them out: everything that comes straight from the mask first, then the chart, then the questions about the given IP that you read off the chart. The Tab key follows the same order, including network → broadcast → useable range within each chart row. It's checked box by box, with feedback on exactly what went wrong in each one, including chart cells that are only wrong because of an earlier mistake.
+Worksheet mode matches the class worksheet format: each problem gives an IP with a mask (as `/27` or `255.255.255.224`) and asks for every answer plus the network chart (network, useable host range and broadcast for each row, counting up from .0).
+
+The questions come in the order that makes each one easiest, because each answer feeds the next:
+
+1. **Subnet mask** (dotted decimal), then **in binary**: the mask is where everything starts.
+2. **Network increment**: 256 minus the mask's interesting octet.
+3. **Hosts per network** (2ʰ − 2): the host bits are the 0s you just wrote in binary.
+4. **The chart**, row by row: network (count up by the increment), broadcast (next network − 1), then the usable range between them.
+5. **The given IP**: its network and broadcast, read straight off the chart, and whether it's a network, host or broadcast address.
+6. **Total networks** (2ⁿ) last, since it's about the whole address space rather than this IP.
+
+#### One at a time (default)
+Questions appear one at a time instead of the whole sheet at once. Each right answer drops into a growing answer sheet above, and the chart builds itself row by row as you fill it in, with the current cell highlighted. A wrong try gets a nudge toward the method (never the number) and you try again, or tap **Show the answer**. **Hint** opens the steps for just that one question. At the end you're scored on how many you got right on the first try, with an explanation of each first-try miss.
+
+<img src="docs/one-at-a-time.png" alt="One at a time: answered questions collect above as the chart builds, and a wrong broadcast gets a nudge without the answer" width="720">
+
+#### Full sheet
+Prefer the classic worksheet? Switch to **Full sheet** at the top of the question to see every box at once. The Tab key follows the same order. It's checked box by box, with feedback on exactly what went wrong in each one, including chart cells that are only wrong because of an earlier mistake. The choice is remembered.
+
+Total networks is counted from the IP's class default mask (10.x.x.x is Class A, /8). The /24-baseline answer is also accepted for the worksheet, since some classes count it that way.
+
+### For instructors
+- **Your own problem:** type any IP and mask (`/25`–`/30` or dotted decimal, Class A, B or C) to load that exact worksheet, for example to walk through a textbook problem in class. It gives you a **share link** that opens the same problem for students. Add `&layout=sheet` to a link to open it as a full sheet instead of one at a time.
+- **Print:** prints 1–20 random worksheet problems (optionally starting with the current one), two per page, with an optional answer key on separate pages.
+- **Present:** hides the side tools and score and enlarges the problem for a projector. Click again to leave.
 
 Total networks is counted from the IP's class default mask (10.x.x.x is Class A, /8). The /24-baseline answer is also accepted for the worksheet, since some classes count it that way.
 
@@ -131,23 +155,24 @@ The in-app Guide covers ANDing, binary, formulas and /16–/23 prefixes the same
 
 ## Running it locally
 
-The whole app is one self-contained file, [`index.html`](index.html), with no build step and no dependencies. Download it and open it in a browser.
+The app is a few static files ([`index.html`](index.html), `app.js`, fonts and icons) with no build step and no dependencies. Download the repo and open `index.html` in a browser.
 
 To host it yourself, any static host works (GitHub Pages, Netlify, a USB stick…).
 
 ## Tests
 
-The `tests/` folder has two [Playwright](https://playwright.dev/python/) scripts:
+The `tests/` folder has ten [Playwright](https://playwright.dev/python/) scripts:
 
 - **`test_answers.py`** generates hundreds of random questions in every mode and at both levels, computes the correct answers independently with Python's `ipaddress` module, types them in, and checks that the game marks them correct and that every explanation renders cleanly.
-- **`test_ui.py`** runs 87 checks of every control: hints, scoring, streaks, timed challenge, scratchpad drawing/erasing/undo, typed notes, calculator, guide, keyboard shortcuts, the phone layout and bottom panel, and running with browser storage blocked.
+- **`test_ui.py`** runs 91 checks of every control: hints, scoring, streaks, timed challenge, scratchpad drawing/erasing/undo, typed notes, calculator, guide, keyboard shortcuts, the phone layout and bottom panel, and running with browser storage blocked.
 - **`test_feedback.py`** feeds in 45 common mistakes and checks each gets the matching explanation, then answers 15,000 random questions with junk and near-miss input to make sure feedback appears for every wrong box and never for a right one.
 - **`test_practice.py`** runs 80 full walkthroughs at both levels (with deliberate wrong steps), checks that mistakes are logged to the right weak spot, that the Weak spots tab drills them, that right answers shrink them, and that the walkthrough fits a phone screen.
 - **`test_offline.py`** serves the site locally, loads it once, cuts the network, and plays a full question offline. It also checks that a new version is picked up when back online, and that the install button works on Chrome and gives iPhone directions.
 - **`test_security.py`** tries to inject code through every input and through tampered saved data, checks the Content Security Policy blocks inline and outside scripts, confirms nothing loads from other sites, and checks the page refuses to run inside another site's frame.
 - **`test_touch.py`** uses simulated finger swipes on a phone and tablet to check the Guide and Calculator panels scroll (with momentum) without moving the page behind them, and that tapping keys and drawing on the scratchpad still work.
-- **`test_worksheet.py`** loads the five problems from the class solutions guide and checks every worksheet answer and chart row matches it, then and checks 15 common mistakes get the right explanation.
+- **`test_worksheet.py`** loads the five problems from the class solutions guide and checks every worksheet answer and chart row matches it, then checks 15 common mistakes get the right explanation.
 - **`test_hints.py`** generates 15,000 questions across every question type and checks every hint's steps lead to the real answer and handle junk input, scans every step and nudge to make sure none states the answer it's asking for, then works through 40 hints on screen with deliberate wrong steps and answers each question for half points.
+- **`test_flow.py`** checks the one-at-a-time layout: questions appear in working order, the chart builds as you go, wrong tries get a nudge without the answer and are logged, per-question hints, Show the answer, first-try scoring, and switching to Full sheet. It also checks the instructor tools: loading your own problem (and rejecting invalid or malicious input), share links, a printed PDF with two problems per page plus the answer key, and Present mode. Finally it confirms a whole worksheet fits a 360px phone.
 
 ```bash
 pip install playwright
@@ -161,6 +186,7 @@ python tests/test_security.py
 python tests/test_touch.py
 python tests/test_hints.py
 python tests/test_worksheet.py
+python tests/test_flow.py
 ```
 
 ## Built with

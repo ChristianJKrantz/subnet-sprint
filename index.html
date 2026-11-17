@@ -184,6 +184,72 @@ table.sol td:first-child{color:var(--muted);white-space:nowrap}table.sol th{colo
   .cc.rng{grid-column:1/-1!important;flex-wrap:wrap}.cc.rng::before{flex-basis:100%}
   .field.wide input{font-size:13px}
 }
+.qhead{flex-wrap:wrap;gap:8px}.qtools{display:flex;gap:8px;align-items:center;margin-left:auto}
+.seg.mini{display:inline-flex;background:var(--bg);border:1px solid var(--line);border-radius:999px;padding:3px}
+.seg.mini button{background:none;border:0;color:var(--muted);font:600 12.5px Inter,system-ui,sans-serif;padding:5px 11px;border-radius:999px;cursor:pointer}
+.seg.mini button.on{background:var(--panel2);color:var(--text);box-shadow:0 0 0 1px var(--line)}
+.flow{display:flex;flex-direction:column;gap:14px;margin-top:6px}
+.fsheet{background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:8px 12px}
+.fs-sec{font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:700;margin:10px 0 4px}.fs-sec:first-child{margin-top:4px}
+.fs-row{display:flex;flex-wrap:wrap;gap:2px 10px;align-items:baseline;padding:5px 2px;border-bottom:1px dashed #ffffff10}.fs-row .fs-l{flex:1 1 auto}.fs-vm{margin-left:auto;display:flex;gap:10px;align-items:baseline;max-width:100%}.fs-vm>span:last-child{width:16px;text-align:center;flex-shrink:0}
+@media (max-width:600px){.fs-v{font-size:13.5px}}
+.fs-chart .sm{display:none}
+.fs-row:last-child{border-bottom:0}.fs-l{color:var(--muted);font-size:14px}.fs-v{font-size:14.5px;text-align:right;overflow-wrap:anywhere}
+.fs-c{color:var(--good);font-weight:800}.fs-x{color:#ffb35c;font-weight:800}.fs-h{font-size:12px}.fs-row.miss .fs-v{color:#ffcf99}
+.pop{animation:pop .5s ease}@keyframes pop{0%{background:#3fb95033}100%{background:transparent}}
+.fs-chart{border-collapse:collapse;width:100%;font-size:14px;margin:2px 0 4px}
+.fs-chart th{color:var(--muted);font-weight:600;font-size:12px;text-align:left;padding:3px 6px}
+.fs-chart td{padding:5px 6px;border-top:1px solid var(--line);font-family:var(--mono);white-space:nowrap}
+.fs-rl{color:var(--muted);font-family:Inter,system-ui,sans-serif!important;font-size:12.5px}
+.fs-cv.miss{color:#ffcf99}.fs-cur{display:inline-block;min-width:2.2em;text-align:center;color:var(--accent2);font-weight:800;border:1px solid var(--accent2);border-radius:6px;background:#5aa9ff1a;padding:0 4px}
+.ips{display:none}
+.fcard{border:1px solid var(--accent2);border-radius:14px;padding:14px 16px 16px;background:var(--panel2);animation:fin .28s ease;box-shadow:0 8px 30px #0005}
+@keyframes fin{from{opacity:0;transform:translateY(10px)}}
+.fc-h small{color:var(--muted);font-size:12.5px}.fc-bar{height:4px;background:var(--bg);border-radius:4px;margin:6px 0 10px;overflow:hidden}.fc-bar i{display:block;height:100%;background:var(--accent);border-radius:4px;transition:width .3s}
+.fc-q{display:block;font-size:19px;font-weight:700;margin-bottom:10px}
+.fc-row{display:flex;gap:8px;flex-wrap:wrap}.fc-row input{flex:1;min-width:180px;max-width:360px;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:11px 12px;font-family:var(--mono);font-size:17px;color:var(--text);outline:none}
+.fc-row input.wide{max-width:460px;font-size:15px}.fc-row input:focus{border-color:var(--accent2)}
+.fc-choices .choice{padding:10px 16px;font-size:15px}
+.fc-msg{display:none;margin-top:10px;color:#ffc2c5;font-size:14.5px;line-height:1.55}.fc-msg.on{display:block}
+.fc-acts{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.fc-acts:empty{display:none}
+.fc-steps{margin-top:12px;border-top:1px solid var(--line);padding-top:10px}.fc-steps-h{font-weight:700;margin-bottom:6px}.fc-steps-h small{color:var(--muted);font-weight:500}
+.fc-steps ol{margin:0;padding-left:22px;display:flex;flex-direction:column;gap:10px}.fc-steps li{line-height:1.5}.fc-steps li.wok{color:var(--muted)}
+.fc-note{font-size:12.5px;margin-top:2px}
+@media (max-width:600px){.qtools{margin-left:0;width:100%}.fs-chart .ipf{display:none}.fs-chart .ips{display:inline}.fs-chart .lg{display:none}.fs-chart .sm{display:inline}.fs-chart td,.fs-chart th{padding:5px 4px}.fc-q{font-size:17px}.fc-row input{min-width:0;max-width:none}}
+.btn.ghost{background:transparent;border-color:var(--line);color:var(--muted)}.btn.ghost:hover{color:var(--text);border-color:var(--muted)}.btn.ghost.on{color:var(--accent);border-color:var(--accent)}
+.ownbox{background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin:10px 0 14px}
+.own-h{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px}
+.ownbox .dim{color:var(--muted);font-size:13.5px;margin:2px 0 10px;line-height:1.5}
+.own-row{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end}
+.own-row label{display:flex;flex-direction:column;gap:4px;font-size:12.5px;color:var(--muted);font-weight:600}
+.own-row input,.own-row select{background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:9px 10px;color:var(--text);font-family:var(--mono);font-size:15px;min-width:170px;outline:none}
+.own-row input:focus{border-color:var(--accent2)}.own-row select{min-width:80px;font-family:Inter,system-ui,sans-serif}
+.own-row label.chk{flex-direction:row;align-items:center;gap:6px;font-size:14px;padding-bottom:9px;color:var(--text);font-weight:500}
+.own-msg{margin-top:8px;font-size:14px}.own-msg.bad{color:#ffc2c5}.own-msg.good{color:var(--good)}
+.own-share{margin-top:10px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;font-size:13.5px}
+.own-share input{flex:1;min-width:220px;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:7px 9px;color:var(--text);font-family:var(--mono);font-size:12.5px}
+#printArea{display:none}
+body.present .app{grid-template-columns:minmax(0,1fr);max-width:1200px}body.present .tools,body.present .stats,body.present .dock,body.present #timedBtn{display:none!important}
+body.present .card{font-size:1.18em}body.present .prompt .big{font-size:2.4em}body.present .fc-q{font-size:26px}body.present .fs-l,body.present .fs-v,body.present .fs-chart{font-size:18px}
+body.present .fc-row input{font-size:22px;padding:13px 14px}body.present .fc-msg{font-size:18px}
+@media print{
+  body.printing>*{display:none!important}body.printing #printArea{display:block!important}
+  body.printing{background:#fff!important;color:#000!important}
+  #printArea{font:10.5pt/1.3 Georgia,'Times New Roman',serif;color:#000}
+  .pp-title{display:flex;justify-content:space-between;align-items:baseline;border-bottom:2px solid #000;margin-bottom:6pt}.pp-title h2{font-size:16pt;margin:0}
+  .pp-intro{font-size:9pt;margin:3pt 0 8pt}
+  .pp{break-inside:avoid;page-break-inside:avoid;margin:0 0 10pt;padding-bottom:8pt;border-bottom:1px solid #999}
+  .pp:nth-of-type(2n){break-after:page;page-break-after:always;border-bottom:0}
+  .pp-head{display:flex;gap:14pt;align-items:baseline;margin-bottom:5pt}.pp-head b{font-size:12pt}.pp-given{font:bold 12pt 'Courier New',monospace}
+  .pp-ws,.pp-chart{border-collapse:collapse;width:100%;margin:4pt 0}
+  .pp-ws td{border:1px solid #000;padding:2.5pt 6pt;height:12pt}.pp-ws td:first-child{width:38%;font-size:9.5pt;font-family:Georgia,'Times New Roman',serif}
+  .pp-a{font-family:'Courier New',monospace}.pp-bin{font-size:9.5pt}
+  .pp-chart th,.pp-chart td{border:1px solid #000;padding:2.5pt 6pt;height:12pt;text-align:left;font-size:9.5pt}.pp-chart td{font-family:'Courier New',monospace}.pp-chart td:first-child{font-family:Georgia,serif;width:9%}
+  .pp-note{font-size:9pt;font-style:italic}
+  .pp-key{break-before:page;page-break-before:always}
+  @page{margin:12mm}
+}
+.ownbox+.ownbox{margin-top:-4px}
 .coach{display:flex;flex-direction:column;gap:10px;margin-bottom:12px}
 .ci{border:1px solid #f2545b40;border-left:3px solid var(--bad,#f2545b);border-radius:10px;padding:10px 12px;background:#f2545b0d}
 .ci .ch{display:flex;flex-wrap:wrap;justify-content:space-between;gap:4px 12px;font-size:14px}
@@ -353,7 +419,7 @@ tr.me td{background:#3fb6a81a;color:#9ef0e4}
   <header>
     <div>
       <h1>Subnet <span>Sprint</span><button class="install" id="installBtn" hidden>⤓ Install app</button></h1>
-      <div class="sub">Network Addressing practice — binary, masks, ANDing, subnet charts &amp; formulas</div>
+      <div class="sub">IPv4 subnetting practice: worksheets, binary, masks, ANDing, subnet charts &amp; formulas</div>
     </div>
     <div class="stats">
       <div class="stat"><b id="sScore">0</b><small>Score</small></div>
@@ -374,9 +440,12 @@ tr.me td{background:#3fb6a81a;color:#9ef0e4}
 
   <div class="weakbox" id="weakbox" hidden></div>
   <div class="card">
-    <div class="qhead"><div class="qtype" id="qtype"></div><div class="timer" id="timer"></div></div>
+    <div class="qhead"><div class="qtype" id="qtype"></div><div class="qtools"><button class="btn small ghost" id="ownBtn" hidden title="Load a specific IP and mask, and get a link to share it">✎ Your own problem</button><button class="btn small ghost" id="printBtn" hidden title="Print worksheets with an answer key">🖨 Print</button><button class="btn small ghost" id="presentBtn" aria-pressed="false" title="Larger text for a projector">⛶ Present</button><div class="seg mini" id="layoutSeg" hidden><button data-v="flow" title="Questions appear one at a time as you answer">One at a time</button><button data-v="sheet" title="All the boxes at once, like the paper worksheet">Full sheet</button></div></div><div class="timer" id="timer"></div></div>
+    <div class="ownbox" id="ownbox" hidden></div>
+    <div class="ownbox" id="printbox" hidden></div>
     <div class="prompt" id="prompt"></div>
     <div class="fields" id="fields"></div>
+    <div class="flow" id="flow" hidden></div>
     <div class="hintbox" id="hint" hidden></div>
     <div class="walk" id="walk" hidden></div>
     <div class="actions">
@@ -465,12 +534,12 @@ tr.me td{background:#3fb6a81a;color:#9ef0e4}
         <li><b>Binary mask.</b> Write it as four groups of 8: <span class="mono">11111111.11111111.11111111.11100000</span> for /27.</li>
         <li><b>Increment</b> = 256 − the 4th mask octet.</li>
         <li><b>Hosts per network</b> = 2<sup>h</sup> − 2, where h = 32 − p (the 0s in the mask).</li>
-        <li><b>Total networks</b> = 2<sup>n</sup>, where n = p − the class default: Class A (first octet 1–126) /8, B (128–191) /16, C (192–223) /24. For 10.x.x.x/27: n = 27 − 8 = 19 → 524,288. Some classes count from /24 instead (n = p − 24); the game accepts either for the worksheet.</li>
         <li><b>Network chart.</b> Start at .0 and count up by the increment. Each row’s broadcast is the next row’s network − 1. The useable range is network + 1 to broadcast − 1.</li>
         <li><b>Network and broadcast of the IP.</b> Find the row the IP’s last octet falls in (round down to a multiple of the increment).</li>
         <li><b>Network, host or broadcast?</b> First address of its row = network. Last address = broadcast. Anything between = useable host.</li>
+        <li><b>Total networks</b> = 2<sup>n</sup>, where n = p − the class default: Class A (first octet 1–126) /8, B (128–191) /16, C (192–223) /24. For 10.x.x.x/27: n = 27 − 8 = 19 → 524,288. Some classes count from /24 instead (n = p − 24); the game accepts either for the worksheet.</li>
       </ol>
-      <p class="dim">Work it top to bottom: everything above the chart comes from the mask, and everything about the given IP comes straight off the chart.</p>
+      <p class="dim">Work it top to bottom: everything above the chart comes from the mask, everything about the given IP comes straight off the chart, and total networks is a separate calculation from the IP’s class, so leave it for last.</p>
     </details>
     <details id="g-short">
       <summary>Shortcuts to memorise</summary>
@@ -631,5 +700,6 @@ AND   00100000  (32)</pre></li>
 </div>
 
 <script src="app.js"></script>
+<div id="printArea" aria-hidden="true"></div>
 </body>
 </html>

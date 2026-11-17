@@ -1,6 +1,7 @@
 """Install + offline: serves the site over http://localhost, loads it once, cuts the network and plays."""
 import os, sys, json, shutil, tempfile, threading, functools, http.server
 from playwright.sync_api import sync_playwright
+import sheet_layout  # noqa: F401  (Full sheet layout for these tests)
 ROOT=os.path.abspath(os.path.join(os.path.dirname(__file__),'..'))
 site=tempfile.mkdtemp(); shutil.copytree(ROOT,site,dirs_exist_ok=True,ignore=shutil.ignore_patterns('.git','tests'))
 class Q(http.server.SimpleHTTPRequestHandler):

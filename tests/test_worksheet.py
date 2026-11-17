@@ -2,6 +2,7 @@
 and common mistakes get the matching explanation."""
 import os, sys
 from playwright.sync_api import sync_playwright
+import sheet_layout  # noqa: F401  (Full sheet layout for these tests)
 URL=os.environ.get('SUBNET_URL','file://'+os.path.abspath(os.path.join(os.path.dirname(__file__),'..','index.html')))
 fails=[]
 def ok(c,msg):
@@ -69,9 +70,9 @@ with sync_playwright() as pw:
     ok('Right method for the network you wrote' in pg.inner_text(f'.ci[data-i="{idx(pg,"Row 3 first usable")}"]'),'a chart cell that follows from an earlier wrong cell is recognised')
     pg.click('#checkBtn')
     load(pg,GUIDE[1]); order=labels(pg)
-    ok(order[:5]==['Subnet mask (dotted decimal)','Subnet mask (binary)','Network increment','Hosts per network (2ʰ − 2)','Total networks (2ⁿ)']
-       and order[5:9]==['Row 1 network','Row 1 broadcast','Row 1 first usable','Row 1 last usable'] and order[-3:]==['Network address of the IP','Broadcast address of the IP','The given IP is a…'],
-       'questions come in the order you work them out: mask answers, then the chart, then the given IP')
+    ok(order[:4]==['Subnet mask (dotted decimal)','Subnet mask (binary)','Network increment','Hosts per network (2ʰ − 2)']
+       and order[4:8]==['Row 1 network','Row 1 broadcast','Row 1 first usable','Row 1 last usable'] and order[-4:]==['Network address of the IP','Broadcast address of the IP','The given IP is a…','Total networks (2ⁿ)'],
+       'questions come in the order you work them out: mask answers, the chart, the given IP, then total networks last')
     tab=pg.evaluate("[...document.querySelectorAll('#fields input, #fields .choice')].map(e=>e.closest('.field').dataset.i).filter((v,i,a)=>a.indexOf(v)===i).map(Number)")
     ok(tab==sorted(tab),'Tab order follows that same order')
     ok(pg.locator('#sheetbox').count()==0 and 'readiness' not in pg.inner_text('body').lower(),'no Exam readiness panel or No-help toggle')

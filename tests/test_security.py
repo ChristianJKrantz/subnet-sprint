@@ -2,6 +2,7 @@
 Content Security Policy, that the page refuses to run inside someone else's frame, and that nothing loads from other sites."""
 import os, sys, re, threading, functools, http.server, tempfile, shutil
 from playwright.sync_api import sync_playwright
+import sheet_layout  # noqa: F401  (Full sheet layout for these tests)
 ROOT=os.path.abspath(os.path.join(os.path.dirname(__file__),'..'))
 site=tempfile.mkdtemp(); shutil.copytree(ROOT,site,dirs_exist_ok=True,ignore=shutil.ignore_patterns('.git','tests'))
 open(os.path.join(site,'evil.html'),'w').write('<iframe id="f" src="index.html" width="800" height="600"></iframe>')

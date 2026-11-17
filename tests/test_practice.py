@@ -1,6 +1,7 @@
 """Weak-spot practice and the step-by-step chart walkthrough."""
 import os, sys, ipaddress, random
 from playwright.sync_api import sync_playwright
+import sheet_layout  # noqa: F401  (Full sheet layout for these tests)
 URL=os.environ.get('SUBNET_URL','file://'+os.path.abspath(os.path.join(os.path.dirname(__file__),'..','index.html')))
 fails=[]
 def ok(c,msg):
