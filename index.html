@@ -252,6 +252,7 @@ body.present .fc-row input{font-size:22px;padding:13px 14px}body.present .fc-msg
   .pp-ws,.pp-chart{border-collapse:collapse;width:100%;margin:4pt 0}
   .pp-ws td{border:1px solid #000;padding:2.5pt 6pt;height:12pt}.pp-ws td:first-child{width:38%;font-size:9.5pt;font-family:Georgia,'Times New Roman',serif}
   .pp-a{font-family:'Courier New',monospace}.pp-bin{font-size:9.5pt}
+  .pp-req{font-size:10.5pt;margin:2pt 0 4pt}.pp-vgrid td,.pp-vgrid th{text-align:center!important;width:9%}.pp-vgrid td:first-child,.pp-vgrid th:first-child{text-align:left!important;width:16%}.pp-vaddr{table-layout:fixed}.pp-vaddr th:nth-child(1),.pp-vaddr th:nth-child(3),.pp-vaddr th:nth-child(4){width:21%}.pp-vaddr td{font-family:'Courier New',monospace!important;width:auto;height:17pt!important}.pp-vgrid td{height:15pt!important}
   .pp-chart th,.pp-chart td{border:1px solid #000;padding:2.5pt 6pt;height:12pt;text-align:left;font-size:9.5pt}.pp-chart td{font-family:'Courier New',monospace}.pp-chart td:first-child{font-family:Georgia,serif;width:9%}
   .pp-note{font-size:9pt;font-style:italic}
   .pp-key{break-before:page;page-break-before:always}
@@ -439,6 +440,32 @@ input:focus{box-shadow:0 0 0 1px var(--accent),0 0 14px #00ff6640!important;bord
 @media (prefers-reduced-motion:reduce){h1::after{animation:none}}
 body.present #rain{opacity:.12}
 .qtools .btn,.qtools .seg button,#layoutSeg button{font-family:Inter,system-ui,sans-serif;white-space:nowrap}
+
+/* ---------- VLSM ---------- */
+.vreq{display:grid;grid-template-columns:auto auto auto;gap:3px 12px;margin-top:12px;font-size:15px;justify-content:start;align-items:baseline}
+.vreq span{color:var(--muted)}.vreq b{font-family:var(--mono);color:var(--accent2);text-align:right;font-size:17px}
+.vg-h,.vg-row{display:grid;grid-template-columns:104px repeat(8,46px);gap:6px;align-items:center}
+.vg-h{margin:2px 0 4px}.vg-h span{font-family:var(--mono);color:var(--muted);font-size:12px;text-align:center}
+.vg-row{margin-bottom:6px}.vg-row .bit{height:44px;font-size:20px}
+.vg-row .rlab{padding-top:0;line-height:1.2}.vg-row .rlab small{display:block;font-weight:400;font-size:12px}
+.vg-row .fix{grid-column:2/-1;font-family:var(--mono);font-size:13px}.vg-row .fix:empty{display:none}
+.crow.vrow{grid-template-columns:70px minmax(0,1fr) minmax(0,2fr) minmax(0,1fr) minmax(0,1fr)}
+.crow>.cmask{grid-column:5;grid-row:1}
+.crow.vnext .vnote{grid-column:3/6;grid-row:1;padding-top:10px;font-size:13px;color:var(--muted)}
+.fs-vg{table-layout:fixed}.fs-vg th:first-child{width:56px}.fs-vg td,.fs-vg th{text-align:center;padding:4px 2px}.fs-vg td.fs-rl,.fs-vg th:first-child{text-align:left;padding-left:6px}
+.fs-vg td.b1{color:var(--accent);font-weight:700}.fs-vg td.b0{color:var(--muted)}
+.fs-vg tr.miss td.b1,.fs-vg tr.miss td.b0{color:var(--bad)}
+#fin.bits8{flex:0 1 11em;letter-spacing:2px}
+@media (max-width:600px){
+  .vreq{font-size:14px;gap:2px 8px}
+  .vg-h,.vg-row{grid-template-columns:repeat(8,minmax(0,1fr));gap:4px}
+  .vg-h span:first-child{display:none}.vg-row .rlab{grid-column:1/-1}.vg-row .rlab small{display:inline;margin-left:6px}
+  .vg-row .bit{height:40px;font-size:18px}.vg-row .fix{grid-column:1/-1}
+  .crow.vrow{grid-template-columns:1fr 1fr}
+  .crow>.cmask,.crow.vnext .vnote{grid-row:auto;grid-column:auto}
+  .crow.vnext .vnote{padding-top:22px}
+  .fs-vg td,.fs-vg th{padding:4px 1px;font-size:12px}
+}
 </style>
 </head>
 <body>
@@ -569,6 +596,21 @@ body.present #rain{opacity:.12}
         <li><b>Total networks</b> = 2<sup>n</sup>, where n = p − the class default: Class A (first octet 1–126) /8, B (128–191) /16, C (192–223) /24. For 10.x.x.x/27: n = 27 − 8 = 19 → 524,288. Some classes count from /24 instead (n = p − 24); the game accepts either for the worksheet.</li>
       </ol>
       <p class="dim">Work it top to bottom: everything above the chart comes from the mask, everything about the given IP comes straight off the chart, and total networks is a separate calculation from the IP’s class, so leave it for last.</p>
+    </details>
+    <details id="g-vlsm">
+      <summary>VLSM: start to finish</summary>
+      <p>VLSM (variable length subnet masking) splits one network, here a /24, into subnets of different sizes, each just big enough for its hosts.</p>
+      <ol>
+        <li><b>Biggest first.</b> Assign the subnet that needs the most hosts first, starting at the .0 network, then the next biggest, and so on. Big blocks first keeps every subnet lined up on its own boundary.</li>
+        <li><b>Host bits.</b> For each subnet find the smallest h where 2<sup>h</sup> − 2 ≥ the hosts needed: h = 2 → 2 hosts, 3 → 6, 4 → 14, 5 → 30, 6 → 62, 7 → 126. Watch the edges: 15 hosts don’t fit in 14, so they need h = 5.</li>
+        <li><b>Bit grid.</b> Write h 0s on the right (host bits) and 1s in the rest (network bits).</li>
+        <li><b>Mask.</b> Add the place values above the 1s to get the last octet: 255.255.255.<i>x</i>.</li>
+        <li><b>Block size</b> = 2<sup>h</sup>, which is also 256 − the mask’s last octet.</li>
+        <li><b>Network.</b> The first subnet starts at .0. Each one after starts at the previous network + the previous block size, which is the same as the previous broadcast + 1.</li>
+        <li><b>Broadcast</b> = network + block size − 1. <b>Useable range</b> = network + 1 to broadcast − 1.</li>
+        <li><b>The extra row</b> is the network after the last subnet: its broadcast + 1. Everything from there on is still free.</li>
+      </ol>
+      <p class="dim">Example: 192.168.0.0/24 with 58, 29, 15 and 7 hosts → h = 6, 5, 5, 4 → masks .192, .224, .224, .240 → networks .0, .64, .96, .128, and the next network is .144.</p>
     </details>
     <details id="g-short">
       <summary>Shortcuts to memorise</summary>

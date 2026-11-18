@@ -21,8 +21,8 @@ function binColored(n,p,dimHost){
 }
 const store={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v);}catch(e){return d;}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}}};
 
-const MODES=[{id:'worksheet',name:'Worksheet'},{id:'mixed',name:'Mixed'},{id:'binary',name:'Binary'},{id:'prefix',name:'Prefix ↔ Mask'},{id:'anding',name:'ANDing'},{id:'detective',name:'Subnet Chart'},{id:'formulas',name:'Formulas'},{id:'weak',name:'Weak spots'}];
-const GUIDE_FOR={worksheet:'g-ws',binary:'g-bin',prefix:'g-mask',anding:'g-and',detective:'g-chart',formulas:'g-form'};
+const MODES=[{id:'worksheet',name:'Worksheet'},{id:'vlsm',name:'VLSM'},{id:'mixed',name:'Mixed'},{id:'binary',name:'Binary'},{id:'prefix',name:'Prefix ↔ Mask'},{id:'anding',name:'ANDing'},{id:'detective',name:'Subnet Chart'},{id:'formulas',name:'Formulas'},{id:'weak',name:'Weak spots'}];
+const GUIDE_FOR={worksheet:'g-ws',vlsm:'g-vlsm',binary:'g-bin',prefix:'g-mask',anding:'g-and',detective:'g-chart',formulas:'g-form'};
 const state={mode:'worksheet',level:'core',score:0,streak:0,best:Math.max(0,Math.floor(Number(store.get('ss_best',0)))||0),right:0,tried:0,per:{},q:null,checked:false,hinted:false,timed:null};
 MODES.forEach(m=>state.per[m.id]={r:0,t:0});
 const randPrefix=()=>state.level==='core'?R(24,30):R(16,30);
@@ -334,6 +334,7 @@ const GEN={
       hint:'Copy the octets under 255. In the octet where the mask isn’t 255 or 0, write both numbers in binary and AND them: 1 only where both are 1.',explain:explainAnd(ip,p)};
   },
   worksheet(){return genSheet();},
+  vlsm(){return genVlsm();},
   detective(sub){
     if(sub==='role'||(!sub&&Math.random()<.25))return genRole();
     const p=randPrefix(),ip=randIP(),m=maskOf(p),net=(ip&m)>>>0,size=2**(32-p),bc=(net+size-1)>>>0;
@@ -538,6 +539,250 @@ function sheetHTML(q){
   return `<div class="ws-top">${sec('pre')}</div><div class="ws-chart"><div class="ch-title">Network chart</div>${(()=>{const c=q.fields.find(f=>f.pre&&f.cell);return c?`<div class="ch-note">Every address here starts <b class="mono">${c.pre}</b>, so just type the last octet.</div>`:'';})()}<div class="crow chead"><span class="rlab"></span><span>Network</span><span>Useable host range</span><span>Broadcast</span></div>${rows}</div><div class="ws-top ws-post"><div class="ch-title">The given IP</div>${sec('post')}</div><div class="ws-top ws-post"><div class="ch-title">The whole address space</div>${sec('end')}</div>`;
 }
 
+/* ---------------- VLSM: split a /24 into subnets sized for their host counts, biggest first ----------------
+   Matches the class VLSM assignment: a bit grid per subnet (1s = network bits, 0s = host bits), then a table of
+   network, useable host range, broadcast and subnet mask, plus one extra row for the network after the last subnet. */
+const SUBL='ABCDEF';
+const hostBitsFor=H=>{let h=2;while(2**h-2<H)h++;return h;};
+const PV=[128,64,32,16,8,4,2,1];
+function vlsmFrom(hostsRaw,baseRaw){
+  const parts=String(hostsRaw||'').split(/[\s,;/]+/).filter(Boolean);
+  if(parts.length<2||parts.length>6)return {err:'Enter 2 to 6 host counts separated by commas, like 58, 29, 15, 7.'};
+  if(parts.some(p=>!/^\d{1,3}$/.test(p)))return {err:'Host counts must be whole numbers, like 58, 29, 15, 7.'};
+  const hosts=parts.map(Number).sort((a,b)=>b-a);
+  if(hosts.some(h=>h<2||h>126))return {err:'Each subnet needs between 2 and 126 hosts to fit inside a /24.'};
+  const used=hosts.reduce((a,H)=>a+2**hostBitsFor(H),0);
+  if(used>256)return {err:`Those subnets need ${used} addresses, more than the 256 in a /24. Use smaller host counts.`};
+  let base=parseIP('192.168.0.0');
+  if(baseRaw&&String(baseRaw).trim()){const b=parseIP(String(baseRaw).trim().replace(/\/24$/,''));
+    if(b==null||oct(b,3)!==0)return {err:'The starting network must be a /24 that ends in .0, like 192.168.0.0.'};
+    const a=oct(b,0);if(a===0||a===127||a>=224)return {err:'Use a normal unicast network (first octet 1–223, not 127).'};base=b;}
+  return {kind:'vlsm',hosts,base:ipStr(base)};
+}
+function genVlsm(fixed){
+  let hosts;
+  if(fixed)hosts=fixed.hosts.slice();
+  else for(;;){
+    const hs=[...Array(4)].map(()=>R(2,7)).sort((a,b)=>b-a);
+    if(hs[0]===2||hs.reduce((a,h)=>a+2**h,0)>=256)continue;
+    // host counts that need exactly h host bits, often right at an edge (like 15 or 7, which just miss the smaller block)
+    hosts=hs.map(h=>{const lo=Math.max(2,2**(h-1)-1),hi=2**h-2,r=Math.random();return r<.25?hi:r<.5?lo:R(lo,hi);});
+    if(hosts.every((x,i)=>i===0||x<hosts[i-1]))break;
+  }
+  const base=fixed?parseIP(fixed.base):parseIP(Math.random()<.7?'192.168.0.0':`192.168.${R(1,254)}.0`);
+  let at=base;
+  const S=hosts.map((H,i)=>{const h=hostBitsFor(H),blk=2**h,mv=256-blk,net=at;at=(at+blk)>>>0;
+    return {L:SUBL[i],H,h,blk,mv,mask:parseIP('255.255.255.'+mv),net,bc:(net+blk-1)>>>0,first:(net+1)>>>0,last:(net+blk-2)>>>0};});
+  const nextNet=at,last=S[S.length-1].L;
+  const pre=a=>ipStr(a).replace(/\d+$/,'');
+  const fields=[],idx={grid:[],vmask:[],vnet:[],vbc:[],vfirst:[],vlast:[]};
+  const add=f=>{idx[f.key]&&(idx[f.key][f.v]=fields.length);fields.push(f);};
+  S.forEach((s,i)=>{const w=`Subnet ${s.L} · ${s.H} hosts`;
+    add({key:'grid',v:i,type:'bits',label:`Subnet ${s.L} bit grid`,where:w,answer:bin8(s.mv)});
+    add({key:'vmask',v:i,type:'ip',pre:'255.255.255.',label:`Subnet ${s.L} subnet mask`,where:w,answer:s.mask});
+    add({key:'vnet',v:i,type:'ip',pre:pre(s.net),label:`Subnet ${s.L} network`,where:w,answer:s.net});
+    add({key:'vbc',v:i,type:'ip',pre:pre(s.bc),label:`Subnet ${s.L} broadcast`,where:w,answer:s.bc});
+    add({key:'vfirst',v:i,type:'ip',pre:pre(s.first),label:`Subnet ${s.L} first useable host`,where:w,answer:s.first});
+    add({key:'vlast',v:i,type:'ip',pre:pre(s.last),label:`Subnet ${s.L} last useable host`,where:w,answer:s.last});
+  });
+  idx.vnet[S.length]=fields.length;
+  fields.push({key:'vnet',v:S.length,type:'ip',pre:pre(nextNet),label:`Network after Subnet ${last}`,where:'The extra row',answer:nextNet});
+  const at_=(x,k,i)=>idx[k][i]==null?'':x[idx[k][i]];
+  const typo=(u,want)=>{if(u==null||want==null)return null;const bad=[0,1,2].filter(k=>oct(u,k)!==oct(want,k));if(!bad.length)return null;
+    return T('copy_octets',`Check for a typo: ${bad.map(k=>`octet ${k+1} should be ${oct(want,k)}, not ${oct(u,k)}`).join(', and ')}. Every address in this problem starts ${M(pre(want))}; only the last octet changes.`);};
+  const why=s=>`The smallest h with 2<sup>h</sup> − 2 ≥ ${s.H} is h = ${G(s.h)} (2<sup>h</sup> − 2 = ${G(2**s.h-2)}), so its row is ${G(8-s.h)} 1s, then ${G(s.h)} 0s.`;
+  function diagGrid(s,raw){
+    const t=String(raw||'').replace(/[\s.]/g,'');if(t===bin8(s.mv))return null;
+    if(!/^[01]{8}$/.test(t))return `Fill in all 8 boxes with a 1 or a 0. Subnet ${s.L} needs ${s.H} hosts. ${why(s)}`;
+    if(!/^1*0*$/.test(t))return T('vlsm_fit',`A grid row is all its 1s on the left (network bits), then all its 0s on the right (host bits), never mixed. ${why(s)}`);
+    const u=(t.match(/0/g)||[]).length;
+    if(u<s.h&&2**u>=s.H)return T('minus2',`${u} host bits give 2<sup>${u}</sup> = ${2**u} addresses, but the network and broadcast take 2 of them, so only ${2**u-2} hosts fit, fewer than ${s.H}. ${why(s)}`);
+    if(u<s.h)return T('vlsm_fit',`${u} host bit${u===1?'':'s'} only give${u===1?'s':''} 2<sup>${u}</sup> − 2 = ${Math.max(0,2**u-2)} hosts, fewer than the ${s.H} Subnet ${s.L} needs. ${why(s)}`);
+    return T('vlsm_fit',`${u} host bits fit, but it’s more than needed. VLSM uses the <b>smallest</b> block that fits so no addresses are wasted. ${why(s)}`);
+  }
+  function diagVMask(s,raw,userGrid){
+    const u=parseIP(raw);if(u===s.mask)return null;
+    const ones=PV.slice(0,8-s.h);
+    const how=`Add the place values above the 1s in Subnet ${s.L}’s row: ${ones.length?ones.join(' + '):'none'} = ${G(s.mv)}. The mask is ${G(ipStr(s.mask))}.`;
+    if(u==null)return badEntry(raw,'ip')+' '+how;
+    if(oct(u,0)!==255||oct(u,1)!==255||oct(u,2)!==255)return T('vlsm_mask',`The first three octets of every mask here are 255. ${how}`);
+    const g=String(userGrid||'').replace(/[\s.]/g,'');
+    if(/^[01]{8}$/.test(g)&&/^1*0*$/.test(g)&&g!==bin8(s.mv)&&parseInt(g,2)===oct(u,3))return `Right method for the grid you wrote; only that grid row is off. ${how}`;
+    const o=oct(u,3);
+    if(o===s.blk)return T('vlsm_mask',`${s.blk} is the block size, not the mask. The mask octet is 256 − the block size. ${how}`);
+    if(o===s.H||o===2**s.h-2)return T('vlsm_mask',`That’s a host count, not a mask. ${how}`);
+    if([128,192,224,240,248,252,254].includes(o))return T('vlsm_mask',`${o} is a real mask octet, but it doesn’t match Subnet ${s.L}’s grid row. ${how}`);
+    return T('vlsm_mask',`${o} can’t be a mask octet (they’re always some 1s followed by 0s: ${VALID_OCT}). ${how}`);
+  }
+  function diagVNet(i,raw,x){
+    const want=i<S.length?S[i].net:nextNet,u=parseIP(raw);if(u===want)return null;
+    const p=S[i-1],nm=i<S.length?`Subnet ${S[i].L}`:`the network after Subnet ${last}`;
+    const how=i===0?`The first (biggest) subnet starts at the start of the /24: ${G(ipStr(want))}.`
+      :`${i<S.length?`Subnet ${S[i].L}`:'The next network'} starts right after Subnet ${p.L} ends: Subnet ${p.L}’s broadcast + 1 = ${G(ipStr(want))}. (Same as Subnet ${p.L}’s network + its block size of ${p.blk}.)`;
+    if(u==null)return badEntry(raw,'ip')+' '+how;
+    {const ty=typo(u,want);if(ty)return ty;}
+    if(i===0)return T('vlsm_block',`Assign from the very start of the range, biggest subnet first. ${how}`);
+    const ub=parseIP(at_(x,'vbc',i-1)),un=parseIP(at_(x,'vnet',i-1));
+    if(u===p.bc)return T('vlsm_block',`That’s Subnet ${p.L}’s broadcast. ${nm[0].toUpperCase()+nm.slice(1)} starts one address after it. ${how}`);
+    if(ub!=null&&ub!==p.bc&&u===((ub+1)>>>0))return `Right method for the broadcast you wrote for Subnet ${p.L}; only that broadcast is off. ${how}`;
+    if(un!=null&&un!==p.net&&u===((un+p.blk)>>>0))return `Right method for the network you wrote for Subnet ${p.L}; only that network is off. ${how}`;
+    if(u===p.net)return T('vlsm_block',`That’s Subnet ${p.L}’s network. Every subnet needs its own block. ${how}`);
+    if(u===((p.net+p.H)>>>0)||u===((p.net+p.H+1)>>>0))return T('vlsm_block',`It looks like you added the hosts Subnet ${p.L} needs (${p.H}). Each subnet takes a whole block of 2<sup>h</sup> addresses, so add its block size instead. ${how}`);
+    if(i<S.length&&S[i].blk!==p.blk&&u===((p.net+S[i].blk)>>>0))return T('vlsm_block',`You added this subnet’s block size. Add the <b>previous</b> subnet’s block (Subnet ${p.L}’s). ${how}`);
+    return T('vlsm_block',`${M(ipStr(u))} isn’t where ${nm} starts. ${how}`);
+  }
+  function diagVBc(i,raw,x){
+    const s=S[i],u=parseIP(raw);if(u===s.bc)return null;
+    const how=`Broadcast = network + block size − 1. Subnet ${s.L}’s block is 2<sup>${s.h}</sup> = ${s.blk}, so ${M(ipStr(s.net))} + ${s.blk} − 1 = ${G(ipStr(s.bc))}.`;
+    if(u==null)return badEntry(raw,'ip')+' '+how;
+    {const ty=typo(u,s.bc);if(ty)return ty;}
+    const un=parseIP(at_(x,'vnet',i));
+    if(un!=null&&un!==s.net&&u===((un+s.blk-1)>>>0))return `Right method for the network you wrote; only that network is off. ${how}`;
+    if(u===((s.net+s.blk)>>>0))return T('off_by_one',`That’s where the next subnet starts. The broadcast is one before it. ${how}`);
+    if(u===s.last)return T('off_by_one',`That’s the last useable host. The broadcast is one more. ${how}`);
+    if(u===((s.net+s.H)>>>0)||u===((s.net+s.H+1)>>>0)||u===((s.net+s.H-1)>>>0))return T('vlsm_block',`It looks like you counted the ${s.H} hosts needed. The subnet gets its whole block of 2<sup>h</sup> addresses. ${how}`);
+    return T('vlsm_block',`${M(ipStr(u))} isn’t Subnet ${s.L}’s broadcast. ${how}`);
+  }
+  function diagVEnd(i,raw,x,isFirst){
+    const s=S[i],want=isFirst?s.first:s.last,u=parseIP(raw);if(u===want)return null;
+    const how=isFirst?`First useable = network + 1 = ${G(ipStr(want))}.`:`Last useable = broadcast − 1 = ${G(ipStr(want))}.`;
+    if(u==null)return badEntry(raw,'ip')+' '+how;
+    {const ty=typo(u,want);if(ty)return ty;}
+    const un=parseIP(at_(x,'vnet',i)),ub=parseIP(at_(x,'vbc',i));
+    if(isFirst&&un!=null&&un!==s.net&&u===((un+1)>>>0))return `Right method for the network you wrote; only that network is off. ${how}`;
+    if(!isFirst&&ub!=null&&ub!==s.bc&&u===((ub-1)>>>0))return `Right method for the broadcast you wrote; only that broadcast is off. ${how}`;
+    if(isFirst&&u===s.net)return T('off_by_one',`That’s the network address itself, which a host can’t use. ${how}`);
+    if(!isFirst&&u===s.bc)return T('off_by_one',`The broadcast can’t be used by a host. ${how}`);
+    return T('off_by_one',`${M(ipStr(u))} isn’t right. ${how}`);
+  }
+  const used=nextNet-base;
+  const notes=S.filter(s=>s.h>2&&2**(s.h-1)>=s.H).map(s=>`Subnet ${s.L} needs ${s.H} hosts, but 2<sup>${s.h-1}</sup> − 2 = ${2**(s.h-1)-2} is too few, so it uses ${s.h} host bits (${2**s.h-2} hosts).`);
+  const explain=`<table class="sol"><tr><th>Subnet</th><th>Hosts needed</th><th>h</th><th>Block (2<sup>h</sup>)</th><th>Bit grid</th><th>Mask</th></tr>${S.map(s=>`<tr><td>${s.L}</td><td>${s.H}</td><td>${s.h} <span class="dim">(2<sup>${s.h}</sup> − 2 = ${2**s.h-2})</span></td><td>${s.blk}</td><td class="mono">${bin8(s.mv)}</td><td class="mono">${ipStr(s.mask)}</td></tr>`).join('')}</table>
+    <table class="sol chartsol"><tr><th></th><th>Network</th><th>Useable host range</th><th>Broadcast</th></tr>${S.map(s=>`<tr><td>${s.L}</td><td class="mono">${ipStr(s.net)}</td><td class="mono">${ipStr(s.first)} – ${ipStr(s.last)}</td><td class="mono">${ipStr(s.bc)}</td></tr>`).join('')}<tr><td class="dim">Next</td><td class="mono">${ipStr(nextNet)}</td><td></td><td></td></tr></table>
+    ${notes.length?`<p class="dim">${notes.join(' ')}</p>`:''}<p class="dim">The subnets use ${used} of the 256 addresses${used<256?`; ${ipStr(nextNet)} onward is still free for more subnets`:''}.</p>`;
+  const walk=()=>{const st=[];
+    S.forEach((s,i)=>{const p=S[i-1];
+      st.push({q:`Subnet ${s.L} needs <b>${s.H}</b> hosts. Find the smallest h (host bits) where 2<sup>h</sup> − 2 ≥ ${s.H}. h = ?`,kind:'num',ans:s.h,
+        tip:'Hosts for each h: h=2 → 2, h=3 → 6, h=4 → 14, h=5 → 30, h=6 → 62, h=7 → 126. Pick the first one that covers the hosts needed.',
+        bad:u=>u==null?'Enter a number.':2**u-2<s.H?`2<sup>${u}</sup> − 2 = ${Math.max(0,2**u-2)}, fewer than ${s.H}. Try a bigger h.`:`2<sup>${u}</sup> − 2 = ${2**u-2} fits, but a smaller h also fits. Use the smallest.`});
+      st.push({q:`In Subnet ${s.L}’s grid row, the last h boxes are 0s (host bits) and the rest are 1s. Type the 8 bits.`,kind:'bits8',ans:bin8(s.mv),f:idx.grid[i],
+        tip:'Count the 0s from the right first, then fill everything to their left with 1s.',
+        bad:(u,raw)=>!isBits8(raw)?'Type exactly 8 ones and zeros.':!/^1*0*$/.test(raw.trim())?'All the 1s go on the left and all the 0s on the right.':`Use ${s.h} 0s on the right, and 1s everywhere else.`});
+      st.push({q:`Add the place values above the 1s. That’s the last octet of the mask (the first three are 255). Write Subnet ${s.L}’s subnet mask.`,kind:'ip',ans:s.mask,f:idx.vmask[i],
+        tip:'The mask ladder: 1 one = 128, 2 = 192, 3 = 224, 4 = 240, 5 = 248, 6 = 252.',
+        bad:u=>u==null?IPFMT:`Add ${PV.slice(0,8-s.h).join(' + ')}.`});
+      st.push(i===0?{q:`The biggest subnet starts at the very start of the /24 you were given. Write Subnet ${s.L}’s network address.`,kind:'ip',ans:s.net,f:idx.vnet[i],tip:'',
+          bad:u=>u==null?IPFMT:'It’s the network in the problem, ending in .0.'}
+        :{q:`Subnet ${s.L} starts right after Subnet ${p.L} ends: Subnet ${p.L}’s broadcast + 1. Write Subnet ${s.L}’s network address.`,kind:'ip',ans:s.net,f:idx.vnet[i],
+          tip:'In VLSM each network is the previous network plus the previous subnet’s block size, which is the same as its broadcast + 1.',
+          bad:u=>u==null?IPFMT:u===p.bc?'That’s Subnet '+p.L+'’s broadcast. Add 1.':'Take Subnet '+p.L+'’s broadcast and add 1.'});
+      st.push({q:`Block size = 2<sup>h</sup>, the total addresses in Subnet ${s.L} (hosts plus the network and broadcast). Block size = ?`,kind:'num',ans:s.blk,
+        tip:'The block size is also 256 − the mask’s last octet.',
+        bad:u=>u==null?'Enter a number.':u===s.blk-2?'That’s the useable hosts. The block also counts the network and broadcast: 2^h.':u===s.H?'That’s the hosts needed. The block is the full power of 2.':'2 multiplied by itself h times.'});
+      st.push({q:`Broadcast = network + block size − 1. Write Subnet ${s.L}’s broadcast.`,kind:'ip',ans:s.bc,f:idx.vbc[i],
+        tip:'The broadcast is always one before where the next subnet starts.',
+        bad:u=>u==null?IPFMT:u===((s.net+s.blk)>>>0)?'That’s where the next subnet starts. Subtract 1.':'Add the block size to the network, then subtract 1.'});
+      st.push({q:`First useable host = network + 1. Write it.`,kind:'ip',ans:s.first,f:idx.vfirst[i],tip:'',bad:u=>u==null?IPFMT:u===s.net?'That’s the network itself. Add 1.':'Add 1 to Subnet '+s.L+'’s network.'});
+      st.push({q:`Last useable host = broadcast − 1. Write it.`,kind:'ip',ans:s.last,f:idx.vlast[i],tip:'',bad:u=>u==null?IPFMT:u===s.bc?'That’s the broadcast. Subtract 1.':'Subtract 1 from Subnet '+s.L+'’s broadcast.'});
+    });
+    const p=S[S.length-1];
+    st.push({q:`The extra row: the network that comes after Subnet ${p.L} is Subnet ${p.L}’s broadcast + 1. Write it.`,kind:'ip',ans:nextNet,f:idx.vnet[S.length],tip:'',
+      bad:u=>u==null?IPFMT:u===p.bc?'That’s Subnet '+p.L+'’s broadcast. Add 1.':'Take Subnet '+p.L+'’s broadcast and add 1.'});
+    return st;};
+  return {mode:'vlsm',layout:'vlsm',title:'VLSM',S,base,nextNet,
+    prompt:`Use VLSM to divide <b class="big">${ipStr(base)}/24</b> into subnets that fit the hosts each one needs.<div class="vreq">${S.map(s=>`<span>Subnet ${s.L} will require</span><b>${s.H}</b><span>host IP addresses</span>`).join('')}</div>`,
+    mini:`${ipStr(base)}/24 · ${S.map(s=>`${s.L} ${s.H}`).join(' · ')} hosts`,
+    fields,
+    diag:x=>fields.map((f,i)=>{const v=x[i],s=S[f.v];switch(f.key){
+      case 'grid':return diagGrid(s,v);
+      case 'vmask':return diagVMask(s,v,at_(x,'grid',f.v));
+      case 'vnet':return diagVNet(f.v,v,x);
+      case 'vbc':return diagVBc(f.v,v,x);
+      case 'vfirst':return diagVEnd(f.v,v,x,true);
+      case 'vlast':return diagVEnd(f.v,v,x,false);}}),
+    hint:'Biggest subnet first. For each one: the smallest h with 2ʰ − 2 ≥ the hosts needed gives the grid (h 0s on the right) and the mask. Each network starts right after the previous broadcast; broadcast = network + 2ʰ − 1.',
+    walk,explain};
+}
+function vcellHTML(f,i,ph){
+  return `<div class="field cell" data-i="${i}"><input id="f${i}" aria-label="${f.label}" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" inputmode="numeric" enterkeyhint="next" placeholder="${ph} .__"><span class="fix"></span></div>`;
+}
+function vlsmHTML(q){
+  const I={};q.fields.forEach((f,i)=>{(I[f.key]=I[f.key]||[])[f.v]=i;});
+  const grid=q.S.map((s,v)=>{const i=I.grid[v];return `<div class="field vg-row" data-i="${i}"><span class="rlab">Subnet ${s.L}<small>${s.H} hosts</small></span>${PV.map((p,k)=>`<button type="button" class="bit" data-k="${k}" aria-label="Subnet ${s.L}, ${p} bit">0</button>`).join('')}<span class="fix"></span></div>`;}).join('');
+  const rows=q.S.map((s,v)=>`<div class="crow vrow"><span class="rlab">Subnet ${s.L}</span><div class="cc cnet" data-l="Network">${vcellHTML(q.fields[I.vnet[v]],I.vnet[v],'network')}</div><div class="cc rng" data-l="Useable host range">${vcellHTML(q.fields[I.vfirst[v]],I.vfirst[v],'first')}<span class="dash">–</span>${vcellHTML(q.fields[I.vlast[v]],I.vlast[v],'last')}</div><div class="cc cbc" data-l="Broadcast">${vcellHTML(q.fields[I.vbc[v]],I.vbc[v],'broadcast')}</div><div class="cc cmask" data-l="Subnet mask">${vcellHTML(q.fields[I.vmask[v]],I.vmask[v],'mask')}</div></div>`).join('');
+  const nx=I.vnet[q.S.length];
+  return `<div class="vg-wrap"><div class="ch-title">Bit grid</div><div class="ch-note">1s for network bits on the left, 0s for host bits on the right. Tap a box to flip it.</div>
+    <div class="vg-h"><span></span>${PV.map(p=>`<span>${p}</span>`).join('')}</div>${grid}</div>
+    <div class="ws-chart"><div class="ch-title">Address table</div><div class="ch-note">Addresses start <b class="mono">${ipStr(q.base).replace(/\d+$/,'')}</b> and masks start <b class="mono">255.255.255.</b>, so just type the last octet.</div>
+    <div class="crow chead vrow"><span class="rlab"></span><span>Network</span><span>Useable host range</span><span>Broadcast</span><span>Subnet mask</span></div>${rows}
+    <div class="crow vrow vnext"><span class="rlab">Next</span><div class="cc cnet" data-l="Network">${vcellHTML(q.fields[nx],nx,'network')}</div><span class="vnote">The network after Subnet ${q.S[q.S.length-1].L}, so you can find its broadcast.</span></div></div>`;
+}
+function flowSheetV(q,F,cur){
+  const n=q.fields.length,end=cur<0?n:cur,reach=Math.max(end-1,cur);
+  const I={};q.fields.forEach((f,i)=>{(I[f.key]=I[f.key]||[])[f.v]=i;});
+  const cls=j=>`${F.miss[j]?' miss':''}${j===F.justDone?' pop':''}`;
+  const cell=j=>j<end?`<span class="fs-cv${cls(j)}">${ipCell(q.fields[j].answer)}</span>`:j===cur?'<span class="fs-cur">?</span>':'';
+  const gRows=q.S.map((s,v)=>{const j=I.grid[v];if(j>reach)return '';
+    if(j<end)return `<tr class="${cls(j).trim()}"><td class="fs-rl">${s.L}</td>${[...q.fields[j].answer].map(b=>`<td class="b${b}">${b}</td>`).join('')}</tr>`;
+    return `<tr><td class="fs-rl">${s.L}</td><td colspan="8"><span class="fs-cur">? ? ? ? ? ? ? ?</span></td></tr>`;}).join('');
+  const aRows=q.S.map((s,v)=>{if(I.vmask[v]>reach)return '';
+    return `<tr><td class="fs-rl">${s.L}</td><td>${cell(I.vnet[v])}</td><td>${cell(I.vfirst[v])}<span class="dim"> – </span>${cell(I.vlast[v])}</td><td>${cell(I.vbc[v])}</td><td>${cell(I.vmask[v])}</td></tr>`;}).join('');
+  const nx=I.vnet[q.S.length],nRow=nx<=reach?`<tr><td class="fs-rl">Next</td><td>${cell(nx)}</td><td></td><td></td><td></td></tr>`:'';
+  if(!gRows)return '';
+  return `<div class="fsheet"><div class="fs-sec">Bit grid</div><table class="fs-chart fs-vg"><tr><th></th>${PV.map(p=>`<th>${p}</th>`).join('')}</tr>${gRows}</table>
+    ${aRows?`<div class="fs-sec">Address table</div><table class="fs-chart"><tr><th></th><th><span class="lg">Network</span><span class="sm">Net</span></th><th><span class="lg">Useable host range</span><span class="sm">Useable</span></th><th><span class="lg">Broadcast</span><span class="sm">Bcast</span></th><th>Mask</th></tr>${aRows}${nRow}</table>`:''}</div>`;
+}
+function mirrorV(q,cell){
+  const I={};q.fields.forEach((f,i)=>{(I[f.key]=I[f.key]||[])[f.v]=i;});
+  return `<div class="mir"><table class="mchart"><tr><th></th><th>Bit grid</th><th>Mask</th><th>Network</th><th colspan="3">Useable</th><th>Bcast</th></tr>${q.S.map((s,v)=>`<tr><td class="ml">${s.L} <span class="dim">(${s.H})</span></td><td>${cell(I.grid[v])}</td><td>${cell(I.vmask[v])}</td><td>${cell(I.vnet[v])}</td><td>${cell(I.vfirst[v])}</td><td class="dim">–</td><td>${cell(I.vlast[v])}</td><td>${cell(I.vbc[v])}</td></tr>`).join('')}
+    <tr><td class="ml">Next</td><td></td><td></td><td>${cell(I.vnet[q.S.length])}</td><td></td><td></td><td></td><td></td></tr></table><div class="dim msub">Addresses show their last octet.</div></div>`;
+}
+/* VLSM teaching tools: a problem from the handout's host counts, a share link, and printable sheets */
+function shareURLV(pr){
+  const u=new URL(location.href);u.search='';u.hash='';u.searchParams.set('vlsm',pr.hosts.join(','));
+  if(pr.base!=='192.168.0.0')u.searchParams.set('net',pr.base);return u.toString();
+}
+function loadVlsm(pr){
+  if(state.timed)return;
+  if(state.mode!=='vlsm'){state.mode='vlsm';renderTabs();}
+  next(genVlsm(pr));state.custom=pr;
+  try{history.replaceState(null,'',shareURLV(pr));}catch(e){}
+}
+function renderOwnBoxV(){
+  const box=$('#ownbox');
+  box.innerHTML=`<div class="own-h"><b>Work a specific VLSM problem</b><button class="btn small" id="ownClose" aria-label="Close">✕</button></div>
+  <p class="dim">Enter the hosts each subnet needs, for example from your class handout. They’re sorted biggest first, and the link below opens this exact problem on anyone’s device.</p>
+  <div class="own-row"><label>Hosts needed<input id="ownHosts" autocomplete="off" spellcheck="false" inputmode="decimal" placeholder="58, 29, 15, 7"></label>
+  <label>Starting network<input id="ownBase" autocomplete="off" spellcheck="false" inputmode="decimal" placeholder="192.168.0.0"></label>
+  <button class="btn primary" id="ownGo">Load problem</button></div><div class="own-msg" id="ownMsg"></div>
+  <div class="own-share" id="ownShare" hidden><span class="dim">Share this problem:</span> <input id="ownLink" readonly> <button class="btn small" id="ownCopy">Copy link</button></div>`;
+  const go=()=>{const pr=vlsmFrom($('#ownHosts').value,$('#ownBase').value);
+    if(pr.err){$('#ownMsg').textContent=pr.err;$('#ownMsg').className='own-msg bad';return;}
+    loadVlsm(pr);$('#ownMsg').textContent=`Loaded ${pr.base}/24 with ${pr.hosts.join(', ')} hosts.`;$('#ownMsg').className='own-msg good';
+    $('#ownShare').hidden=false;$('#ownLink').value=shareURLV(pr);};
+  $('#ownGo').onclick=go;[$('#ownHosts'),$('#ownBase')].forEach(i=>i.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();e.stopPropagation();go();}}));
+  $('#ownClose').onclick=()=>{box.hidden=true;};
+  $('#ownCopy').onclick=async()=>{const l=$('#ownLink');l.select();let ok=false;try{await navigator.clipboard.writeText(l.value);ok=true;}catch(e){try{ok=document.execCommand('copy');}catch(_){}}
+    $('#ownCopy').textContent=ok?'Copied ✓':'Select and copy';setTimeout(()=>{$('#ownCopy').textContent='Copy link';},1800);};
+}
+function printVlsmHTML(q,n,key){
+  const I={};q.fields.forEach((f,i)=>{(I[f.key]=I[f.key]||[])[f.v]=i;});
+  const v=j=>key?ipStr(q.fields[j].answer):'';
+  return `<section class="pp pp-v"><div class="pp-head"><b>Problem ${n}</b><span class="pp-given">${ipStr(q.base)}/24</span></div>
+    <div class="pp-req">${q.S.map(s=>`Subnet ${s.L}: <b>${s.H}</b> hosts`).join(' &nbsp;·&nbsp; ')}</div>
+    <table class="pp-chart pp-vgrid"><tr><th>Subnet</th>${PV.map(p=>`<th>${p}</th>`).join('')}</tr>${q.S.map((s,k)=>`<tr><td>Subnet ${s.L}</td>${PV.map((p,b)=>`<td>${key?q.fields[I.grid[k]].answer[b]:''}</td>`).join('')}</tr>`).join('')}</table>
+    <table class="pp-chart pp-vaddr"><tr><th>Network</th><th>Useable host range</th><th>Broadcast</th><th>Subnet mask</th></tr>${q.S.map((s,k)=>`<tr><td>${v(I.vnet[k])}</td><td>${key?`${v(I.vfirst[k])} – ${v(I.vlast[k])}`:''}</td><td>${v(I.vbc[k])}</td><td>${v(I.vmask[k])}</td></tr>`).join('')}<tr><td>${v(I.vnet[q.S.length])}</td><td></td><td></td><td></td></tr></table></section>`;
+}
+function buildPrintV(count,withKey,includeCurrent){
+  const qs=[];if(includeCurrent&&state.q&&state.q.layout==='vlsm')qs.push(state.custom?genVlsm(state.custom):state.q);
+  while(qs.length<count)qs.push(genVlsm());
+  const sheet=`<div class="pp-title"><h2>VLSM assignment</h2><div>Name ______________________ &nbsp; Date ____________</div></div>
+    <p class="pp-intro">Use variable length subnet masking to divide each /24 into subnets that fit the hosts required, biggest first, starting at the .0 network. For each subnet, find the smallest h where 2<sup>h</sup> − 2 covers the hosts, fill in the bit grid (1s for network bits on the left, 0s for host bits on the right), then add the place values under the 1s for the last octet of the mask. Each network is the previous network plus its block size (2<sup>h</sup>); the broadcast is one before the next network. The last row is the network after the final subnet.</p>
+    ${qs.map((q,i)=>printVlsmHTML(q,i+1,false)).join('')}`;
+  const key=withKey?`<div class="pp-key"><div class="pp-title"><h2>Answer key</h2></div>${qs.map((q,i)=>printVlsmHTML(q,i+1,true)).join('')}</div>`:'';
+  $('#printArea').innerHTML=sheet+key;
+}
+
 /* ---------------- drills for the worksheet's extra skills ---------------- */
 function genMaskBin(){
   const p=state.level==='core'?R(24,30):R(8,30),m=maskOf(p),asPrefix=Math.random()<.5;
@@ -609,6 +854,9 @@ const WEAK={
   ip_role:['Network, host or broadcast?',[['detective','role'],['worksheet']]],
   class_nets:['Total networks from the class default',[['formulas',5],['worksheet']]],
   chart_rows:['Filling in the network chart rows',[['worksheet']]],
+  vlsm_fit:['Picking the smallest block that fits (VLSM)',[['vlsm'],['formulas',2]]],
+  vlsm_mask:['Turning a VLSM grid row into a mask',[['vlsm'],['prefix','p2m']]],
+  vlsm_block:['Stepping from one VLSM subnet to the next',[['vlsm']]],
 };
 try{localStorage.removeItem('ss_sheet');localStorage.removeItem('ss_nohelp');}catch(e){}
 let weak={};{const raw=store.get('ss_weak',{});if(raw&&typeof raw==='object')for(const t of Object.keys(raw))if(Object.prototype.hasOwnProperty.call(WEAK,t)){const w=Number(raw[t]&&raw[t].w),n=Number(raw[t]&&raw[t].n);weak[t]={w:Number.isFinite(w)?Math.min(6,Math.max(0,w)):0,n:Number.isFinite(n)?Math.max(0,Math.floor(n)):0};}}
@@ -782,9 +1030,10 @@ function fillField(i,ans){
 const fieldShow=(f,ans)=>f.type==='ip'?ipStr(ans):f.type==='prefix'?'/'+ans:f.type==='choice'?ROLES[ans]:typeof ans==='number'?big(ans):String(ans);
 function mirrorHTML(q,w,cur){
   const cell=i=>{const f=q.fields[i],v=w.filled[i];
-    const txt=v==null?(i===cur?'?':''):(f.cell?'.'+oct(v,3):f.type==='bin32'?String(v).replace(/\./g,'.<wbr>'):fieldShow(f,v));
+    const txt=v==null?(i===cur?'?':''):(f.cell||(f.pre&&f.type==='ip')?'.'+oct(v,3):f.type==='bin32'?String(v).replace(/\./g,'.<wbr>'):fieldShow(f,v));
     return `<span class="mv${i===cur?' cur':''}${v!=null?' done':''}">${txt}</span>`;};
   const row=i=>`<div class="mrow${i===cur?' cur':''}"><span class="ml">${q.fields[i].label}</span>${cell(i)}</div>`;
+  if(q.layout==='vlsm')return mirrorV(q,cell);
   if(q.layout!=='sheet')return `<div class="mir">${q.fields.map((f,i)=>row(i)).join('')}</div>`;
   const pre=[],post=[],byRow={};
   q.fields.forEach((f,i)=>{if(f.cell)(byRow[f.cell.r]=byRow[f.cell.r]||[])[f.cell.c]=i;else(f.sec==='pre'?pre:post).push(i);});
@@ -801,7 +1050,8 @@ function tipFor(st,q){
   const t=st.q,k=st.kind;let tip='';
   const ADD='Add up the place values (<span class="mono">128 64 32 16 8 4 2 1</span>) that sit above each 1.';
   const MASKOCT='A mask octet is always some 1s followed by 0s, never mixed, so you only need to know how many 1s. Each step up the mask ladder (128 → 192 → 224 …) adds one more 1.';
-  if(/AND them|AND your two/.test(t))tip='Shortcut for ANDing with a mask: wherever the mask has a 1, copy the IP’s bit; wherever it has a 0, write 0.';
+  if('tip' in st)tip=st.tip||'';
+  else if(/AND them|AND your two/.test(t))tip='Shortcut for ANDing with a mask: wherever the mask has a 1, copy the IP’s bit; wherever it has a 0, write 0.';
   else if(k==='bits8')tip=/^1*0*$/.test(st.ans)&&/mask|leftover|next octet/i.test(t)?MASKOCT:PLACE;
   else if(k==='bin32')tip='255 is always <span class="mono">11111111</span>, so full octets are easy. The total number of 1s in the whole mask is the prefix.';
   else if(k==='role')tip='A multiple of the increment is a <b>network</b>. One less than a multiple is a <b>broadcast</b>. Anything else is a <b>host</b>.';
@@ -907,6 +1157,7 @@ function startFlow(){
 }
 const ipCell=v=>`<span class="ipf">${ipStr(v)}</span><span class="ips">.${oct(v,3)}</span>`;
 function flowSheet(q,F,cur){
+  if(q.layout==='vlsm')return flowSheetV(q,F,cur);
   const n=q.fields.length,end=cur<0?n:cur;
   const val=i=>{const f=q.fields[i];return f.cell?ipCell(f.answer):f.type==='bin32'?String(f.answer).replace(/\./g,'.<wbr>'):fieldShow(f,f.answer);};
   const mark=i=>F.miss[i]?'<span class="fs-x" title="Missed on the first try">✗</span>':F.hinted[i]?'<span class="fs-h" title="Answered with the hint">💡</span>':'<span class="fs-c">✓</span>';
@@ -930,6 +1181,7 @@ function flowSheet(q,F,cur){
   return parts.length?`<div class="fsheet">${parts.join('')}</div>`:'';
 }
 function flowInput(f){
+  if(f.type==='bits')return `<div class="fc-row"><input id="fin" class="oct bits8" aria-label="${f.label}: 8 bits" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" inputmode="numeric" enterkeyhint="go" placeholder="8 bits" maxlength="9"><button class="btn primary" id="fok">Check</button></div><div class="dim fc-note">1s on the left for network bits, 0s on the right for host bits.</div>`;
   if(f.pre)return `<div class="fc-row${f.type==='bin32'?' long':''}"><span class="fc-pre mono" aria-hidden="true">${f.pre}</span><input id="fin" class="oct" aria-label="${f.label}: last ${f.type==='bin32'?'8 bits':'octet'}" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" inputmode="numeric" enterkeyhint="go" placeholder="${f.type==='bin32'?'8 bits':'octet'}"><button class="btn primary" id="fok">Check</button></div>`;
   if(f.type==='choice')return `<div class="choices fc-choices">${Object.entries(ROLES).map(([k,v])=>`<button type="button" class="choice" data-v="${k}">${v}</button>`).join('')}</div>`;
   const ph=f.type==='ip'?'e.g. 192.168.4.0':f.type==='prefix'?'/26':f.type==='bin32'?'32 ones and zeros (dots optional)':f.type==='numalt'?'number or 2^n':'number';
@@ -948,7 +1200,7 @@ function renderFlow(){
   const n=q.fields.length,cur=state.checked||F.k>=n?-1:F.k;
   let card='';
   if(cur>=0){const f=q.fields[cur];
-    const where=f.cell?`Network chart · Row ${f.cell.r+1}`:f.sec?SECNAME[f.sec]:'';
+    const where=f.where||(f.cell?`Network chart · Row ${f.cell.r+1}`:f.sec?SECNAME[f.sec]:'');
     card=`<div class="fcard" id="fcard" data-i="${cur}"><div class="fc-h"><small>Question ${cur+1} of ${n}${where?` · ${where}`:''}</small><div class="fc-bar"><i style="width:${Math.round(100*cur/n)}%"></i></div></div>
       <label class="fc-q" for="fin">${f.label}</label>${flowInput(f)}<div class="fc-msg${F.msg?' on':''}">${F.msg||''}</div>
       <div class="fc-acts">${F.groups&&F.groups[cur]&&!(F.step&&F.step.i===cur)?'<button class="btn small" id="fhint">💡 Hint: step by step</button>':''}${F.miss[cur]?'<button class="btn small" id="freveal">Show the answer</button>':''}</div>
@@ -1062,25 +1314,25 @@ function buildPrint(count,withKey,includeCurrent){
 function renderPrintBox(){
   const box=$('#printbox');
   box.innerHTML=`<div class="own-h"><b>Print worksheets</b><button class="btn small" id="prClose" aria-label="Close">✕</button></div>
-  <p class="dim">Random problems in the class worksheet format, two to a page, with the answer key on separate pages.</p>
+  <p class="dim">Random ${state.mode==='vlsm'?'VLSM problems in the class assignment format':'problems in the class worksheet format'}, two to a page, with the answer key on separate pages.</p>
   <div class="own-row"><label>Problems<select id="prN">${[2,4,6,8,10].map(n=>`<option${n===4?' selected':''}>${n}</option>`).join('')}</select></label>
   <label class="chk"><input type="checkbox" id="prKey" checked> Answer key</label>
   <label class="chk"><input type="checkbox" id="prCur"> Start with this problem</label>
   <button class="btn primary" id="prGo">Print</button></div>`;
   $('#prClose').onclick=()=>{box.hidden=true;};
-  $('#prGo').onclick=()=>{buildPrint(Number($('#prN').value),$('#prKey').checked,$('#prCur').checked);document.body.classList.add('printing');setTimeout(()=>{window.print();},50);};
+  $('#prGo').onclick=()=>{(state.mode==='vlsm'?buildPrintV:buildPrint)(Number($('#prN').value),$('#prKey').checked,$('#prCur').checked);document.body.classList.add('printing');setTimeout(()=>{window.print();},50);};
 }
 window.addEventListener('afterprint',()=>document.body.classList.remove('printing'));
 function syncTeachTools(){
-  const ws=state.mode==='worksheet'&&!state.timed;
+  const ws=(state.mode==='worksheet'||state.mode==='vlsm')&&!state.timed;
   $('#ownBtn').hidden=!ws;$('#printBtn').hidden=!ws;
   if(!ws){$('#ownbox').hidden=true;$('#printbox').hidden=true;}
 }
-$('#ownBtn').onclick=()=>{const b=$('#ownbox');if(b.hidden){renderOwnBox();b.hidden=false;$('#printbox').hidden=true;if(state.custom){$('#ownIp').value=state.custom.ip;$('#ownMask').value=state.custom.asPrefix?'/'+state.custom.p:ipStr(maskOf(state.custom.p));}$('#ownIp').focus();}else b.hidden=true;};
+$('#ownBtn').onclick=()=>{const b=$('#ownbox');if(b.hidden&&state.mode==='vlsm'){renderOwnBoxV();b.hidden=false;$('#printbox').hidden=true;if(state.custom&&state.custom.kind==='vlsm'){$('#ownHosts').value=state.custom.hosts.join(', ');$('#ownBase').value=state.custom.base;}$('#ownHosts').focus();}else if(b.hidden){renderOwnBox();b.hidden=false;$('#printbox').hidden=true;if(state.custom&&state.custom.ip){$('#ownIp').value=state.custom.ip;$('#ownMask').value=state.custom.asPrefix?'/'+state.custom.p:ipStr(maskOf(state.custom.p));}$('#ownIp').focus();}else b.hidden=true;};
 $('#printBtn').onclick=()=>{const b=$('#printbox');if(b.hidden){renderPrintBox();b.hidden=false;$('#ownbox').hidden=true;}else b.hidden=true;};
 $('#presentBtn').onclick=()=>{const on=!document.body.classList.contains('present');document.body.classList.toggle('present',on);$('#presentBtn').classList.toggle('on',on);$('#presentBtn').setAttribute('aria-pressed',on);};
 function problemFromURL(){
-  try{const sp=new URLSearchParams(location.search);if(!sp.has('ip'))return null;const pr=problemFrom(sp.get('ip'),sp.get('mask')||'');return pr.err?null:pr;}catch(e){return null;}
+  try{const sp=new URLSearchParams(location.search);if(sp.has('vlsm')){const pr=vlsmFrom(sp.get('vlsm'),sp.get('net')||'');return pr.err?null:pr;}if(!sp.has('ip'))return null;const pr=problemFrom(sp.get('ip'),sp.get('mask')||'');return pr.err?null:pr;}catch(e){return null;}
 }
 
 /* ---------------- game rendering ---------------- */
@@ -1107,11 +1359,11 @@ function next(force){
   const keep=state.level;if(lvl)state.level=lvl;const q=force||GEN[mode](sub);state.level=keep;q.target=target;
   state.q=q;state.checked=false;state.hinted=false;
   if(!force){state.custom=null;if(location.search)try{history.replaceState(null,'',location.pathname);}catch(e){}}
-  $('#qtype').innerHTML=q.title+(target?` <span class="drill">· drilling: ${WEAK[target][0]}</span>`:'');renderWeak();$('#prompt').innerHTML=q.prompt;$('#miniQ').innerHTML=q.prompt.replace(/<br>/g,' ');
-  $('#fields').innerHTML=q.layout==='sheet'?sheetHTML(q):q.fields.map(fieldHTML).join('');
-  $('#fields').classList.toggle('sheet',q.layout==='sheet');
+  $('#qtype').innerHTML=q.title+(target?` <span class="drill">· drilling: ${WEAK[target][0]}</span>`:'');renderWeak();$('#prompt').innerHTML=q.prompt;$('#miniQ').innerHTML=q.mini||q.prompt.replace(/<br>/g,' ');
+  $('#fields').innerHTML=q.layout==='sheet'?sheetHTML(q):q.layout==='vlsm'?vlsmHTML(q):q.fields.map(fieldHTML).join('');
+  $('#fields').classList.toggle('sheet',q.layout==='sheet'||q.layout==='vlsm');
   $$('#fields .choices').forEach(g=>g.querySelectorAll('.choice').forEach(b=>b.onclick=()=>{if(state.checked)return;g.querySelectorAll('.choice').forEach(x=>x.classList.toggle('on',x===b));}));
-  $('#level').hidden=state.mode==='worksheet'&&!state.timed;
+  $('#level').hidden=(state.mode==='worksheet'||state.mode==='vlsm')&&!state.timed;
   $$('#fields .bit').forEach(b=>b.onclick=()=>{if(state.checked)return;b.classList.toggle('on');b.textContent=b.classList.contains('on')?'1':'0';});
   $('#hint').hidden=true;$('#feedback').className='feedback';$('#work').style.display='none';
   $('#checkBtn').innerHTML='Check <span class="kbd">Enter</span>';$('#hintBtn').disabled=false;
@@ -1122,7 +1374,7 @@ function next(force){
 }
 function readField(f,el){if(f.type==='choice'){const b=el.querySelector('.choice.on');return b?b.dataset.v:'';}if(f.type==='bits')return $$(`.field[data-i="${el.dataset.i}"] .bit`).map(b=>b.classList.contains('on')?'1':'0').join('');return expandCell(f,el.querySelector('input').value);}
 function isRight(f,v){
-  if(f.type==='bits')return v===f.answer;
+  if(f.type==='bits')return String(v).replace(/[\s.]/g,'')===f.answer;
   if(f.type==='choice')return toRole(v)===f.answer;
   if(f.type==='bin32')return bits32(v)===f.answer;
   if(f.type==='numalt'){const u=pow2(v);return u===f.answer||(f.alt||[]).includes(u);}
@@ -1170,7 +1422,7 @@ $('#hintBtn').onclick=()=>{if(state.checked)return;
 $('#skipBtn').onclick=()=>{if(!state.checked){state.streak=0;renderStats();}next();};
 $('#fields').addEventListener('keydown',e=>{
   if(e.key==='Enter'&&e.target.classList.contains('bit')){e.preventDefault();check();return;}
-  if(/^[1-8]$/.test(e.key)&&e.target.classList.contains('bit')&&!state.checked){e.preventDefault();const b=$(`.bit[data-k="${Number(e.key)-1}"]`);if(b)b.click();return;}
+  if(/^[1-8]$/.test(e.key)&&e.target.classList.contains('bit')&&!state.checked){e.preventDefault();const b=e.target.closest('.field').querySelector(`.bit[data-k="${Number(e.key)-1}"]`);if(b)b.click();return;}
   if(e.key!=='Enter'||e.target.tagName!=='INPUT')return;e.preventDefault();
   const ins=$$('#fields input');const i=ins.indexOf(e.target);
   if(!state.checked&&!isDesktop()&&i<ins.length-1){ins[i+1].focus();return;}
@@ -1181,7 +1433,7 @@ document.addEventListener('keydown',e=>{
   if(e.target.closest&&(e.target.closest('.tools')||e.target.closest('#fields')||e.target.closest('#flow')))return;
   if(e.target.tagName==='TEXTAREA'||e.target.tagName==='INPUT')return;
   if(e.key==='Enter'&&!e.target.closest('summary')&&!e.target.closest('button')){e.preventDefault();check();return;}
-  if(/^[1-8]$/.test(e.key)&&!state.checked){const b=$(`.bit[data-k="${Number(e.key)-1}"]`);if(b)b.click();}
+  if(/^[1-8]$/.test(e.key)&&!state.checked&&state.q&&state.q.mode==='binary'){const b=$(`.bit[data-k="${Number(e.key)-1}"]`);if(b)b.click();}
 });
 $$('#level button').forEach(b=>b.onclick=()=>{state.level=b.dataset.l;$$('#level button').forEach(x=>x.classList.toggle('on',x===b));next();});
 
@@ -1341,7 +1593,7 @@ $('#partRows').innerHTML=[1,2,3,4,5,6,7,8].map(n=>{const v=(0xFF00>>n)&255;retur
 const setDockH=()=>{const d=$('#dock');const h=d.offsetHeight;if(h)document.documentElement.style.setProperty('--dock-h',h+'px');};
 new ResizeObserver(setDockH).observe($('#dock'),{box:'border-box'});setTimeout(setDockH,500);window.addEventListener('resize',setDockH);setDockH();
 renderTabs();renderStats();
-{const up=problemFromURL();if(up){state.mode='worksheet';renderTabs();next(genSheet(up));state.custom=up;}else next();}
+{const up=problemFromURL();if(up&&up.kind==='vlsm'){state.mode='vlsm';renderTabs();next(genVlsm(up));state.custom=up;}else if(up){state.mode='worksheet';renderTabs();next(genSheet(up));state.custom=up;}else next();}
 if(isDesktop())openTool('scratch');
 
 /* ---------------- install + offline ---------------- */
@@ -1369,7 +1621,7 @@ if(isDesktop())openTool('scratch');
 })();
 
 /* hooks for the automated tests */
-window.SS={problemFrom,buildPrint,getFlow:()=>state.flow,flowAnswer,setLayout:v=>{layoutPref=v;store.set('ss_layout',v);},startWalk,tipFor,next,genSheet,walkSheet,genMaskBin,genRole,genClassNets,classOf,bin32,bits32,pow2,toRole,ipStr,walkSteps,walkD2B,walkB2D,walkP2M,walkM2P,walkAnd,walkHosts,walkNets,walkSizeHosts,walkSizeNets,walkInc,GEN,state,WEAK,getWeak:()=>weak,pickWeak,next,check,show,isRight,parseIP,R,netCtx,diagNet,diagChart,diagHosts,diagBits,diagBinDec,diagMask,diagPrefix,diagNetworks,diagNewPrefix,diagSizeHosts,diagBits4Nets,diagNewMask,diagIncrement};
+window.SS={problemFrom,buildPrint,genVlsm,vlsmFrom,buildPrintV,hostBitsFor,shareURLV,getFlow:()=>state.flow,flowAnswer,setLayout:v=>{layoutPref=v;store.set('ss_layout',v);},startWalk,tipFor,next,genSheet,walkSheet,genMaskBin,genRole,genClassNets,classOf,bin32,bits32,pow2,toRole,ipStr,walkSteps,walkD2B,walkB2D,walkP2M,walkM2P,walkAnd,walkHosts,walkNets,walkSizeHosts,walkSizeNets,walkInc,GEN,state,WEAK,getWeak:()=>weak,pickWeak,next,check,show,isRight,parseIP,R,netCtx,diagNet,diagChart,diagHosts,diagBits,diagBinDec,diagMask,diagPrefix,diagNetworks,diagNewPrefix,diagSizeHosts,diagBits4Nets,diagNewMask,diagIncrement};
 })();
 
 /* ---------------- matrix code rain (decorative; pauses when hidden, off for reduced motion) ---------------- */

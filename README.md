@@ -20,6 +20,7 @@ It has a green-on-black terminal look with falling "code rain" in the background
 | Mode | What you practice |
 |---|---|
 | **Worksheet** | The full class worksheet for an IP and mask: mask in dotted decimal and binary, increment, network and broadcast, whether the IP is a network/host/broadcast address, total networks (2ⁿ), hosts per network (2ʰ − 2), and the network chart |
+| **VLSM** | The class VLSM assignment: split a /24 biggest-first into subnets sized for their hosts, with the bit grid (1s for network bits, 0s for host bits), subnet mask, network, useable host range and broadcast for each subnet, plus the network after the last one |
 | **Binary** | Decimal → binary (tap the 128 / 64 / 32 … bits) and binary → decimal |
 | **Prefix ↔ Mask** | `/26` → `255.255.255.192` and back, and masks written out in 32-bit binary |
 | **ANDing** | IP + mask → network address |
@@ -53,9 +54,23 @@ Prefer the classic worksheet? Switch to **Full sheet** at the top of the questio
 
 Total networks is counted from the IP's class default mask (10.x.x.x is Class A, /8). The /24-baseline answer is also accepted for the worksheet, since some classes count it that way.
 
+### VLSM mode
+Matches the class VLSM assignment: a /24 (usually 192.168.0.0/24) and four subnets with the hosts each one needs. Subnets are assigned biggest first, starting at .0. Each subnet is worked in this order:
+
+1. **Bit grid**: the smallest h where 2ʰ − 2 covers the hosts, written as h 0s on the right and 1s on the left.
+2. **Subnet mask**: the place values above the 1s give the last octet.
+3. **Network**: the previous subnet's broadcast + 1 (the first one is .0).
+4. **Broadcast**: network + block size (2ʰ) − 1.
+5. **Useable host range**: network + 1 to broadcast − 1.
+
+The last row is the network after the final subnet. Random problems often land right on the edges, like 15 hosts (one too many for 14) or 7 hosts (one too many for 6), so you practice the cases people miss. Feedback catches the usual VLSM mistakes: a block that's too small or bigger than needed, forgetting the − 2, the block size typed as the mask, adding the hosts needed instead of the block size, and starting a subnet on the previous broadcast.
+
+<img src="docs/vlsm.png" alt="VLSM one at a time: the bit grid and address table fill in as you answer" width="720">
+
 ### For instructors
-- **Your own problem:** type any IP and mask (`/25`–`/30` or dotted decimal, Class A, B or C) to load that exact worksheet, for example to walk through a textbook problem in class. It gives you a **share link** that opens the same problem for students. Add `&layout=sheet` to a link to open it as a full sheet instead of one at a time.
-- **Print:** prints 1–20 random worksheet problems (optionally starting with the current one), two per page, with an optional answer key on separate pages.
+- **Your own problem:** in Worksheet mode, type any IP and mask (`/25`–`/30` or dotted decimal, Class A, B or C) to load that exact worksheet, for example to walk through a textbook problem in class. It gives you a **share link** that opens the same problem for students. Add `&layout=sheet` to a link to open it as a full sheet instead of one at a time.
+- **Your own VLSM problem:** in VLSM mode, type the hosts each subnet needs (for example `58, 29, 15, 7`) and optionally a different starting /24. They're sorted biggest first, and you get a share link like `?vlsm=58,29,15,7`.
+- **Print:** prints 2–10 random worksheet or VLSM problems (whichever mode you're in) (optionally starting with the current one), two per page, with an optional answer key on separate pages.
 - **Present:** hides the side tools and score and enlarges the problem for a projector. Click again to leave.
 
 Total networks is counted from the IP's class default mask (10.x.x.x is Class A, /8). The /24-baseline answer is also accepted for the worksheet, since some classes count it that way.
@@ -163,10 +178,10 @@ To host it yourself, any static host works (GitHub Pages, Netlify, a USB stick�
 
 ## Tests
 
-The `tests/` folder has ten [Playwright](https://playwright.dev/python/) scripts:
+The `tests/` folder has eleven [Playwright](https://playwright.dev/python/) scripts:
 
 - **`test_answers.py`** generates hundreds of random questions in every mode and at both levels, computes the correct answers independently with Python's `ipaddress` module, types them in, and checks that the game marks them correct and that every explanation renders cleanly.
-- **`test_ui.py`** runs 91 checks of every control: hints, scoring, streaks, timed challenge, scratchpad drawing/erasing/undo, typed notes, calculator, guide, keyboard shortcuts, the phone layout and bottom panel, and running with browser storage blocked.
+- **`test_ui.py`** runs 92 checks of every control: hints, scoring, streaks, timed challenge, scratchpad drawing/erasing/undo, typed notes, calculator, guide, keyboard shortcuts, the phone layout and bottom panel, and running with browser storage blocked.
 - **`test_feedback.py`** feeds in 45 common mistakes and checks each gets the matching explanation, then answers 15,000 random questions with junk and near-miss input to make sure feedback appears for every wrong box and never for a right one.
 - **`test_practice.py`** runs 80 full walkthroughs at both levels (with deliberate wrong steps), checks that mistakes are logged to the right weak spot, that the Weak spots tab drills them, that right answers shrink them, and that the walkthrough fits a phone screen.
 - **`test_offline.py`** serves the site locally, loads it once, cuts the network, and plays a full question offline. It also checks that a new version is picked up when back online, and that the install button works on Chrome and gives iPhone directions.
@@ -175,6 +190,7 @@ The `tests/` folder has ten [Playwright](https://playwright.dev/python/) scripts
 - **`test_worksheet.py`** loads the five problems from the class solutions guide and checks every worksheet answer and chart row matches it, then checks 15 common mistakes get the right explanation.
 - **`test_hints.py`** generates 15,000 questions across every question type and checks every hint's steps lead to the real answer and handle junk input, scans every step and nudge to make sure none states the answer it's asking for, then works through 40 hints on screen with deliberate wrong steps and answers each question for half points.
 - **`test_flow.py`** checks the one-at-a-time layout: questions appear in working order, the chart builds as you go, wrong tries get a nudge without the answer and are logged, per-question hints, Show the answer, first-try scoring, and switching to Full sheet. It also checks the instructor tools: loading your own problem (and rejecting invalid or malicious input), share links, a printed PDF with two problems per page plus the answer key, and Present mode. Finally it confirms a whole worksheet fits a 360px phone.
+- **`test_vlsm.py`** checks VLSM mode against the class handout's example (58, 29, 15 and 7 hosts), then checks 400 random problems (biggest first, smallest block that fits, aligned blocks with no gaps, all inside the /24). It also checks the feedback for 12 common VLSM mistakes, the hints, both layouts, your own problem and share links (including bad and malicious input), printing two problems per page with an answer key, and that a whole problem fits a 360px phone.
 
 ```bash
 pip install playwright
@@ -189,6 +205,7 @@ python tests/test_touch.py
 python tests/test_hints.py
 python tests/test_worksheet.py
 python tests/test_flow.py
+python tests/test_vlsm.py
 ```
 
 ## Built with
