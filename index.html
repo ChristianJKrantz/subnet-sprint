@@ -253,6 +253,11 @@ body.present .fc-row input{font-size:22px;padding:13px 14px}body.present .fc-msg
   .pp-ws td{border:1px solid #000;padding:2.5pt 6pt;height:12pt}.pp-ws td:first-child{width:38%;font-size:9.5pt;font-family:Georgia,'Times New Roman',serif}
   .pp-a{font-family:'Courier New',monospace}.pp-bin{font-size:9.5pt}
   .pp-req{font-size:10.5pt;margin:2pt 0 4pt}.pp-vgrid td,.pp-vgrid th{text-align:center!important;width:9%}.pp-vgrid td:first-child,.pp-vgrid th:first-child{text-align:left!important;width:16%}.pp-vaddr{table-layout:fixed}.pp-vaddr th:nth-child(1),.pp-vaddr th:nth-child(3),.pp-vaddr th:nth-child(4){width:21%}.pp-vaddr td{font-family:'Courier New',monospace!important;width:auto;height:17pt!important}.pp-vgrid td{height:15pt!important}
+  .pp-lab{break-before:page;break-inside:auto!important}#printArea>.pp-lab:first-of-type,.pp-key>.pp-title+.pp-lab{break-before:auto}.pp-lab table,.pp-lab svg,.pp-lab li{break-inside:avoid}.pp-lab h4{break-after:avoid}.pp-lab h4{margin:8pt 0 3pt;font-size:11pt}
+  .pp-lab .topo{max-width:360px;margin:2pt 0}.pp-lab .topo .tl{stroke:#000;stroke-opacity:1}.pp-lab .topo .tl.wan{stroke:#000}
+  .pp-lab .topo .trt,.pp-lab .topo .tsw,.pp-lab .topo .tpc{fill:#fff;stroke:#000}.pp-lab .topo .tn,.pp-lab .topo .tt{fill:#000}
+  .pp-qs{margin:2pt 0 4pt 16pt;padding:0}.pp-qs li{margin:2pt 0}.pp-line{display:inline-block;width:70pt;border-bottom:1px solid #000;height:10pt}.pp-line.short{width:30pt}
+  .pp-note{font-size:9.5pt;margin:3pt 0}.pp-lab .pp-chart th,.pp-lab .pp-chart td{padding:1.5pt 4pt!important;font-size:9pt!important}.pp-addr td{height:12pt!important}.pp-cli td{height:12pt!important;font-family:'Courier New',monospace!important}.pp-cli td:first-child{width:28%}
   .pp-chart th,.pp-chart td{border:1px solid #000;padding:2.5pt 6pt;height:12pt;text-align:left;font-size:9.5pt}.pp-chart td{font-family:'Courier New',monospace}.pp-chart td:first-child{font-family:Georgia,serif;width:9%}
   .pp-note{font-size:9pt;font-style:italic}
   .pp-key{break-before:page;page-break-before:always}
@@ -466,6 +471,28 @@ body.present #rain{opacity:.12}
   .crow.vnext .vnote{padding-top:22px}
   .fs-vg td,.fs-vg th{padding:4px 1px;font-size:12px}
 }
+
+/* ---------- Packet Tracer lab ---------- */
+#labPart button{white-space:nowrap}
+.topo{display:block;width:100%;max-width:640px;height:auto;margin:14px 0 6px}
+.topo .tl{stroke:var(--accent);stroke-opacity:.55;stroke-width:2;fill:none}.topo .tl.wan{stroke:var(--accent2);stroke-dasharray:6 4;stroke-opacity:.9}
+.topo .trt{fill:var(--panel2);stroke:var(--accent);stroke-width:2}.topo .tsw{fill:var(--panel2);stroke:var(--accent2);stroke-width:1.5}.topo .tpc{fill:var(--panel2);stroke:var(--muted);stroke-width:1.5}
+.topo .tn{fill:var(--text);font:600 13px var(--mono)}.topo .tt{fill:var(--muted);font:12px var(--mono)}
+.fc-row.cli{background:#000;border:1px solid var(--line);border-radius:10px;padding:8px 10px;gap:10px}
+.fc-row.cli .fc-pre{color:var(--accent);font-size:16px;margin:0}
+.fc-row.cli #fin.cmdin{flex:1 1 auto;min-width:0;background:transparent;border:0;box-shadow:none!important;color:var(--text);font-family:var(--mono);font-size:16px;padding:6px 2px}
+pre.cli{background:#000;border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin:6px 0;font:13px/1.6 var(--mono);color:var(--text);white-space:pre-wrap;overflow-wrap:anywhere}
+pre.cli .cp{color:var(--accent)}pre.cli .miss{color:var(--bad)}pre.cli .pop{animation:pop .4s}
+.fs-ref{margin:4px 0 10px;font-size:14px}.fs-ref summary{cursor:pointer;color:var(--muted);font-family:var(--mono);font-size:12px;letter-spacing:.06em;text-transform:uppercase}
+.fs-ref table.sol{margin-top:8px;font-size:13px}
+table.cmds{width:100%;border-collapse:collapse;font-size:13px;margin:6px 0 4px}table.cmds td{border-top:1px solid var(--line);padding:6px 6px;vertical-align:top}table.cmds td:first-child{color:var(--accent);white-space:nowrap}
+@media (max-width:600px){
+  #labPart{overflow-x:auto;max-width:100%;flex-wrap:nowrap}
+  .topo .tn{font-size:19px}.topo .tt{font-size:16px}.topo{margin:10px -6px 4px;width:calc(100% + 12px)}
+  .fc-row.cli{flex-wrap:wrap}.fc-row.cli .fc-pre{flex-basis:100%}
+  table.cmds td:first-child{white-space:normal;overflow-wrap:anywhere}
+  .fs-ref table.sol{display:block;overflow-x:auto}
+}
 </style>
 </head>
 <body>
@@ -490,6 +517,12 @@ body.present #rain{opacity:.12}
     <div class="seg" id="level">
       <button data-l="core" class="on" title="Prefixes /24 to /30 — subnetting in the last octet, like your notes">Last octet (/24–/30)</button>
       <button data-l="stretch" title="Prefixes /16 to /30 — subnet boundaries can land in the 3rd octet">Stretch (/16–/30)</button>
+    </div>
+    <div class="seg" id="labPart" hidden>
+      <button data-p="all" class="on" title="Every step of the lab, in order">Whole lab</button>
+      <button data-p="subnet" title="Part 1 Step 1: subnets needed, bits borrowed, the mask and the subnet table">Step 1: subnetting</button>
+      <button data-p="table" title="Steps 2 and 3: assign the subnets and fill in the Addressing Table">Steps 2–3: Addressing Table</button>
+      <button data-p="config" title="Part 2: the IOS commands to configure the router, switch and PC">Part 2: commands</button>
     </div>
     <button class="btn timed" id="timedBtn">⏱ 2-minute challenge</button>
   </div>
@@ -611,6 +644,33 @@ body.present #rain{opacity:.12}
         <li><b>The extra row</b> is the network after the last subnet: its broadcast + 1. Everything from there on is still free.</li>
       </ol>
       <p class="dim">Example: 192.168.0.0/24 with 58, 29, 15 and 7 hosts → h = 6, 5, 5, 4 → masks .192, .224, .224, .240 → networks .0, .64, .96, .128, and the next network is .144.</p>
+    </details>
+    <details id="g-lab">
+      <summary>Packet Tracer subnetting lab</summary>
+      <p>The “Subnetting Scenario” lab gives you a /24 and a topology of two routers, each with LANs (router port → switch → PC), joined by a serial WAN link.</p>
+      <ol>
+        <li><b>Subnets needed</b> = the number of LANs + 1 for the R1–R2 link. Count networks, not devices.</li>
+        <li><b>Bits to borrow</b>: the smallest n where 2<sup>n</sup> ≥ subnets needed. That creates 2<sup>n</sup> subnets of 2<sup>8−n</sup> − 2 usable hosts. If that’s fewer than the hosts each LAN needs, you borrowed too many.</li>
+        <li><b>Binary of the subnets</b>: the subnet number lives in the borrowed (leftmost) bits. With 3 borrowed bits, subnet 2 is <span class="mono">010</span>00000 = .64.</li>
+        <li><b>New mask</b>: n 1s, then 0s, in the 4th octet. 3 borrowed bits = 11100000 = 255.255.255.224.</li>
+        <li><b>Subnet table</b>: subnets go up by the block size (256 ÷ 2<sup>n</sup>). First usable = subnet + 1, broadcast = next subnet − 1, last usable = broadcast − 1.</li>
+        <li><b>Assign the subnets</b> in order: R1’s LANs, then R2’s LANs, then the WAN link.</li>
+        <li><b>Addressing Table rules</b>: routers get the first usable address on their LANs; R1 gets the first and R2 the last usable on the WAN link; switches get the second usable; PCs get the last usable. A switch’s or PC’s default gateway is its router’s LAN address; routers have none (N/A).</li>
+      </ol>
+      <p><b>Commands you’ll type</b></p>
+      <table class="cmds">
+        <tr><td class="mono">R1&gt; enable</td><td>Privileged EXEC mode (<span class="mono">en</span>)</td></tr>
+        <tr><td class="mono">R1# configure terminal</td><td>Global configuration mode (<span class="mono">conf t</span>)</td></tr>
+        <tr><td class="mono">R1(config)# interface g0/0</td><td>Select an interface (<span class="mono">int g0/0</span>)</td></tr>
+        <tr><td class="mono">R1(config-if)# ip address 192.168.100.1 255.255.255.224</td><td>IP and mask (dotted decimal, not /27)</td></tr>
+        <tr><td class="mono">R1(config-if)# no shutdown</td><td>Turn the port on; router ports start off (<span class="mono">no shut</span>)</td></tr>
+        <tr><td class="mono">R1(config-if)# exit / end</td><td><span class="mono">exit</span> goes up one level; <span class="mono">end</span> goes back to R1#</td></tr>
+        <tr><td class="mono">R1# copy running-config startup-config</td><td>Save so it survives a reload (<span class="mono">copy run start</span>)</td></tr>
+        <tr><td class="mono">S3(config)# interface vlan 1</td><td>A switch’s management IP goes on VLAN 1</td></tr>
+        <tr><td class="mono">S3(config)# ip default-gateway 192.168.100.65</td><td>The switch’s gateway (its router’s LAN address)</td></tr>
+        <tr><td class="mono">R1# show ip interface brief</td><td>Check addresses and up/down status</td></tr>
+        <tr><td class="mono">C:\&gt; ping 192.168.100.65</td><td>Test a connection from a PC</td></tr>
+      </table>
     </details>
     <details id="g-short">
       <summary>Shortcuts to memorise</summary>

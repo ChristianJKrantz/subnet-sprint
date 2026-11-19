@@ -21,6 +21,7 @@ It has a green-on-black terminal look with falling "code rain" in the background
 |---|---|
 | **Worksheet** | The full class worksheet for an IP and mask: mask in dotted decimal and binary, increment, network and broadcast, whether the IP is a network/host/broadcast address, total networks (2ⁿ), hosts per network (2ʰ − 2), and the network chart |
 | **VLSM** | The class VLSM assignment: split a /24 biggest-first into subnets sized for their hosts, with the bit grid (1s for network bits, 0s for host bits), subnet mask, network, useable host range and broadcast for each subnet, plus the network after the last one |
+| **Packet Tracer lab** | The Cisco “Subnetting Scenario” lab (11.7.5): count the subnets a topology needs, borrow bits, the binary subnet values, the new mask, the subnet table, assigning subnets to links, the Addressing Table, and the IOS commands to configure a router, a switch and a PC |
 | **Binary** | Decimal → binary (tap the 128 / 64 / 32 … bits) and binary → decimal |
 | **Prefix ↔ Mask** | `/26` → `255.255.255.192` and back, and masks written out in 32-bit binary |
 | **ANDing** | IP + mask → network address |
@@ -67,10 +68,44 @@ The last row is the network after the final subnet. Random problems often land r
 
 <img src="docs/vlsm.png" alt="VLSM one at a time: the bit grid and address table fill in as you answer" width="720">
 
+### Packet Tracer lab mode
+Follows the Cisco Packet Tracer “Subnetting Scenario” lab. Each problem draws a topology: two routers joined by a serial link, with one to three LANs each (router port → switch → PC). You're given a /24 and how many addresses each LAN needs, then work through the lab in its own order:
+
+- **Step 1:**
+  - how many subnets are needed (the LANs plus the WAN link)
+  - how many bits to borrow, and how many subnets and usable hosts that creates
+  - the binary value of each subnet
+  - the new mask in binary and decimal
+  - the full subnet table
+- **Step 2:** assign the subnets to the links: R1's LANs, then R2's, then the WAN link.
+- **Step 3:** fill in the Addressing Table by the lab's rules:
+  - routers get the first usable address on their LANs
+  - R1 gets the first usable address on the WAN link, and R2 the last
+  - switches get the second usable address
+  - PCs get the last usable address
+  - switches and PCs use their router's LAN address as the default gateway
+- **Part 2:** type the IOS commands at a real-looking prompt (`R1(config-if)#`). You select interfaces, set `ip address` with a dotted-decimal mask, use `no shutdown`, `end` and `copy running-config startup-config`, set up the switch's VLAN 1 address and `ip default-gateway`, configure the PC, and `ping` its gateway. Common abbreviations (`en`, `conf t`, `int g0/0`, `ip add`, `no shut`, `copy run start`) are accepted.
+
+Feedback catches the usual mistakes:
+- forgetting the WAN link
+- borrowing too many or too few bits
+- writing the subnet number in the wrong bits
+- giving R2 the WAN link's first address
+- a PC's gateway set to the switch
+- a `/27` instead of a dotted-decimal mask
+- `shutdown` instead of `no shutdown`
+- `exit` instead of `end`
+- saving the wrong way
+
+The part picker lets you drill one section at a time (Step 1, Steps 2–3, or Part 2), with the earlier results shown for reference.
+
+<img src="docs/lab.png" alt="Packet Tracer lab: configuring R1 at a command prompt, with the commands so far and a nudge about the /27 mask" width="720">
+
 ### For instructors
 - **Your own problem:** in Worksheet mode, type any IP and mask (`/25`–`/30` or dotted decimal, Class A, B or C) to load that exact worksheet, for example to walk through a textbook problem in class. It gives you a **share link** that opens the same problem for students. Add `&layout=sheet` to a link to open it as a full sheet instead of one at a time.
 - **Your own VLSM problem:** in VLSM mode, type the hosts each subnet needs (for example `58, 29, 15, 7`) and optionally a different starting /24. They're sorted biggest first, and you get a share link like `?vlsm=58,29,15,7`.
-- **Print:** prints 2–10 random worksheet or VLSM problems (whichever mode you're in) (optionally starting with the current one), two per page, with an optional answer key on separate pages.
+- **Your own lab:** in Packet Tracer lab mode, set the /24, addresses per LAN and LANs per router. One button loads the class lab (192.168.100.0, 25 addresses, 2 + 2 LANs). Share links look like `?lab=192.168.100.0&hosts=25&r1=2&r2=2`.
+- **Print:** prints 2–10 random worksheet, VLSM or lab problems (whichever mode you're in). Labs print like the class handout, each on its own pages (optionally starting with the current one), two per page, with an optional answer key on separate pages.
 - **Present:** hides the side tools and score and enlarges the problem for a projector. Click again to leave.
 
 Total networks is counted from the IP's class default mask (10.x.x.x is Class A, /8). The /24-baseline answer is also accepted for the worksheet, since some classes count it that way.
@@ -178,10 +213,10 @@ To host it yourself, any static host works (GitHub Pages, Netlify, a USB stick�
 
 ## Tests
 
-The `tests/` folder has eleven [Playwright](https://playwright.dev/python/) scripts:
+The `tests/` folder has twelve [Playwright](https://playwright.dev/python/) scripts:
 
 - **`test_answers.py`** generates hundreds of random questions in every mode and at both levels, computes the correct answers independently with Python's `ipaddress` module, types them in, and checks that the game marks them correct and that every explanation renders cleanly.
-- **`test_ui.py`** runs 92 checks of every control: hints, scoring, streaks, timed challenge, scratchpad drawing/erasing/undo, typed notes, calculator, guide, keyboard shortcuts, the phone layout and bottom panel, and running with browser storage blocked.
+- **`test_ui.py`** runs 93 checks of every control: hints, scoring, streaks, timed challenge, scratchpad drawing/erasing/undo, typed notes, calculator, guide, keyboard shortcuts, the phone layout and bottom panel, and running with browser storage blocked.
 - **`test_feedback.py`** feeds in 45 common mistakes and checks each gets the matching explanation, then answers 15,000 random questions with junk and near-miss input to make sure feedback appears for every wrong box and never for a right one.
 - **`test_practice.py`** runs 80 full walkthroughs at both levels (with deliberate wrong steps), checks that mistakes are logged to the right weak spot, that the Weak spots tab drills them, that right answers shrink them, and that the walkthrough fits a phone screen.
 - **`test_offline.py`** serves the site locally, loads it once, cuts the network, and plays a full question offline. It also checks that a new version is picked up when back online, and that the install button works on Chrome and gives iPhone directions.
@@ -191,6 +226,7 @@ The `tests/` folder has eleven [Playwright](https://playwright.dev/python/) scri
 - **`test_hints.py`** generates 15,000 questions across every question type and checks every hint's steps lead to the real answer and handle junk input, scans every step and nudge to make sure none states the answer it's asking for, then works through 40 hints on screen with deliberate wrong steps and answers each question for half points.
 - **`test_flow.py`** checks the one-at-a-time layout: questions appear in working order, the chart builds as you go, wrong tries get a nudge without the answer and are logged, per-question hints, Show the answer, first-try scoring, and switching to Full sheet. It also checks the instructor tools: loading your own problem (and rejecting invalid or malicious input), share links, a printed PDF with two problems per page plus the answer key, and Present mode. Finally it confirms a whole worksheet fits a 360px phone.
 - **`test_vlsm.py`** checks VLSM mode against the class handout's example (58, 29, 15 and 7 hosts), then checks 400 random problems (biggest first, smallest block that fits, aligned blocks with no gaps, all inside the /24). It also checks the feedback for 12 common VLSM mistakes, the hints, both layouts, your own problem and share links (including bad and malicious input), printing two problems per page with an answer key, and that a whole problem fits a 360px phone.
+- **`test_lab.py`** checks Packet Tracer lab mode against the class's 11.7.5 lab answers, then 300 random networks (subnet count, bits borrowed, Addressing Table rules, no duplicate addresses). It also checks feedback for 13 addressing mistakes and 14 IOS command mistakes, a full run typed with command abbreviations, hints, the part picker, your own lab and share links (including bad and malicious input), the printed handout and key, and that the whole lab fits a 360px phone.
 
 ```bash
 pip install playwright
@@ -206,6 +242,7 @@ python tests/test_hints.py
 python tests/test_worksheet.py
 python tests/test_flow.py
 python tests/test_vlsm.py
+python tests/test_lab.py
 ```
 
 ## Built with
