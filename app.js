@@ -21,7 +21,8 @@ function binColored(n,p,dimHost){
 }
 const store={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v);}catch(e){return d;}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}}};
 
-const MODES=[{id:'worksheet',name:'Worksheet'},{id:'vlsm',name:'VLSM'},{id:'lab',name:'Packet Tracer lab'},{id:'mixed',name:'Mixed'},{id:'binary',name:'Binary'},{id:'prefix',name:'Prefix ↔ Mask'},{id:'anding',name:'ANDing'},{id:'detective',name:'Subnet Chart'},{id:'formulas',name:'Formulas'},{id:'weak',name:'Weak spots'}];
+const MODES=[{id:'worksheet',name:'Worksheet',g:'class'},{id:'vlsm',name:'VLSM',g:'class'},{id:'lab',name:'Packet Tracer lab',g:'class'},{id:'binary',name:'Binary',g:'drill'},{id:'prefix',name:'Prefix ↔ Mask',g:'drill'},{id:'anding',name:'ANDing',g:'drill'},{id:'detective',name:'Subnet Chart',g:'drill'},{id:'formulas',name:'Formulas',g:'drill'},{id:'mixed',name:'Mixed',g:'drill'},{id:'weak',name:'Weak spots',g:'drill'}];
+const TABGROUPS=[['class','Class assignments','Full sheets in the format your class uses'],['drill','Quick drills','One skill at a time, fast']];
 const GUIDE_FOR={worksheet:'g-ws',vlsm:'g-vlsm',lab:'g-lab',binary:'g-bin',prefix:'g-mask',anding:'g-and',detective:'g-chart',formulas:'g-form'};
 const state={mode:'worksheet',level:'core',score:0,streak:0,best:Math.max(0,Math.floor(Number(store.get('ss_best',0)))||0),right:0,tried:0,per:{},q:null,checked:false,hinted:false,timed:null};
 MODES.forEach(m=>state.per[m.id]={r:0,t:0});
@@ -788,13 +789,9 @@ function buildPrintV(count,withKey,includeCurrent){
    Follows the Cisco "Subnetting Scenario" lab: subnet a /24 for a two-router topology (Part 1 Step 1), assign the
    subnets to the links (Step 2), fill in the Addressing Table by its rules (Step 3), then type the IOS commands
    that configure a router, a switch and a PC (Part 2). Problems vary the network, hosts needed and LANs per router. */
-const LABPARTS={all:'Whole lab',subnet:'Step 1: subnetting',table:'Steps 2–3: Addressing Table',config:'Part 2: commands'};
+const LABPARTS={all:'All of Part 1',subnet:'Step 1: subnetting',table:'Steps 2–3: Addressing Table'};
+const NO_SHUTDOWN='https://christianjkrantz.github.io/no-shutdown/';
 let labPart=store.get('ss_labpart','all');if(!LABPARTS[labPart])labPart='all';
-const ab=(w,min)=>{const a=[];for(let k=w.length;k>=min;k--)a.push(w.slice(0,k).replace(/[-/]/g,'\\$&'));return `(?:${a.join('|')})`;};
-const IFW={g:'gigabitethernet',s:'serial'};
-const ifRe=n=>`${ab(IFW[n[0].toLowerCase()],1)} ?${n.slice(1).replace(/\//g,'\\/')}`;
-const ipRe=a=>ipStr(a).replace(/\./g,'\\.');
-const cmdNorm=v=>String(v==null?'':v).toLowerCase().replace(/^\s*[\w-]+(\([\w-]+\))?[#>]\s*/,'').replace(/^c:\\>\s*/,'').replace(/\s+/g,' ').trim();
 function labFrom(netRaw,hostsRaw,r1Raw,r2Raw){
   const b=parseIP(String(netRaw||'').trim().replace(/\/24$/,''));
   if(b==null||oct(b,3)!==0)return {err:'The network must be a /24 that ends in .0, like 192.168.100.0.'};
@@ -870,30 +867,6 @@ function genLab(fixed,part){
       add({key:'aip',r,type:'ip',pre:P(r.ip),label:`${r.dev} ${r.ifc} IP address`,where:w,answer:r.ip});
       if(i===0)add({key:'amask',r,type:'ip',pre:'255.255.255.',label:'Subnet mask (the same for every device here)',where:w,answer:mask});
       if(r.gw!=null)add({key:'agw',r,type:'ip',pre:P(r.gw),label:`${r.dev} default gateway`,where:w,answer:r.gw});});
-  }
-  if(inc('config')){
-    const cr=L.cr,crl=L.lans.filter(l=>l.rt===cr),sw=L.swL,pc=L.pcL,swIp=sw.sub.first+1,gw=sw.sub.first,pcGw=pc.sub.first;
-    const C=(key,cli,label,ans,re,syn,ctx,where)=>add({key,type:'cmd',cli,label,answer:ans,re:new RegExp('^'+re+'$'),syn,ctx,where});
-    const wr=`Part 2 · Configure ${cr}`;
-    C('c_en',`${cr}>`,`Get into privileged EXEC mode on ${cr}`,'enable',ab('enable',2),'enable',{},wr);
-    C('c_conf',`${cr}#`,'Enter global configuration mode','configure terminal',`${ab('configure',4)} ${ab('terminal',1)}`,'configure terminal',{},wr);
-    crl.forEach(l=>{
-      C('c_int',`${cr}(config)#`,`Select ${cr}’s ${l.ifc} interface (the LAN to ${l.sw})`,`interface ${l.ifc.toLowerCase()}`,`${ab('interface',3)} ?${ifRe(l.ifc)}`,'interface [type][number]',{ifc:l.ifc,dev:cr},wr);
-      C('c_ip',`${cr}(config-if)#`,`Give ${l.ifc} its IP address and mask from the Addressing Table`,`ip address ${ipStr(l.sub.first)} ${ipStr(mask)}`,`ip ${ab('address',3)} ${ipRe(l.sub.first)} ${ipRe(mask)}`,'ip address [ip-address] [subnet-mask]',{ip:l.sub.first,mask,sub:l.sub,dev:`${cr} ${l.ifc}`,role:'rlan'},wr);
-      C('c_nosh',`${cr}(config-if)#`,`Turn ${l.ifc} on (router interfaces are off by default)`,'no shutdown',`no ${ab('shutdown',4)}`,'no shutdown',{},wr);});
-    C('c_end',`${cr}(config-if)#`,`Go straight back to privileged EXEC mode (${cr}#)`,'end','end','end',{},wr);
-    C('c_save',`${cr}#`,'Save the running configuration so it survives a reload','copy running-config startup-config',`(?:copy ${ab('running-config',3)} ${ab('startup-config',3)}|wr|write|(?:wr|write) ${ab('memory',3)})`,'copy running-config startup-config',{},wr);
-    const ws=`Part 2 · Configure ${sw.sw}`;
-    C('s_int',`${sw.sw}(config)#`,`On ${sw.sw}, select the switch’s management interface (VLAN 1)`,'interface vlan 1',`${ab('interface',3)} ?vlan ?1`,'interface vlan 1',{dev:sw.sw},ws);
-    C('s_ip',`${sw.sw}(config-if)#`,'Give VLAN 1 its IP address and mask from the Addressing Table',`ip address ${ipStr(swIp)} ${ipStr(mask)}`,`ip ${ab('address',3)} ${ipRe(swIp)} ${ipRe(mask)}`,'ip address [ip-address] [subnet-mask]',{ip:swIp,mask,sub:sw.sub,dev:`${sw.sw} VLAN 1`,role:'sw'},ws);
-    C('s_nosh',`${sw.sw}(config-if)#`,'Turn the VLAN 1 interface on','no shutdown',`no ${ab('shutdown',4)}`,'no shutdown',{},ws);
-    C('s_exit',`${sw.sw}(config-if)#`,'Go back up one level to global configuration mode','exit',`${ab('exit',3)}`,'exit',{},ws);
-    C('s_gw',`${sw.sw}(config)#`,`Give ${sw.sw} its default gateway`,`ip default-gateway ${ipStr(gw)}`,`ip ${ab('default-gateway',9)} ${ipRe(gw)}`,'ip default-gateway [address]',{gw,dev:sw.sw,rt:`${sw.rt} ${sw.ifc}`},ws);
-    const wp=`Part 2 · Configure ${pc.pc} (Desktop › IP Configuration)`,pcr={dev:pc.pc,ifc:'NIC',role:'pc',link:pc,ip:pc.sub.last,gw:pcGw};
-    add({key:'aip',r:pcr,type:'ip',pre:P(pc.sub.last),label:`${pc.pc} IPv4 address`,where:wp,answer:pc.sub.last});
-    add({key:'amask',r:pcr,type:'ip',pre:'255.255.255.',label:`${pc.pc} subnet mask`,where:wp,answer:mask});
-    add({key:'agw',r:pcr,type:'ip',pre:P(pcGw),label:`${pc.pc} default gateway`,where:wp,answer:pcGw});
-    C('c_ping','C:\\>',`From ${pc.pc}’s command prompt, test that it can reach its default gateway`,`ping ${ipStr(pcGw)}`,`ping ${ipRe(pcGw)}`,'ping [ip-address]',{gw:pcGw,dev:pc.pc},`Part 2 · Verify from ${pc.pc}`);
   }
   // ---------- feedback ----------
   const subOf=u=>{const d=(u-base)>>>0;return d<256?Math.floor(d/blk):-1;};
@@ -976,54 +949,8 @@ function genLab(fixed,part){
     }
     return null;
   }
-  function dCmd(f,v){
-    const s=cmdNorm(v);if(f.re.test(s))return null;
-    const syn=/\[/.test(f.syn)?`The syntax is <span class="mono">${f.syn}</span>.`:`The command is ${G(f.syn)}.`;
-    if(!s)return 'Type the command.';
-    const w=s.split(' ');
-    switch(f.key){
-      case 'c_en':if(/^conf/.test(s))return T('ios_cmd',`At ${f.cli} you’re in user EXEC mode. You need privileged EXEC (#) before configure terminal. ${syn}`);break;
-      case 'c_conf':if(/^conf\w*$/.test(s))return T('ios_cmd',`% Incomplete command. Add terminal (t is enough). ${syn}`);if(/^int/.test(s))return T('ios_cmd',`Interfaces are selected from global configuration mode, so get there first. ${syn}`);break;
-      case 'c_int':case 's_int':
-        if(/^int\w*$/.test(s))return T('ios_cmd',`% Incomplete command. Say which interface. ${syn}`);
-        if(f.key==='s_int'&&/^int\w* ?(g|f|e)/.test(s))return T('ios_cmd',`A switch’s management IP goes on its VLAN 1 interface, not a physical port. ${syn}`);
-        if(/^int\w* ?f/.test(s))return T('ios_cmd',`These router LAN ports are GigabitEthernet (G0/0), not FastEthernet. ${syn}`);
-        if(f.key==='c_int'&&/^int\w* ?(g\w*|s\w*) ?\d\/\d/.test(s))return T('ios_cmd',`That’s a different interface. This step is ${G(f.ctx.ifc)}, the LAN to ${f.label.match(/to (S\d+)/)[1]}.`);
-        break;
-      case 'c_ip':case 's_ip':{
-        const m=s.match(/^ip ad\w* (\S+)(?: (\S+))?(?: .*)?$/);
-        if(/^ip ad\w*$/.test(s))return T('ios_cmd',`% Incomplete command. Give the IP address and then the subnet mask. ${syn}`);
-        if(!/^ip /.test(s)&&/^ad/.test(s))return T('ios_cmd',`Start with ip. ${syn}`);
-        if(m){const ip=parseIP(m[1].replace(/\/\d+$/,''));
-          if(/\/\d+$/.test(m[1])||(m[2]&&/^\/?\d{1,2}$/.test(m[2])))return T('ios_cmd',`IOS wants the mask in dotted decimal (${G(ipStr(f.ctx.mask))}), not a /prefix. ${syn}`);
-          if(!m[2])return T('ios_cmd',`% Incomplete command. The subnet mask goes after the IP address. ${syn}`);
-          if(ip!==f.ctx.ip){const pn=ip==null?null:posName(ip);
-            return T('lab_assign',`Use ${f.ctx.dev}’s address from the Addressing Table: ${G(ipStr(f.ctx.ip))}. ${RULE[f.ctx.role]}.${pn&&subOf(ip)===f.ctx.sub.k?` You have ${pn}.`:''}`);}
-          if(parseIP(m[2])!==f.ctx.mask)return T('vlsm_mask',`The mask is ${G(ipStr(f.ctx.mask))} for every subnet here.`);}
-        break;}
-      case 'c_nosh':case 's_nosh':
-        if(/^shut/.test(s))return T('ios_cmd',`That turns the interface off! Put no in front to turn it on. ${syn}`);
-        if(/^no sh\w* ?down$/.test(s))return T('ios_cmd',`It’s one word: shutdown. ${syn}`);break;
-      case 'c_end':if(/^exit$/.test(s))return T('ios_cmd',`exit only goes up one level, to ${f.cli.replace('-if','')}. end (or Ctrl+Z) goes straight back to privileged EXEC.`);break;
-      case 's_exit':if(s==='end')return T('ios_cmd','end goes all the way back to privileged EXEC. You want one level up, to global configuration mode.');break;
-      case 'c_save':
-        if(/^copy (s\S*) (r\S*)$/.test(s))return T('ios_cmd',`That copies the saved config over the running one, the wrong way. Saving is running-config → startup-config. ${syn}`);
-        if(/^copy r\S*$/.test(s))return T('ios_cmd',`% Incomplete command. Copy it to where? ${syn}`);break;
-      case 's_gw':{
-        if(/^ip default gateway/.test(s))return T('ios_cmd',`It’s one word with a dash: default-gateway. ${syn}`);
-        if(/^default-g/.test(s))return T('ios_cmd',`Start with ip. ${syn}`);
-        const m=s.match(/^ip default-g\w* (\S+)$/);
-        if(m){const ip=parseIP(m[1]);return T('lab_assign',`The switch’s gateway is the router’s interface on its LAN, ${f.ctx.rt}: ${G(ipStr(f.ctx.gw))}.${ip===f.ctx.gw+1?' That’s the switch’s own address.':''}`);}
-        break;}
-      case 'c_ping':{const m=s.match(/^ping (\S+)$/);
-        if(m)return T('lab_assign',`Ping ${f.ctx.dev}’s default gateway: ${G(ipStr(f.ctx.gw))}.`);
-        if(s==='ping')return T('ios_cmd',`% Incomplete command. Ping needs an address. ${syn}`);break;}
-    }
-    if(!w.length)return syn;
-    return T('ios_cmd',`% Invalid input detected. ${syn}`);
-  }
   const diag=x=>fields.map((f,i)=>{const v=x[i];
-    if(f.type==='num')return dNum(f,v);if(f.type==='bits')return dBits(f,v);if(f.type==='cmd')return dCmd(f,v);return dIP(f,v);});
+    if(f.type==='num')return dNum(f,v);if(f.type==='bits')return dBits(f,v);return dIP(f,v);});
   // ---------- hints ----------
   const walk=()=>{const st=[];
     fields.forEach((f,i)=>{const fin=o=>st.push(Object.assign({f:i,tip:''},o));
@@ -1050,31 +977,29 @@ function genLab(fixed,part){
           fin({q:`${RULE[r.role]}. Subnet ${r.link.j} runs from ${ipStr(s.net)} to ${ipStr(s.bc)}. Write the address.`,kind:'ip',ans:f.answer,bad:ipBad(f.answer,`${RULE[r.role]}.`)});break;}
         case 'amask':fin({q:'Every subnet uses the new mask from Step 1f. Write it.',kind:'ip',ans:mask,bad:ipBad(mask,`${n} borrowed bits: 255.255.255.${256-blk}.`)});break;
         case 'agw':fin({q:`A device’s default gateway is the router interface on its LAN: ${f.r.link.rt} ${f.r.link.ifc}. Write that interface’s address.`,kind:'ip',ans:f.answer,tip:'Routers don’t get a default gateway in the table (write N/A); switches and PCs use their router’s LAN address.',bad:ipBad(f.answer,'The router takes the first usable address on the LAN.')});break;
-        default:if(f.type==='cmd')fin({q:`The syntax is <span class="mono">${f.syn}</span>. Type the command at <span class="mono">${f.cli}</span>.`,kind:'cmd',re:f.re,ans:f.answer,show:f.answer,
-          tip:{c_en:'Shortcut: en works.',c_conf:'Shortcut: conf t works.',c_int:'Shortcut: int g0/0 works.',c_nosh:'Shortcut: no shut works.',c_save:'Shortcut: copy run start works.',s_int:'Shortcut: int vlan 1 works.'}[f.key]||'',
-          bad:(u,raw)=>{const d=dCmd(f,raw);return d?String(d).replace(/<b class="g mono">[^<]*<\/b>/g,'<b class="g mono">?</b>'):'Check the spelling and spacing.';}});
       }});
     return st;};
   // ---------- worked answers ----------
   const subTable=`<table class="sol chartsol"><tr><th>Subnet</th><th>Subnet address</th><th>First usable</th><th>Last usable</th><th>Broadcast</th></tr>${subs.map(s=>`<tr><td>${s.k}</td><td class="mono">${ipStr(s.net)}</td><td class="mono">${ipStr(s.first)}</td><td class="mono">${ipStr(s.last)}</td><td class="mono">${ipStr(s.bc)}</td></tr>`).join('')}</table>`;
   const addrTable=(rs)=>`<table class="sol chartsol"><tr><th>Device</th><th>Interface</th><th>IP address</th><th>Subnet mask</th><th>Default gateway</th></tr>${rs.map(r=>`<tr><td>${r.dev}</td><td>${r.ifc}</td><td class="mono">${ipStr(r.ip)}</td><td class="mono">${ipStr(mask)}</td><td class="mono">${r.gw!=null?ipStr(r.gw):'N/A'}</td></tr>`).join('')}</table>`;
-  const cmds=fields.filter(f=>f.type==='cmd');
   const explain=[
     inc('subnet')?`<p><b>Step 1.</b> ${L.lans.length} LANs + 1 WAN link = <b>${L.need}</b> subnets → borrow <b>${n}</b> bits (2<sup>${n}</sup> = ${nsub} ≥ ${L.need}) → <b>${nsub}</b> subnets of <b>${per}</b> usable hosts (2<sup>${8-n}</sup> − 2), which covers the ${L.hosts} each LAN needs. Mask <span class="mono">${bin8(256-blk)}</span> = <b class="mono">${ipStr(mask)}</b>, block size ${blk}.</p>${subTable}`:'',
     inc('table')?`<p><b>Steps 2–3.</b> ${links.map(l=>`Subnet ${l.j} → ${l.desc.replace('the ','')}`).join('; ')}. Routers take the first usable address on each LAN, R1 the first and R2 the last on the WAN link, switches the second usable, and PCs the last usable.</p>${addrTable(rows)}`:'',
-    inc('config')?`<p><b>Part 2.</b></p><pre class="cli">${cmds.filter(f=>f.key[0]==='c'&&f.key!=='c_ping').map(f=>`${f.cli} ${f.answer}`).join('\n')}\n\n${cmds.filter(f=>f.key[0]==='s').map(f=>`${f.cli} ${f.answer}`).join('\n')}\n\n${L.pcL.pc}: IP ${ipStr(L.pcL.sub.last)}, mask ${ipStr(mask)}, gateway ${ipStr(L.pcL.sub.first)}\nC:\\> ping ${ipStr(L.pcL.sub.first)}</pre>`:''].join('');
+    `<p class="dim">Part 2 of the lab (configuring the router, switch and PC) is in <a href="${configLink(L)}" target="_blank" rel="noopener">No Shutdown</a>, the sister site for Cisco IOS commands. That link opens this exact network.</p>`].join('');
   const scen=`You’re given <b class="big">${ipStr(base)}/24</b> to subnet for this network. Each LAN needs at least <b>${L.hosts}</b> addresses for its end devices, switch and router, and the link between R1 and R2 needs an address for each end.`;
-  const given=part==='table'?'<p class="dim">Step 1 is done for you: your subnet table is below.</p>':part==='config'?'<p class="dim">The Addressing Table is done. Use it to configure the devices.</p>':'';
+  const given=part==='table'?'<p class="dim">Step 1 is done for you: your subnet table is below.</p>':'';
+  const p2=part==='all'?`<p class="dim lab-p2">Part 2 of the lab (the IOS commands) lives in <a href="${configLink(L)}" target="_blank" rel="noopener">No Shutdown ↗</a>, which opens this same network.</p>`:'';
   return {mode:'lab',layout:'lab',flowOnly:true,part,L,fields,title:`Packet Tracer lab${part!=='all'?` · ${LABPARTS[part]}`:''}`,
-    prompt:`${scen}${topoSVG(L)}${given}`,mini:`${ipStr(base)}/24 · each LAN needs ${L.hosts} addresses`,
+    prompt:`${scen}${topoSVG(L)}${given}${p2}`,mini:`${ipStr(base)}/24 · each LAN needs ${L.hosts} addresses`,
     diag,walk,explain,subTable,addrTable,
     hint:'Subnets needed = LANs + the WAN link → borrow the fewest bits n with 2ⁿ ≥ that → block size 256 ÷ 2ⁿ. Routers get the first usable address, switches the second, PCs the last; R2 takes the last on the WAN link.'};
 }
+function configLink(L){return `${NO_SHUTDOWN}?task=scenario&lab=${ipStr(L.base)}&hosts=${L.hosts}&r1=${L.r1}&r2=${L.r2}`;}
 function flowSheetLab(q,F,cur){
   const n=q.fields.length,end=cur<0?n:cur,f=q.fields[cur<0?n-1:cur],L=q.L,key=f.key;
   const cls=j=>`${F.miss[j]?' miss':''}${j===F.justDone?' pop':''}`;
   const val=j=>{const g=q.fields[j];return g.type==='ip'?ipCell(g.answer):g.answer;};
-  const sec=['need','bits','made','hper','enet','ebits','mbits','mdec'].includes(key)?'s1':key[0]==='g'?'g':key==='asg'||((key==='aip'||key==='amask'||key==='agw')&&!(f.where||'').startsWith('Part 2'))?'t':'p2';
+  const sec=['need','bits','made','hper','enet','ebits','mbits','mdec'].includes(key)?'s1':key[0]==='g'?'g':'t';
   const idx=(pred)=>q.fields.map((g,j)=>[g,j]).filter(([g])=>pred(g));
   const cell=j=>j<end?`<span class="fs-cv${cls(j)}">${val(j)}</span>`:j===cur?'<span class="fs-cur">?</span>':'';
   if(sec==='s1'){const rows=idx(g=>['need','bits','made','hper','enet','ebits','mbits','mdec'].includes(g.key)).filter(([,j])=>j<end);
@@ -1092,12 +1017,7 @@ function flowSheetLab(q,F,cur){
       return `<tr><td class="fs-rl">${r.dev}</td><td>${r.ifc}</td><td>${cell(ip[1])}</td><td>${mj!=null&&mj<end?`<span class="fs-cv">${ipCell(L.mask)}</span>`:mj===cur?'<span class="fs-cur">?</span>':''}</td><td>${gw?cell(gw[1]):'<span class="dim">N/A</span>'}</td></tr>`;}).join('');
     return `<div class="fsheet">${ref}${asg.length?`<div class="fs-sec">Step 2 · Subnet assignments</div><table class="fs-chart"><tr><th>#</th><th>Link</th><th><span class="lg">Subnet address</span><span class="sm">Subnet</span></th></tr>${asg.map(([g,j])=>`<tr><td class="fs-rl">${g.l.j}</td><td>${g.l.desc.replace('the ','').replace('WAN link between R1 and R2','R1–R2 WAN link')}</td><td>${cell(j)}</td></tr>`).join('')}</table>`:''}
       ${rows?`<div class="fs-sec">Step 3 · Addressing Table</div><table class="fs-chart"><tr><th>Device</th><th><span class="lg">Interface</span><span class="sm">Int</span></th><th>IP</th><th>Mask</th><th><span class="lg">Gateway</span><span class="sm">GW</span></th></tr>${rows}</table>`:''}</div>`;}
-  const used=new Set([L.cr,L.swL.sw,L.pcL.pc]);
-  const addr=`<details class="fs-ref"><summary>Addressing Table rows you need</summary>${q.addrTable(L.rows.filter(r=>used.has(r.dev)))}</details>`;
-  const lines=idx(g=>g.type==='cmd'||g.where&&g.where.startsWith('Part 2')).filter(([,j])=>j<end);
-  let dev='';const term=lines.map(([g,j])=>{const d=g.type==='cmd'?g.cli.replace(/[(#>].*$/,''):g.label.split(' ')[0];const head=d!==dev&&g.type!=='cmd'||(g.type==='cmd'&&d!==dev&&!/^C:/.test(g.cli))?`${dev?'\n':''}`:'';dev=d;
-    return `${head}<span class="${cls(j).trim()}">${g.type==='cmd'?`<span class="cp">${g.cli}</span> ${g.answer}`:`<span class="cp">${g.label}:</span> ${ipStr(g.answer)}`}</span>`;}).join('\n');
-  return `<div class="fsheet">${addr}${term?`<div class="fs-sec">Your configuration so far</div><pre class="cli">${term}</pre>`:''}</div>`;
+  return '';
 }
 /* lab teaching tools */
 function shareURLL(pr){const u=new URL(location.href);u.search='';u.hash='';u.searchParams.set('lab',pr.base);u.searchParams.set('hosts',pr.hosts);u.searchParams.set('r1',pr.r1);u.searchParams.set('r2',pr.r2);return u.toString();}
@@ -1137,9 +1057,7 @@ function printLabHTML(q,num,key){
     <li>Subnet table:<table class="pp-chart pp-addr"><tr><th>Subnet</th><th>Subnet address</th><th>First usable host</th><th>Last usable host</th><th>Broadcast</th></tr>${L.subs.map(s=>`<tr><td>${s.k}</td><td>${v(s.net)}</td><td>${v(s.first)}</td><td>${v(s.last)}</td><td>${v(s.bc)}</td></tr>`).join('')}</table></li></ol>
     <h4>Step 2: Assign the subnets</h4><ol class="pp-qs" type="a">${L.links.map(l=>`<li>Subnet ${l.j} → ${l.desc.replace('the ','')}: ${blank(ipStr(l.sub.net))}</li>`).join('')}</ol>
     <p class="pp-note">Step 3 rules: routers get the first usable address on their LANs and R1 the first on the WAN link; R2 gets the last usable on the WAN link; switches the second usable; PCs the last usable. Routers have no default gateway (N/A).</p>
-    <h4>Part 2: Configure ${L.cr}’s LANs, ${L.swL.sw} and ${L.pcL.pc}</h4>
-    <table class="pp-chart pp-cli"><tr><th>Prompt</th><th>Command</th></tr>${q.fields.filter(f=>f.type==='cmd'&&f.key!=='c_ping').map(f=>`<tr><td>${f.cli}</td><td>${key?f.answer:''}</td></tr>`).join('')}</table>
-    <p>${L.pcL.pc}: IP ${blank(ipStr(L.pcL.sub.last))} &nbsp; Mask ${blank(ipStr(L.mask))} &nbsp; Gateway ${blank(ipStr(L.pcL.sub.first))} &nbsp; Test: C:\\&gt; ${blank('ping '+ipStr(L.pcL.sub.first))}</p></section>`;
+    <p class="pp-note">Part 2 (configuring ${L.cr}, ${L.swL.sw} and ${L.pcL.pc}): practice the commands at christianjkrantz.github.io/no-shutdown</p></section>`;
 }
 const P3=a=>ipStr(a).replace(/\d+$/,'');
 function buildPrintL(count,withKey,includeCurrent){
@@ -1226,7 +1144,6 @@ const WEAK={
   lab_count:['Counting the subnets a topology needs',[['lab','subnet']]],
   lab_borrow:['Borrowing bits for a number of subnets',[['lab','subnet'],['formulas',5]]],
   lab_assign:['Following the Addressing Table rules',[['lab','table']]],
-  ios_cmd:['Cisco IOS configuration commands',[['lab','config']]],
 };
 try{localStorage.removeItem('ss_sheet');localStorage.removeItem('ss_nohelp');}catch(e){}
 let weak={};{const raw=store.get('ss_weak',{});if(raw&&typeof raw==='object')for(const t of Object.keys(raw))if(Object.prototype.hasOwnProperty.call(WEAK,t)){const w=Number(raw[t]&&raw[t].w),n=Number(raw[t]&&raw[t].n);weak[t]={w:Number.isFinite(w)?Math.min(6,Math.max(0,w)):0,n:Number.isFinite(n)?Math.max(0,Math.floor(n)):0};}}
@@ -1514,7 +1431,6 @@ const flowOn=q=>(layoutPref==='flow'||q.flowOnly)&&q.fields.length>1&&!state.tim
 const SECNAME={pre:'From the mask',post:'The given IP',end:'Total networks'};
 function groupSteps(steps,n){const g=[...Array(n)].map(()=>[]);let cur=[];steps.forEach(st=>{cur.push(st);if(st.f!=null){g[st.f]=cur;cur=[];}});return g;}
 function parseStep(st,raw){
-  if(st.kind==='cmd')return st.re.test(cmdNorm(raw))?st.ans:cmdNorm(raw);
   if((st.kind==='ip'||st.kind==='bin32')&&st.f!=null&&state.q)raw=expandCell(state.q.fields[st.f],raw);
   return st.kind==='ip'?parseIP(raw):st.kind==='prefix'?toPre(raw):st.kind==='bits8'?(isBits8(raw)?bits8(raw):null):st.kind==='bin32'?bits32(raw)
     :st.kind==='role'?toRole(raw):st.kind==='cls'?(/^\s*(class\s*)?[abc]\s*$/i.test(raw)?raw.trim().slice(-1).toUpperCase():null):st.kind==='pow'?pow2(raw):toNum(raw);
@@ -1553,7 +1469,6 @@ function flowSheet(q,F,cur){
   return parts.length?`<div class="fsheet">${parts.join('')}</div>`:'';
 }
 function flowInput(f){
-  if(f.type==='cmd')return `<div class="fc-row long cli"><span class="fc-pre mono" aria-hidden="true">${f.cli}</span><input id="fin" class="oct cmdin" aria-label="${f.label}: command at ${f.cli}" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" inputmode="text" enterkeyhint="go" placeholder="command"><button class="btn primary" id="fok">Enter</button></div>`;
   if(f.type==='bits')return `<div class="fc-row"><input id="fin" class="oct bits8" aria-label="${f.label}: 8 bits" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" inputmode="numeric" enterkeyhint="go" placeholder="8 bits" maxlength="9"><button class="btn primary" id="fok">Check</button></div><div class="dim fc-note">1s on the left for network bits, 0s on the right for host bits.</div>`;
   if(f.pre)return `<div class="fc-row${f.type==='bin32'?' long':''}"><span class="fc-pre mono" aria-hidden="true">${f.pre}</span><input id="fin" class="oct" aria-label="${f.label}: last ${f.type==='bin32'?'8 bits':'octet'}" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" inputmode="numeric" enterkeyhint="go" placeholder="${f.type==='bin32'?'8 bits':'octet'}"><button class="btn primary" id="fok">Check</button></div>`;
   if(f.type==='choice')return `<div class="choices fc-choices">${Object.entries(ROLES).map(([k,v])=>`<button type="button" class="choice" data-v="${k}">${v}</button>`).join('')}</div>`;
@@ -1710,7 +1625,8 @@ function problemFromURL(){
 
 /* ---------------- game rendering ---------------- */
 function renderTabs(){
-  $('#tabs').innerHTML=MODES.map(m=>{const c=state.per[m.id];return `<button class="tab ${state.mode===m.id?'on':''}" data-m="${m.id}" ${state.timed?'disabled':''}>${m.name}${c.t?`<span class="ct">${c.r}/${c.t}</span>`:''}</button>`;}).join('');
+  const tab=m=>{const c=state.per[m.id];return `<button class="tab ${state.mode===m.id?'on':''}" data-m="${m.id}" ${state.timed?'disabled':''}>${m.name}${c.t?`<span class="ct">${c.r}/${c.t}</span>`:''}</button>`;};
+  $('#tabs').innerHTML=TABGROUPS.map(([g,name,tip])=>`<div class="tgroup" role="group" aria-label="${name}"><span class="tglab" title="${tip}">${name}</span><div class="trow">${MODES.filter(m=>m.g===g).map(tab).join('')}</div></div>`).join('');
   $$('#tabs .tab').forEach(b=>b.onclick=()=>{state.mode=b.dataset.m;renderTabs();next();});
 }
 function renderStats(){
@@ -1748,7 +1664,6 @@ function next(force){
 }
 function readField(f,el){if(f.type==='choice'){const b=el.querySelector('.choice.on');return b?b.dataset.v:'';}if(f.type==='bits')return $$(`.field[data-i="${el.dataset.i}"] .bit`).map(b=>b.classList.contains('on')?'1':'0').join('');return expandCell(f,el.querySelector('input').value);}
 function isRight(f,v){
-  if(f.type==='cmd')return f.re.test(cmdNorm(v));
   if(f.type==='bits')return String(v).replace(/[\s.]/g,'')===f.answer;
   if(f.type==='choice')return toRole(v)===f.answer;
   if(f.type==='bin32')return bits32(v)===f.answer;
@@ -1757,7 +1672,7 @@ function isRight(f,v){
   if(f.type==='prefix'){const m=String(v).trim().replace(/^\//,'');return /^\d+$/.test(m)&&Number(m)===f.answer;}
   const s=String(v).replace(/[,\s]/g,'');return /^\d+$/.test(s)&&Number(s)===f.answer;
 }
-const show=f=>f.type==='cmd'?f.answer:f.type==='choice'?ROLES[f.answer]:f.type==='bin32'?f.answer:f.type==='numalt'?big(f.answer):f.type==='ip'?ipStr(f.answer):f.type==='prefix'?'/'+f.answer:f.type==='bits'?f.answer:Number(f.answer).toLocaleString();
+const show=f=>f.type==='choice'?ROLES[f.answer]:f.type==='bin32'?f.answer:f.type==='numalt'?big(f.answer):f.type==='ip'?ipStr(f.answer):f.type==='prefix'?'/'+f.answer:f.type==='bits'?f.answer:Number(f.answer).toLocaleString();
 function check(){
   if(state.walkView&&!state.checked)return;
   if(state.flow&&!state.checked&&state.flow.k<state.q.fields.length)return;
@@ -1888,7 +1803,7 @@ tools.dataset.cur='scratch';
 
 /* ---------------- scratchpad ---------------- */
 const ink=$('#ink'),gridC=$('#grid'),ictx=ink.getContext('2d'),gctx=gridC.getContext('2d');
-let strokes=[],cur=null,penColor='#d4ffe2',erasing=false,showGrid=store.get('ss_grid',true);
+let strokes=[],cur=null,penColor='#e6f0ff',erasing=false,showGrid=store.get('ss_grid',true);
 $('#guideToggle').classList.toggle('on',showGrid);
 function sizePad(){
   const r=$('#padwrap').getBoundingClientRect();if(!r.width||!r.height)return;const d=window.devicePixelRatio||1;
@@ -1899,9 +1814,9 @@ function drawGrid(){
   const r=$('#padwrap').getBoundingClientRect();gctx.clearRect(0,0,r.width,r.height);if(!showGrid)return;
   const vals=[128,64,32,16,8,4,2,1];const w=r.width/8;
   gctx.font='600 12px "JetBrains Mono", monospace';gctx.textAlign='center';gctx.textBaseline='top';
-  vals.forEach((v,i)=>{gctx.fillStyle='#3d7a52';gctx.fillText(v,w*i+w/2,8);
-    if(i>0){gctx.strokeStyle='#0b2a16';gctx.lineWidth=1;gctx.beginPath();gctx.moveTo(Math.round(w*i)+.5,4);gctx.lineTo(Math.round(w*i)+.5,r.height-4);gctx.stroke();}});
-  gctx.strokeStyle='#123d22';gctx.beginPath();gctx.moveTo(4,28.5);gctx.lineTo(r.width-4,28.5);gctx.stroke();
+  vals.forEach((v,i)=>{gctx.fillStyle='#5d7a8c';gctx.fillText(v,w*i+w/2,8);
+    if(i>0){gctx.strokeStyle='#142230';gctx.lineWidth=1;gctx.beginPath();gctx.moveTo(Math.round(w*i)+.5,4);gctx.lineTo(Math.round(w*i)+.5,r.height-4);gctx.stroke();}});
+  gctx.strokeStyle='#1d3142';gctx.beginPath();gctx.moveTo(4,28.5);gctx.lineTo(r.width-4,28.5);gctx.stroke();
 }
 function drawStroke(s,from){
   ictx.globalCompositeOperation=s.erase?'destination-out':'source-over';
@@ -1997,27 +1912,84 @@ if(isDesktop())openTool('scratch');
 })();
 
 /* hooks for the automated tests */
-window.SS={problemFrom,buildPrint,genVlsm,genLab,labFrom,buildPrintL,cmdNorm,LABPARTS,vlsmFrom,buildPrintV,hostBitsFor,shareURLV,getFlow:()=>state.flow,flowAnswer,setLayout:v=>{layoutPref=v;store.set('ss_layout',v);},startWalk,tipFor,next,genSheet,walkSheet,genMaskBin,genRole,genClassNets,classOf,bin32,bits32,pow2,toRole,ipStr,walkSteps,walkD2B,walkB2D,walkP2M,walkM2P,walkAnd,walkHosts,walkNets,walkSizeHosts,walkSizeNets,walkInc,GEN,state,WEAK,getWeak:()=>weak,pickWeak,next,check,show,isRight,parseIP,R,netCtx,diagNet,diagChart,diagHosts,diagBits,diagBinDec,diagMask,diagPrefix,diagNetworks,diagNewPrefix,diagSizeHosts,diagBits4Nets,diagNewMask,diagIncrement};
+window.SS={problemFrom,buildPrint,genVlsm,genLab,labFrom,buildPrintL,LABPARTS,configLink,vlsmFrom,buildPrintV,hostBitsFor,shareURLV,getFlow:()=>state.flow,flowAnswer,setLayout:v=>{layoutPref=v;store.set('ss_layout',v);},startWalk,tipFor,next,genSheet,walkSheet,genMaskBin,genRole,genClassNets,classOf,bin32,bits32,pow2,toRole,ipStr,walkSteps,walkD2B,walkB2D,walkP2M,walkM2P,walkAnd,walkHosts,walkNets,walkSizeHosts,walkSizeNets,walkInc,GEN,state,WEAK,getWeak:()=>weak,pickWeak,next,check,show,isRight,parseIP,R,netCtx,diagNet,diagChart,diagHosts,diagBits,diagBinDec,diagMask,diagPrefix,diagNetworks,diagNewPrefix,diagSizeHosts,diagBits4Nets,diagNewMask,diagIncrement};
 })();
 
-/* ---------------- matrix code rain (decorative; pauses when hidden, off for reduced motion) ---------------- */
+/* ---------------- oscilloscope behind the app (decorative) ----------------
+   #scope is the scope screen: a 10×8 graticule, and four traces drawn by a sweeping beam onto a persistence layer
+   that fades like phosphor. CH1 is a subnet mask as a digital signal (one bit per step), CH3 an IP address, MATH is
+   CH1 AND CH3 (the network address), CH2 a sine. Bus-decode labels show each octet; every sweep picks a new
+   address and prefix, and the readout strip under the main column shows the same values. Pauses when the tab is
+   hidden; reduced motion gets one finished frame. */
 (function(){
-  const cv=document.getElementById('rain');if(!cv||!cv.getContext)return;
-  const ctx=cv.getContext('2d'),glyphs='01アイウエオカキクケコサシスセソタチツテトナニヌネノ0123456789ABCDEF./';
-  let cols=[],fs=16,w=0,h=0,last=0,raf=0;
-  const reduce=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)');
-  function size(){const d=Math.min(window.devicePixelRatio||1,2);w=innerWidth;h=innerHeight;cv.width=w*d;cv.height=h*d;ctx.setTransform(d,0,0,d,0,0);
-    fs=w<600?14:16;const n=Math.ceil(w/fs);cols=Array.from({length:n},()=>Math.random()*-h/fs);ctx.fillStyle='#010804';ctx.fillRect(0,0,w,h);}
-  function frame(t){raf=requestAnimationFrame(frame);if(t-last<60)return;last=t;
-    ctx.fillStyle='rgba(1,8,4,0.12)';ctx.fillRect(0,0,w,h);ctx.font=fs+'px "JetBrains Mono",monospace';
-    for(let i=0;i<cols.length;i++){const y=cols[i]*fs;if(y>0){const ch=glyphs[(Math.random()*glyphs.length)|0];
-      ctx.fillStyle='#b8ffd0';ctx.fillText(ch,i*fs,y);ctx.fillStyle='#00ff66';ctx.fillText(glyphs[(Math.random()*glyphs.length)|0],i*fs,y-fs);}
-      cols[i]+=1;if(y>h&&Math.random()>.975)cols[i]=Math.random()*-20;}}
-  function staticFrame(){size();ctx.font=fs+'px "JetBrains Mono",monospace';for(let i=0;i<cols.length;i++){const n=(Math.random()*h/fs)|0;
-    for(let k=0;k<n;k++){ctx.fillStyle=`rgba(0,255,102,${(k/n)*.5})`;ctx.fillText(glyphs[(Math.random()*glyphs.length)|0],i*fs,k*fs);}}}
-  function start(){cancelAnimationFrame(raf);if(reduce&&reduce.matches){staticFrame();return;}size();raf=requestAnimationFrame(frame);}
+  const cv=document.getElementById('scope');if(!cv||!cv.getContext)return;
+  const ctx=cv.getContext('2d');const reduce=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)');
+  const C1='#ffd23d',C2='#5ec8ff',C3='#ff6bd6',CM='#6ff0c4',DRAFT='"Barlow Condensed",sans-serif',MONO='"JetBrains Mono",monospace';
+  let w=0,h=0,d=1,grat=null,pers=null,pc=null,raf=0,last=0,phase=0,sx=0,hold=0,sig=null,lanes=null,amp=0,X0=0,X1=0,decoded=[];
+  const oct=n=>[n>>>24,n>>>16&255,n>>>8&255,n&255];
+  function pick(){
+    const p=8+Math.floor(Math.random()*23),mask=p?(0xFFFFFFFF<<(32-p))>>>0:0,f=[10,172,192][Math.floor(Math.random()*3)];
+    const ip=((f===10?10<<24:f===172?(172<<24|(16+Math.floor(Math.random()*16))<<16):(192<<24|168<<16))|Math.floor(Math.random()*(f===10?1<<24:f===172?1<<16:1<<16)))>>>0;
+    sig={p,mask,ip,net:(ip&mask)>>>0,f:pick.f||(pick.f=.8+Math.random()*1.2),ph:pick.ph??(pick.ph=Math.random()*6.28)};decoded=[];
+    const set=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
+    set('roMask',oct(mask).join('.')+' (/'+p+')');set('roIp',oct(ip).join('.'));set('roNet',oct(sig.net).join('.'));
+  }
+  const bit=(n,k)=>(n>>>(31-k))&1;
+  // y of a digital trace at x: one bit per step, with a fast edge and a little ringing after each transition
+  function dig(n,x,y0){const bw=(X1-X0)/32;if(x<X0)return y0-amp*bit(n,0);if(x>X1)return y0-amp*bit(n,31);
+    const k=Math.min(31,Math.floor((x-X0)/bw)),v=bit(n,k),t=x-X0-k*bw,prev=k?bit(n,k-1):v;let y=y0-amp*v;
+    if(prev!==v){const e=Math.min(1,t/3);y=y0-amp*(prev+(v-prev)*e);if(t>=3)y-=(v-prev)*amp*.16*Math.exp(-(t-3)/7)*Math.cos((t-3)/2.6);}
+    return y+(Math.random()-.5)*.8;}
+  const sine=(x,y0)=>y0-amp*.9*Math.sin(x/w*Math.PI*2*sig.f*3+sig.ph)*(.75+.25*Math.sin(x/w*7))+(Math.random()-.5)*.8;
+  function traces(){return [[C1,x=>dig(sig.mask,x,lanes[0])],[C3,x=>dig(sig.ip,x,lanes[1])],[CM,x=>dig(sig.net,x,lanes[2])],[C2,x=>sine(x,lanes[3])]];}
+  function graticule(c){
+    c.clearRect(0,0,w,h);const dx=w/10,dy=h/8,cx=w/2,cy=h/2;c.lineWidth=1;
+    c.strokeStyle='rgba(150,190,210,.13)';c.setLineDash([1,5]);c.beginPath();
+    for(let i=1;i<10;i++){if(i===5)continue;const x=Math.round(i*dx)+.5;c.moveTo(x,0);c.lineTo(x,h);}
+    for(let i=1;i<8;i++){if(i===4)continue;const y=Math.round(i*dy)+.5;c.moveTo(0,y);c.lineTo(w,y);}c.stroke();c.setLineDash([]);
+    c.strokeStyle='rgba(150,190,210,.24)';c.beginPath();c.moveTo(Math.round(cx)+.5,0);c.lineTo(Math.round(cx)+.5,h);c.moveTo(0,Math.round(cy)+.5);c.lineTo(w,Math.round(cy)+.5);
+    for(let i=1;i<50;i++){const x=Math.round(i*dx/5)+.5,L=i%5?4:8;c.moveTo(x,cy-L);c.lineTo(x,cy+L);}
+    for(let i=1;i<40;i++){const y=Math.round(i*dy/5)+.5,L=i%5?4:8;c.moveTo(cx-L,y);c.lineTo(cx+L,y);}c.stroke();
+    // channel ground markers on the left edge, and the trigger level on the right
+    [[C1,'1',lanes[0]],[C3,'3',lanes[1]],[CM,'M',lanes[2]],[C2,'2',lanes[3]]].forEach(([col,t,y])=>{c.fillStyle=col;c.beginPath();c.moveTo(10,y-8);c.lineTo(24,y-8);c.lineTo(31,y);c.lineTo(24,y+8);c.lineTo(10,y+8);c.closePath();c.globalAlpha=.85;c.fill();
+      c.globalAlpha=1;c.fillStyle='#05090d';c.font=`700 12px ${DRAFT}`;c.textAlign='center';c.textBaseline='middle';c.fillText(t,19,y+.5);});
+    const ty=lanes[0]-amp/2;c.fillStyle=C1;c.globalAlpha=.85;c.beginPath();c.moveTo(w-10,ty-7);c.lineTo(w-22,ty);c.lineTo(w-10,ty+7);c.closePath();c.fill();c.globalAlpha=1;
+    c.beginPath();c.moveTo(cx-6,10);c.lineTo(cx+6,10);c.lineTo(cx,18);c.closePath();c.fillStyle='#e6eef3b3';c.fill();
+    // settings bar along the bottom of the screen
+    if(w>=560){c.font=`600 12px ${MONO}`;c.textAlign='left';c.textBaseline='alphabetic';let x=16;const y=h-14;
+      [[C1,'1','2.00V/'],[C3,'3','2.00V/'],[CM,'M','AND'],[C2,'2','500mV/'],['#e6eef3','H','400ns/'],[C1,'T','↑ 1.20V']].forEach(([col,k,v])=>{c.fillStyle=col;c.globalAlpha=.9;c.fillRect(x,y-11,16,14);c.globalAlpha=1;
+        c.fillStyle='#05090d';c.textAlign='center';c.fillText(k,x+8,y);c.textAlign='left';c.fillStyle='rgba(230,238,243,.75)';c.fillText(v,x+21,y);x+=c.measureText(v).width+40;});}
+  }
+  function seg(c,col,f,a,b){// one stretch of a trace: a soft halo, then the bright line
+    c.beginPath();for(let x=a;x<=b;x+=2){const y=f(x);x===a?c.moveTo(x,y):c.lineTo(x,y);}
+    c.strokeStyle=col;c.globalAlpha=.16;c.lineWidth=6;c.stroke();c.globalAlpha=.95;c.lineWidth=1.6;c.stroke();c.globalAlpha=1;}
+  function decode(c,upto){// bus-decode labels above each digital trace, drawn once the beam has passed each octet
+    const bw=(X1-X0)/32;for(let o=0;o<4;o++){const xe=X0+(o+1)*8*bw;if(xe>upto||decoded.includes(o))continue;decoded.push(o);
+      [[C1,sig.mask,0,true],[C3,sig.ip,1,false],[CM,sig.net,2,false]].forEach(([col,n,li,hex])=>{const v=oct(n)[o],t=hex?v.toString(16).toUpperCase().padStart(2,'0')+'h · '+v:String(v);
+        const x0=X0+o*8*bw+4,x1=xe-4,y=lanes[li]-amp-16,m=7;c.font=`600 11px ${MONO}`;c.globalAlpha=.9;c.strokeStyle=col;c.lineWidth=1;
+        c.beginPath();c.moveTo(x0,y);c.lineTo(x0+m,y-8);c.lineTo(x1-m,y-8);c.lineTo(x1,y);c.lineTo(x1-m,y+8);c.lineTo(x0+m,y+8);c.closePath();c.fillStyle='rgba(5,9,13,.85)';c.fill();c.stroke();
+        c.fillStyle=col;c.textAlign='center';c.textBaseline='middle';c.fillText(t,(x0+x1)/2,y+.5);c.globalAlpha=1;});}}
+  function setup(){
+    d=Math.min(window.devicePixelRatio||1,2);w=innerWidth;h=innerHeight;cv.width=w*d;cv.height=h*d;ctx.setTransform(d,0,0,d,0,0);
+    const dy=h/8;lanes=[2.2*dy,3.75*dy,5.3*dy,6.85*dy];amp=Math.min(dy*.42,42);X0=w*.05;X1=w*.95;
+    grat=document.createElement('canvas');grat.width=w*d;grat.height=h*d;const g=grat.getContext('2d');g.setTransform(d,0,0,d,0,0);graticule(g);
+    pers=document.createElement('canvas');pers.width=w*d;pers.height=h*d;pc=pers.getContext('2d');pc.setTransform(d,0,0,d,0,0);pc.lineJoin='round';
+    pick();sx=0;hold=0;
+  }
+  function frame(now){
+    const dt=Math.min(.05,(now-last)/1000||0);last=now;
+    // phosphor persistence: everything already drawn fades a little each frame
+    pc.globalCompositeOperation='destination-out';pc.fillStyle=`rgba(0,0,0,${Math.min(1,dt*.42)})`;pc.fillRect(0,0,w,h);pc.globalCompositeOperation='source-over';
+    if(hold>0){hold-=dt;if(hold<=0){pick();sx=0;}}
+    else{const nx=Math.min(w,sx+w*dt/3.4);traces().forEach(([col,f])=>seg(pc,col,f,Math.max(0,sx-2),nx));decode(pc,nx);sx=nx;if(sx>=w)hold=.9;}
+    ctx.clearRect(0,0,w,h);ctx.drawImage(grat,0,0,w,h);ctx.drawImage(pers,0,0,w,h);
+    if(hold<=0)traces().forEach(([col,f])=>{const y=f(sx);ctx.fillStyle=col;ctx.globalAlpha=.25;ctx.beginPath();ctx.arc(sx,y,8,0,7);ctx.fill();ctx.globalAlpha=1;ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(sx,y,2.2,0,7);ctx.fill();});
+  }
+  function still(){traces().forEach(([col,f])=>seg(pc,col,f,0,w));decode(pc,w);ctx.clearRect(0,0,w,h);ctx.drawImage(grat,0,0,w,h);ctx.drawImage(pers,0,0,w,h);}
+  function loop(now){raf=requestAnimationFrame(loop);if(now-last<30)return;frame(now);}
+  function start(){cancelAnimationFrame(raf);setup();if(reduce&&reduce.matches){still();return;}last=performance.now();raf=requestAnimationFrame(loop);}
   addEventListener('resize',()=>{clearTimeout(start.t);start.t=setTimeout(start,200);});
-  document.addEventListener('visibilitychange',()=>{if(document.hidden)cancelAnimationFrame(raf);else start();});
+  document.addEventListener('visibilitychange',()=>{if(document.hidden)cancelAnimationFrame(raf);else if(!(reduce&&reduce.matches)){last=performance.now();raf=requestAnimationFrame(loop);}});
   if(reduce&&reduce.addEventListener)reduce.addEventListener('change',start);
-  start();
+  (document.fonts&&document.fonts.ready?document.fonts.ready:Promise.resolve()).then(start);
 })();
