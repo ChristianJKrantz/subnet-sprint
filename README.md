@@ -6,7 +6,7 @@ Practice binary conversion, prefix ↔ subnet mask, ANDing, full subnet charts, 
 
 ### ▶ [Play it here](https://christianjkrantz.github.io/subnet-sprint/)
 
-Sister site: **[No Shutdown](https://christianjkrantz.github.io/no-shutdown/)** for practicing Cisco IOS configuration commands.
+Sister site: **[No Shutdown](https://christianjkrantz.github.io/no-shutdown/)** for practicing Cisco IOS configuration commands. The Packet Tracer **Subnetting Scenario** lab (11.7.5) lives there too, both parts.
 
 Works in any modern browser on desktop, tablet or phone. No install, no account, no tracking.
 
@@ -19,13 +19,12 @@ It's styled as an oscilloscope. The page sits on the scope's screen, with a 10×
 ## Features
 
 ### Practice modes
-The tabs are in two groups. **Class assignments** are full sheets in the formats the class uses: Worksheet, VLSM and the Packet Tracer lab. **Quick drills** practice one skill at a time.
+The tabs are in two groups. **Class assignments** are full sheets in the formats the class uses: Worksheet and VLSM. **Quick drills** practice one skill at a time.
 
 | Mode | What you practice |
 |---|---|
 | **Worksheet** | The full class worksheet for an IP and mask: mask in dotted decimal and binary, increment, network and broadcast, whether the IP is a network/host/broadcast address, total networks (2ⁿ), hosts per network (2ʰ − 2), and the network chart |
 | **VLSM** | The class VLSM assignment: split a /24 biggest-first into subnets sized for their hosts, with the bit grid (1s for network bits, 0s for host bits), subnet mask, network, useable host range and broadcast for each subnet, plus the network after the last one |
-| **Packet Tracer lab** | Part 1 of the Cisco “Subnetting Scenario” lab (11.7.5): count the subnets a topology needs, borrow bits, the binary subnet values, the new mask, the subnet table, assigning subnets to links, and the Addressing Table |
 | **Binary** | Decimal → binary (tap the 128 / 64 / 32 … bits) and binary → decimal |
 | **Prefix ↔ Mask** | `/26` → `255.255.255.192` and back, and masks written out in 32-bit binary |
 | **ANDing** | IP + mask → network address |
@@ -72,40 +71,13 @@ The last row is the network after the final subnet. Random problems often land r
 
 <img src="docs/vlsm.png" alt="VLSM one at a time: the bit grid and address table fill in as you answer" width="720">
 
-### Packet Tracer lab mode
-Follows the Cisco Packet Tracer “Subnetting Scenario” lab. Each problem draws a topology: two routers joined by a serial link, with one to three LANs each (router port → switch → PC). You're given a /24 and how many addresses each LAN needs, then work through the lab in its own order:
-
-- **Step 1:**
-  - how many subnets are needed (the LANs plus the WAN link)
-  - how many bits to borrow, and how many subnets and usable hosts that creates
-  - the binary value of each subnet
-  - the new mask in binary and decimal
-  - the full subnet table
-- **Step 2:** assign the subnets to the links: R1's LANs, then R2's, then the WAN link.
-- **Step 3:** fill in the Addressing Table by the lab's rules:
-  - routers get the first usable address on their LANs
-  - R1 gets the first usable address on the WAN link, and R2 the last
-  - switches get the second usable address
-  - PCs get the last usable address
-  - switches and PCs use their router's LAN address as the default gateway
-- **Part 2** (configuring the router, switch and PC with IOS commands) lives in the sister site, [No Shutdown](https://christianjkrantz.github.io/no-shutdown/). The lab links there with the same network loaded.
-
-Feedback catches the usual mistakes:
-- forgetting the WAN link
-- borrowing too many or too few bits
-- writing the subnet number in the wrong bits
-- giving R2 the WAN link's first address
-- a PC's gateway set to the switch
-
-The part picker lets you drill one section at a time (Step 1, or Steps 2–3), with the earlier results shown for reference.
-
-<img src="docs/lab.png" alt="Packet Tracer lab: the topology and the Addressing Table filling in as you answer" width="720">
+### Packet Tracer lab
+The Cisco Packet Tracer **Subnetting Scenario** lab (11.7.5) moved to [No Shutdown](https://christianjkrantz.github.io/no-shutdown/?tab=lab), so both parts are in one place: the subnetting and Addressing Table, then configuring the devices on the same network. Old lab links here (`?lab=…`) forward there automatically.
 
 ### For instructors
 - **Your own problem:** in Worksheet mode, type any IP and mask (`/25`–`/30` or dotted decimal, Class A, B or C) to load that exact worksheet, for example to walk through a textbook problem in class. It gives you a **share link** that opens the same problem for students. Add `&layout=sheet` to a link to open it as a full sheet instead of one at a time.
 - **Your own VLSM problem:** in VLSM mode, type the hosts each subnet needs (for example `58, 29, 15, 7`) and optionally a different starting /24. They're sorted biggest first, and you get a share link like `?vlsm=58,29,15,7`.
-- **Your own lab:** in Packet Tracer lab mode, set the /24, addresses per LAN and LANs per router. One button loads the class lab (192.168.100.0, 25 addresses, 2 + 2 LANs). Share links look like `?lab=192.168.100.0&hosts=25&r1=2&r2=2`.
-- **Print:** prints 2–10 random worksheet, VLSM or lab problems (whichever mode you're in). Labs print like the class handout, each on its own pages (optionally starting with the current one), two per page, with an optional answer key on separate pages.
+- **Print:** prints 2–10 random worksheet or VLSM problems (whichever mode you're in), optionally starting with the current one, two per page, with an optional answer key on separate pages.
 - **Present:** hides the side tools and score and enlarges the problem for a projector. Click again to leave.
 
 Total networks is counted from the IP's class default mask (10.x.x.x is Class A, /8). The /24-baseline answer is also accepted for the worksheet, since some classes count it that way.
@@ -138,7 +110,7 @@ Using a hint makes that question worth half points.
 <img src="docs/walkthrough.png" alt="Step-by-step walkthrough with a wrong step explained" width="720">
 
 ### Weak spots
-Every mistake the feedback recognises is logged by type: rounding up, forgetting the − 2, swapping boxes, reading binary backwards and about 25 others. The **Weak spots** tab picks questions that target the mistakes you make most, labels what each one is drilling, and shrinks a weak spot as you get matching questions right. Your log is saved in your browser and can be reset at any time.
+Every mistake the feedback recognises is logged by type: rounding up, forgetting the − 2, swapping boxes, reading binary backwards and about 30 others. The **Weak spots** tab picks questions that target the mistakes you make most, labels what each one is drilling, and shrinks a weak spot as you get matching questions right. Your log is saved in your browser and can be reset at any time.
 
 <img src="docs/weak-spots.png" alt="Weak spots panel listing the most common mistakes with bars" width="720">
 
@@ -226,7 +198,6 @@ The `tests/` folder has twelve [Playwright](https://playwright.dev/python/) scri
 - **`test_hints.py`** generates 15,000 questions across every question type and checks every hint's steps lead to the real answer and handle junk input, scans every step and nudge to make sure none states the answer it's asking for, then works through 40 hints on screen with deliberate wrong steps and answers each question for half points.
 - **`test_flow.py`** checks the one-at-a-time layout: questions appear in working order, the chart builds as you go, wrong tries get a nudge without the answer and are logged, per-question hints, Show the answer, first-try scoring, and switching to Full sheet. It also checks the instructor tools: loading your own problem (and rejecting invalid or malicious input), share links, a printed PDF with two problems per page plus the answer key, and Present mode. Finally it confirms a whole worksheet fits a 360px phone.
 - **`test_vlsm.py`** checks VLSM mode against the class handout's example (58, 29, 15 and 7 hosts), then checks 400 random problems (biggest first, smallest block that fits, aligned blocks with no gaps, all inside the /24). It also checks the feedback for 12 common VLSM mistakes, the hints, both layouts, your own problem and share links (including bad and malicious input), printing two problems per page with an answer key, and that a whole problem fits a 360px phone.
-- **`test_lab.py`** checks Packet Tracer lab mode against the class's 11.7.5 lab answers, then 300 random networks (subnet count, bits borrowed, Addressing Table rules, no duplicate addresses). It also checks feedback for 13 common mistakes, a perfect run, hints, the part picker, the link to No Shutdown for Part 2, your own lab and share links (including bad and malicious input), the printed handout and key, and that the whole lab fits a 360px phone.
 
 ```bash
 pip install playwright
@@ -242,7 +213,6 @@ python tests/test_hints.py
 python tests/test_worksheet.py
 python tests/test_flow.py
 python tests/test_vlsm.py
-python tests/test_lab.py
 ```
 
 ## Built with
