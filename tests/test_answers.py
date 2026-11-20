@@ -52,6 +52,11 @@ def expected(qtype, prompt):
     if qtype=='Total networks (class default)':
         ip=re.search(r'(\d+)\.\d+\.\d+\.\d+/(\d+)',t); first,p=int(ip.group(1)),int(ip.group(2)); d=8 if first<128 else 16 if first<192 else 24
         return ['/'+str(d),str(2**(p-d))]
+    if qtype in ('Size a LAN (VLSM)','Size a link (VLSM)'):
+        H=2 if 'point-to-point' in t else int(re.search(r'needs\s+(\d+)\s+host',t).group(1)); h=next(h for h in range(2,33) if 2**h-2>=H); return [mask(32-h),str(2**h-2)]
+    if qtype=='Plan the subnets':
+        r1,r2=[int(x) for x in re.findall(r'(?:R1 has|R2 has)\s+(\d+)',t)]; H=int(re.search(r'needs\s+(\d+)\s+host',t).group(1))
+        need=r1+r2+1; n=math.ceil(math.log2(need)); return [str(need),str(n),str(2**(8-n)-2),mask(24+n)]
     raise Exception('unknown '+qtype)
 fails=[];counts={};bad_text=0
 with sync_playwright() as pw:

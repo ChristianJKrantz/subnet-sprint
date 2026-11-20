@@ -29,7 +29,7 @@ The tabs are in two groups. **Full problems** are whole multi-part problems work
 | **Prefix ↔ Mask** | `/26` → `255.255.255.192` and back, and masks written out in 32-bit binary |
 | **ANDing** | IP + mask → network address |
 | **Subnet Chart** | Given `IP/prefix`, fill in the network, broadcast, default gateway, last usable and usable hosts (in the order you work them out); plus quick “network, host or broadcast?” questions |
-| **Formulas** | Usable hosts (2ʰ − 2), subnets (2ⁿ), total networks from the class default (A /8, B /16, C /24), network increment, "smallest subnet for X hosts", "bits to borrow for N subnets" |
+| **Formulas** | Usable hosts (2ʰ − 2), subnets (2ⁿ), total networks from the class default (A /8, B /16, C /24), network increment, "smallest subnet for X hosts", "bits to borrow for N subnets", **Size a LAN (VLSM):** the smallest mask for a LAN or a router-to-router link (/30) and its usable hosts, and **Plan the subnets:** LANs + the router link on a /24 → subnets needed, bits to borrow, hosts per subnet and the mask. The last two are the subnetting parts of the Packet Tracer labs 11.9.3 and 11.7.5 |
 | **Mixed** | A random mix of everything |
 | **Weak spots** | Drills the mistakes you make most (see below) |
 
@@ -110,7 +110,7 @@ Using a hint makes that question worth half points.
 <img src="docs/walkthrough.png" alt="Step-by-step walkthrough with a wrong step explained" width="720">
 
 ### Weak spots
-Every mistake the feedback recognises is logged by type: rounding up, forgetting the − 2, swapping boxes, reading binary backwards and about 30 others. The **Weak spots** tab picks questions that target the mistakes you make most, labels what each one is drilling, and shrinks a weak spot as you get matching questions right. Your log is saved in your browser and can be reset at any time.
+Every mistake the feedback recognises is logged by type: rounding up, forgetting the − 2, swapping boxes, reading binary backwards, forgetting the router-to-router link and about 30 others. The **Weak spots** tab picks questions that target the mistakes you make most, labels what each one is drilling, and shrinks a weak spot as you get matching questions right. Your log is saved in your browser and can be reset at any time.
 
 <img src="docs/weak-spots.png" alt="Weak spots panel listing the most common mistakes with bars" width="720">
 
@@ -198,6 +198,7 @@ The `tests/` folder has twelve [Playwright](https://playwright.dev/python/) scri
 - **`test_hints.py`** generates 15,000 questions across every question type and checks every hint's steps lead to the real answer and handle junk input, scans every step and nudge to make sure none states the answer it's asking for, then works through 40 hints on screen with deliberate wrong steps and answers each question for half points.
 - **`test_flow.py`** checks the one-at-a-time layout: questions appear in working order, the chart builds as you go, wrong tries get a nudge without the answer and are logged, per-question hints, Show the answer, first-try scoring, and switching to Full sheet. It also checks the instructor tools: loading your own problem (and rejecting invalid or malicious input), share links, a printed PDF with two problems per page plus the answer key, and Present mode. Finally it confirms a whole worksheet fits a 360px phone.
 - **`test_vlsm.py`** checks VLSM mode against the class handout's example (58, 29, 15 and 7 hosts), then checks 400 random problems (biggest first, smallest block that fits, aligned blocks with no gaps, all inside the /24). It also checks the feedback for 12 common VLSM mistakes, the hints, both layouts, your own problem and share links (including bad and malicious input), printing two problems per page with an answer key, and that a whole problem fits a 360px phone.
+- **`test_sizing.py`** checks the two Packet Tracer sizing question types in Formulas: 500 random questions of each, links always /30, the fewest bits that fit, and feedback for a mask too small or too big, a /29 or /31 on a link, forgetting the router link, and the − 2.
 
 ```bash
 pip install playwright
@@ -213,6 +214,7 @@ python tests/test_hints.py
 python tests/test_worksheet.py
 python tests/test_flow.py
 python tests/test_vlsm.py
+python tests/test_sizing.py
 ```
 
 ## Built with

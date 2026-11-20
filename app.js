@@ -347,8 +347,10 @@ const GEN={
       hint:`Mask is ${ipStr(m)}. Increment = 256 − the octet that isn’t 255 or 0. List the subnets (0, inc, 2×inc…) and round the IP down to one of them.`,explain:explainSubnet(ip,p)};
   },
   formulas(sub){
-    const core=state.level==='core';const t=sub!=null?sub:R(0,5);
+    const core=state.level==='core';const t=sub!=null?sub:R(0,7);
     if(t===5)return genClassNets();
+    if(t===6)return genSizeLan(core);
+    if(t===7)return genPlanSubnets();
     if(t===0){const p=core?R(24,30):R(16,30),h=32-p;
       return {mode:'formulas',sub:t,walk:()=>walkHosts(p),title:'Host formula',prompt:`How many <u>usable</u> host addresses are in each <b class="big">/${p}</b> subnet?`,
         fields:[{type:'num',label:'Usable hosts',answer:2**h-2}],diag:x=>[diagHosts(h,x[0])],hint:`Host bits h = 32 − ${p}. Usable = 2^h − 2.`,
@@ -373,6 +375,77 @@ const GEN={
 };
 
 
+
+
+/* ---------------- sizing a LAN (VLSM) and planning the subnets (from the Packet Tracer labs' subnetting parts) ---------------- */
+// VLSM: one LAN's host count → the smallest mask that fits, in dotted decimal, and the usable hosts it gives.
+// One in five is a point-to-point link between two routers (2 addresses → /30).
+function genSizeLan(core){
+  const p2p=Math.random()<.2,H=p2p?2:core?R(3,120):R(3,1000);let h=2;while(2**h-2<H)h++;const p=32-h,m=maskOf(p),use=2**h-2,us=q=>Math.max(0,2**(32-q)-2);
+  const how=p2p?`A link between two routers needs 2 addresses. h = 2 gives 2<sup>2</sup> − 2 = 2 usable, so it’s a /30: ${G(ipStr(m))}.`
+    :`The smallest h with 2<sup>h</sup> − 2 ≥ ${H} is h = ${h} (2<sup>${h}</sup> − 2 = ${use}). Prefix = 32 − ${h} = /${p}, mask ${G(ipStr(m))}.`;
+  function dMask(raw){
+    const u=parseIP(raw);if(u===m)return null;
+    if(u==null){if(/^\s*\/?\s*\d{1,2}\s*$/.test(String(raw)))return T('mask_build',`Write the mask in dotted decimal, like 255.255.255.224, not as a prefix. ${how}`);return badEntry(raw,'ip')+' '+how;}
+    const q=maskPrefix(u);if(q<0)return T('mask_build',`That isn’t a valid mask: a mask is 1s followed by 0s, so each octet is 255, 254, 252, 248, 240, 224, 192, 128 or 0. ${how}`);
+    if(us(q)<H){if(p2p)return T('p2p_link',`/${q} leaves ${us(q)} usable addresses, but the link needs one for each router. ${how}`);
+      if(2**(32-q)>=H)return T('minus2',`/${q} has ${2**(32-q)} addresses, but the network and broadcast take 2, leaving ${us(q)}. That’s fewer than ${H}. ${how}`);
+      return T('size_hosts',`/${q} only gives ${us(q).toLocaleString()} usable hosts, not enough for ${H}. ${how}`);}
+    if(p2p)return T('p2p_link',`/${q} works, but it wastes addresses. Point-to-point links get the smallest subnet that holds 2. ${how}`);
+    return T('vlsm_fit',`/${q} fits ${H} hosts, but it’s bigger than needed. VLSM gives each LAN the <b>smallest</b> subnet that fits, so no addresses are wasted. ${how}`);
+  }
+  function dUse(raw){
+    const u=toNum(raw);if(u===use)return null;const how2=`${h} host bits: 2<sup>${h}</sup> − 2 = ${G(use)}.`;
+    if(u==null)return badEntry(raw,'num')+' '+how2;
+    if(u===2**h)return T('minus2',`2<sup>${h}</sup> = ${2**h} counts every address, but the network and broadcast can’t go to hosts: subtract 2. ${how2}`);
+    if(u===H&&H!==use)return T('host_formula',`${H} is what the LAN needs. The question asks what the subnet supports, usually a bit more. ${how2}`);
+    if(u===2**(32-h)||u===32-h||u===h)return T('host_bits',`Usable hosts come from the host bits (h = ${h}), not the prefix. ${how2}`);
+    return T('host_formula',how2);
+  }
+  const what=p2p?'A <b>point-to-point link</b> between two routers needs an address for each end: <b class="big">2</b> host addresses.':`A LAN needs <b class="big">${H}</b> host addresses.`;
+  return {mode:'formulas',sub:6,title:p2p?'Size a link (VLSM)':'Size a LAN (VLSM)',
+    prompt:`${what} With VLSM it gets its own subnet. Which subnet mask fits it with the fewest wasted addresses, and how many usable hosts does that give?`,
+    fields:[{type:'ip',label:'Subnet mask',answer:m},{type:'num',label:'Usable hosts',answer:use}],diag:x=>[dMask(x[0]),dUse(x[1])],
+    hint:p2p?'Two routers need 2 addresses: 2² − 2 = 2, so /30.':'Find the smallest h where 2^h − 2 ≥ the hosts. Prefix = 32 − h; write it as a mask.',
+    walk:()=>[{q:p2p?'The link needs 2 addresses. Smallest h where 2<sup>h</sup> − 2 ≥ 2?':`Smallest h (host bits) where 2<sup>h</sup> − 2 ≥ ${H}? Try h = 2, 3, 4 …`,kind:'num',ans:h,
+        bad:u=>u==null||u<1?'Enter a number of bits.':u<h?`2<sup>${u}</sup> − 2 = ${Math.max(0,2**u-2)}, not enough. Try more bits.`:'That works, but a smaller h might too. Try one less.'},
+      {q:'Prefix = 32 − h = ?',kind:'prefix',ans:p,bad:u=>u===h?'That’s the host bits. Prefix = 32 − h.':'Subtract your h from 32.'},
+      {f:0,q:`Write /${p} as a dotted-decimal mask.`,kind:'ip',ans:m,bad:(u,raw)=>hMask(p,raw)},
+      {f:1,q:`Usable hosts = 2<sup>${h}</sup> − 2 = ?`,kind:'num',ans:use,bad:u=>u===2**h?'Now subtract 2.':`2<sup>${h}</sup> − 2.`},
+      {done:true,q:'Those are your two answers.'}],
+    explain:`<p class="mono">${h>2?`h=${h-1}: 2<sup>${h-1}</sup>−2 = ${2**(h-1)-2} ✗ too small<br>`:''}h=${h}: 2<sup>${h}</sup>−2 = <b class="g">${use}</b> ✓</p><p>Prefix = 32 − ${h} = /${p} → mask <b class="g mono">${ipStr(m)}</b>.${p2p?' Every router-to-router link in a VLSM plan is a /30.':''}</p>`};
+}
+// One mask for every subnet (like the Subnetting Scenario lab): count the subnets (LANs + the router link),
+// borrow bits, and check the hosts per subnet still cover each LAN.
+function genPlanSubnets(){
+  const r1=R(1,3),r2=R(1,3),lans=r1+r2,need=lans+1;let n=1;while(2**n<need)n++;const per=2**(8-n)-2,H=R(Math.max(2,2**(7-n)-1),per),m=maskOf(24+n);
+  const base=parseIP(Math.random()<.7?`192.168.${R(0,255)}.0`:`10.${R(0,255)}.${R(0,255)}.0`);
+  const cnt=`Each LAN is one subnet, and the link between the routers is one more: ${lans} + 1 = ${G(need)}.`;
+  function dNeed(raw){const u=toNum(raw);if(u===need)return null;if(u==null)return badEntry(raw,'num')+' '+cnt;
+    if(u===lans)return T('plan_count',`You counted the LANs, but the link between the two routers needs its own subnet too. ${cnt}`);
+    if(u===lans+2)return T('plan_count',`The router-to-router link is a single subnet, even though it has two ends. ${cnt}`);
+    if(u===2)return T('plan_count',`Count networks, not routers. ${cnt}`);
+    return T('plan_count',cnt);}
+  function dPer(raw,ub){const u=toNum(raw);if(u===per)return null;const how=`Host bits = 8 − ${n} borrowed = ${8-n}, so 2<sup>${8-n}</sup> − 2 = ${G(per)}.`;
+    if(u==null)return badEntry(raw,'num')+' '+how;
+    if(u===2**(8-n))return T('minus2',`Subtract 2 for the network and broadcast addresses. ${how}`);
+    if(u===2**n||u===2**n-2)return T('host_bits',`That uses the borrowed bits. Hosts come from the bits left over. ${how}`);
+    if(u===H)return T('plan_fit',`${H} is what each LAN needs. The question is how many each subnet gives, which has to be at least ${H}. ${how}`);
+    const b=toNum(ub);if(b!=null&&b!==n&&b>0&&b<8&&u===2**(8-b)-2)return `Right for the ${b} bits you borrowed, so only the bits answer is off. ${how}`;
+    return T('host_formula',how);}
+  return {mode:'formulas',sub:7,title:'Plan the subnets',
+    prompt:`Two routers are joined by a serial link. R1 has <b>${r1}</b> LAN${r1>1?'s':''} and R2 has <b>${r2}</b>. Each LAN needs <b class="big">${H}</b> host addresses. Subnet <b>${ipStr(base)}/24</b> with one mask for every subnet.`,
+    fields:[{type:'num',label:'Subnets needed',answer:need},{type:'num',label:'Bits to borrow',answer:n},{type:'num',label:'Usable hosts per subnet',answer:per},{type:'ip',label:'New subnet mask',answer:m}],
+    diag:x=>[dNeed(x[0]),diagBits4Nets(need,n,x[1]),dPer(x[2],x[1]),diagNewMask(24,n,x[3],x[1])],
+    hint:'Subnets = LANs + 1 for the router link. Borrow the fewest bits n with 2ⁿ ≥ that. Hosts per subnet = 2^(8 − n) − 2; it must cover each LAN.',
+    walk:()=>[{f:0,q:`Count the subnets: ${lans} LANs, plus the link between the routers. = ?`,kind:'num',ans:need,bad:u=>u===lans?'Don’t forget the router-to-router link.':`${lans} + 1.`},
+      {f:1,q:`Smallest n where 2<sup>n</sup> ≥ ${need}?`,kind:'num',ans:n,bad:u=>u==null||u<1?'Enter a number of bits.':2**u<need?`2<sup>${u}</sup> = ${2**u}, fewer than ${need}.`:'That works, but fewer bits might too.'},
+      {q:`Host bits left in the last octet: 8 − ${n} = ?`,kind:'num',ans:8-n,bad:()=>`8 − ${n}.`},
+      {f:2,q:`Usable hosts per subnet = 2<sup>${8-n}</sup> − 2 = ? (It has to be at least what each LAN needs.)`,kind:'num',ans:per,bad:u=>u===2**(8-n)?'Now subtract 2.':`2<sup>${8-n}</sup> − 2.`},
+      {f:3,q:`/24 + ${n} = /${24+n}. Write the mask.`,kind:'ip',ans:m,bad:(u,raw)=>hMask(24+n,raw)},
+      {done:true,q:'That’s the plan.'}],
+    explain:`<p>${lans} LANs + 1 router link = <b class="g">${need}</b> subnets. 2<sup>${n}</sup> = ${2**n} ≥ ${need}${n>1?` (2<sup>${n-1}</sup> = ${2**(n-1)} is too few)`:''}, so borrow <b class="g">${n}</b> bits.</p><p class="mono">${8-n} host bits: 2<sup>${8-n}</sup> − 2 = <b class="g">${per}</b> ≥ ${H} ✓</p><p>/24 + ${n} = /${24+n} → <b class="g mono">${ipStr(m)}</b></p>`};
+}
 
 /* ---------------- worksheet (the full class worksheet: mask, binary, increment, network, broadcast, role, totals, chart) ---------------- */
 const classOf=ip=>{const a=oct(ip,0);return a<128?{c:'A',d:8,range:'1–126'}:a<192?{c:'B',d:16,range:'128–191'}:{c:'C',d:24,range:'192–223'};};
@@ -858,9 +931,12 @@ const WEAK={
   ip_role:['Network, host or broadcast?',[['detective','role'],['worksheet']]],
   class_nets:['Total networks from the class default',[['formulas',5],['worksheet']]],
   chart_rows:['Filling in the network chart rows',[['worksheet']]],
-  vlsm_fit:['Picking the smallest block that fits (VLSM)',[['vlsm'],['formulas',2]]],
+  vlsm_fit:['Picking the smallest block that fits (VLSM)',[['vlsm'],['formulas',6],['formulas',2]]],
   vlsm_mask:['Turning a VLSM grid row into a mask',[['vlsm'],['prefix','p2m']]],
   vlsm_block:['Stepping from one VLSM subnet to the next',[['vlsm']]],
+  p2p_link:['Sizing a router-to-router link (/30)',[['formulas',6]]],
+  plan_count:['Counting the subnets a network needs (router links too)',[['formulas',7]]],
+  plan_fit:['Hosts per subnet versus hosts needed',[['formulas',7],['formulas',6]]],
 };
 try{localStorage.removeItem('ss_sheet');localStorage.removeItem('ss_nohelp');}catch(e){}
 let weak={};{const raw=store.get('ss_weak',{});if(raw&&typeof raw==='object')for(const t of Object.keys(raw))if(Object.prototype.hasOwnProperty.call(WEAK,t)){const w=Number(raw[t]&&raw[t].w),n=Number(raw[t]&&raw[t].n);weak[t]={w:Number.isFinite(w)?Math.min(6,Math.max(0,w)):0,n:Number.isFinite(n)?Math.max(0,Math.floor(n)):0};}}

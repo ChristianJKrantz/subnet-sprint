@@ -770,6 +770,8 @@ AND   00100000  (32)</pre></li>
           <li><b>Number of subnets</b> = 2<sup>n</sup>, where n = bits borrowed. The new prefix = old prefix + n.<br><span class="dim">/24 borrow 3 → 2³ = 8 subnets, /27</span></li>
           <li><b>"I need X hosts"</b>: find the smallest h where 2<sup>h</sup> − 2 ≥ X. Prefix = 32 − h.<br><span class="dim">50 hosts → 2⁵−2 = 30 ✗, 2⁶−2 = 62 ✓ → /26</span></li>
           <li><b>"I need N subnets"</b>: find the smallest n where 2<sup>n</sup> ≥ N. Add n to the prefix.<br><span class="dim">5 subnets from /24 → 2²=4 ✗, 2³=8 ✓ → borrow 3 → /27</span></li>
+          <li><b>Size a LAN (VLSM)</b>: the same smallest h, then write the prefix as a mask and give 2<sup>h</sup> − 2 as its usable hosts. A link between two routers needs 2 addresses: always a /30 (255.255.255.252).<br><span class="dim">25 hosts → h = 5 → /27 → 255.255.255.224, 30 usable</span></li>
+          <li><b>Plan the subnets</b> (one mask for all): subnets = LANs + 1 for each router-to-router link. Borrow the fewest n with 2<sup>n</sup> ≥ that; hosts per subnet = 2<sup>8 − n</sup> − 2, which must cover each LAN.<br><span class="dim">4 LANs + 1 link = 5 → borrow 3 → 30 hosts each → 255.255.255.224</span></li>
           <li><b>Network increment</b> = 256 − the interesting mask octet.<br><span class="dim">255.255.255.240 → 256 − 240 = 16</span></li>
         </ol>
         <div class="ex"><h4>Powers of 2</h4><span class="mono">2¹=2 · 2²=4 · 2³=8 · 2⁴=16 · 2⁵=32 · 2⁶=64 · 2⁷=128 · 2⁸=256 · 2⁹=512 · 2¹⁰=1024</span></div>
