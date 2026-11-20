@@ -22,7 +22,7 @@ function binColored(n,p,dimHost){
 const store={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v);}catch(e){return d;}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}}};
 
 const MODES=[{id:'worksheet',name:'Worksheet',g:'class'},{id:'vlsm',name:'VLSM',g:'class'},{id:'binary',name:'Binary',g:'drill'},{id:'prefix',name:'Prefix ↔ Mask',g:'drill'},{id:'anding',name:'ANDing',g:'drill'},{id:'detective',name:'Subnet Chart',g:'drill'},{id:'formulas',name:'Formulas',g:'drill'},{id:'mixed',name:'Mixed',g:'drill'},{id:'weak',name:'Weak spots',g:'drill'}];
-const TABGROUPS=[['class','Class assignments','Full sheets in the format your class uses'],['drill','Quick drills','One skill at a time, fast']];
+const TABGROUPS=[['class','Full problems','A whole problem, worked start to finish'],['drill','Quick drills','One skill at a time, fast']];
 const GUIDE_FOR={worksheet:'g-ws',vlsm:'g-vlsm',binary:'g-bin',prefix:'g-mask',anding:'g-and',detective:'g-chart',formulas:'g-form'};
 // Packet Tracer lab links (?lab=…&hosts=…&r1=…&r2=…) moved to No Shutdown with the lab; send them on, same values
 try{const sp=new URLSearchParams(location.search);if(sp.has('lab')){const o=new URLSearchParams();['lab','hosts','r1','r2'].forEach(k=>{if(sp.has(k))o.set(k,sp.get(k).slice(0,40));});location.replace('https://christianjkrantz.github.io/no-shutdown/?'+o.toString());}}catch(e){}

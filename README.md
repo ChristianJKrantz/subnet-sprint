@@ -19,7 +19,7 @@ It's styled as an oscilloscope. The page sits on the scope's screen, with a 10×
 ## Features
 
 ### Practice modes
-The tabs are in two groups. **Class assignments** are full sheets in the formats the class uses: Worksheet and VLSM. **Quick drills** practice one skill at a time.
+The tabs are in two groups. **Full problems** are whole multi-part problems worked start to finish: Worksheet and VLSM. **Quick drills** practice one skill at a time.
 
 | Mode | What you practice |
 |---|---|
