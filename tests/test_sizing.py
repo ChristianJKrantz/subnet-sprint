@@ -47,6 +47,16 @@ with sync_playwright() as pw:
     ok('number of subnets you need' in m[2],'typing the subnet count as the bits is caught')
     ok('Subtract 2' in m[3],'hosts per subnet without the − 2 is caught')
     ok('borrowed bits' in m[4],'hosts from the borrowed bits (2³ = 8) is caught')
+    print('Meet both requirements')
+    r=pg.evaluate("""(()=>{let bad=0;for(let i=0;i<500;i++){const q=SS.GEN.formulas(8);const a=Number(q.prompt.match(/big">(\\d+)/)[1]),need=q.fields[0].answer;
+      const ok=[25,26,27,28,29,30].filter(p=>2**(32-p)-2>=a&&2**(p-24)>=need);if(ok.length!==1||SS.ipStr(q.fields[1].answer)!==['','','','','','','','','','','','','','','','','','','','','','','','','','255.255.255.128','255.255.255.192','255.255.255.224','255.255.255.240','255.255.255.248','255.255.255.252'][ok[0]])bad++;
+      if(q.diag(q.fields.map(f=>SS.show(f))).some(Boolean))bad++;}return bad;})()""")
+    ok(r==0,'500 questions: exactly one mask meets both, and it’s the answer')
+    m=pg.evaluate("""(()=>{for(let i=0;i<4000;i++){const q=SS.GEN.formulas(8);if(q.fields[0].answer===4&&SS.ipStr(q.fields[1].answer)==='255.255.255.192'){const v=q.fields.map(f=>SS.show(f));
+      return [q.diag(['2',v[1],v[2]])[0],q.diag([v[0],'255.255.255.128',v[2]])[1],q.diag([v[0],'255.255.255.224',v[2]])[1]].map(x=>String(x).replace(/<[^>]+>/g,''));}}})()""")
+    ok('spare subnets' in m[0],'forgetting the spare subnets is caught')
+    ok('makes only 2 subnets' in m[1],'a /25: fits the hosts but too few subnets')
+    ok('gives only 30 hosts' in m[2],'a /27: enough subnets but too few hosts')
     print('In the app')
     pg.click('.tab[data-m="formulas"]'); pg.wait_for_timeout(200)
     seen=set()

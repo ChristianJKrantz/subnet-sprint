@@ -57,6 +57,9 @@ def expected(qtype, prompt):
     if qtype=='Plan the subnets':
         r1,r2=[int(x) for x in re.findall(r'(?:R1 has|R2 has)\s+(\d+)',t)]; H=int(re.search(r'needs\s+(\d+)\s+host',t).group(1))
         need=r1+r2+1; n=math.ceil(math.log2(need)); return [str(need),str(n),str(2**(8-n)-2),mask(24+n)]
+    if qtype=='Meet both requirements':
+        a=int(re.search(r'LAN-A needs at least\s+(\d+)',t).group(1)); spare=int(re.search(r'need\s+(\d+)\s+more subnet',t).group(1)); need=2+spare; n=math.ceil(math.log2(need)); p=24+n
+        return [str(need),mask(p),str(2**(32-p)-2)]
     raise Exception('unknown '+qtype)
 fails=[];counts={};bad_text=0
 with sync_playwright() as pw:

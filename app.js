@@ -347,10 +347,11 @@ const GEN={
       hint:`Mask is ${ipStr(m)}. Increment = 256 − the octet that isn’t 255 or 0. List the subnets (0, inc, 2×inc…) and round the IP down to one of them.`,explain:explainSubnet(ip,p)};
   },
   formulas(sub){
-    const core=state.level==='core';const t=sub!=null?sub:R(0,7);
+    const core=state.level==='core';const t=sub!=null?sub:R(0,8);
     if(t===5)return genClassNets();
     if(t===6)return genSizeLan(core);
     if(t===7)return genPlanSubnets();
+    if(t===8)return genMeetBoth();
     if(t===0){const p=core?R(24,30):R(16,30),h=32-p;
       return {mode:'formulas',sub:t,walk:()=>walkHosts(p),title:'Host formula',prompt:`How many <u>usable</u> host addresses are in each <b class="big">/${p}</b> subnet?`,
         fields:[{type:'num',label:'Usable hosts',answer:2**h-2}],diag:x=>[diagHosts(h,x[0])],hint:`Host bits h = 32 − ${p}. Usable = 2^h − 2.`,
@@ -445,6 +446,38 @@ function genPlanSubnets(){
       {f:3,q:`/24 + ${n} = /${24+n}. Write the mask.`,kind:'ip',ans:m,bad:(u,raw)=>hMask(24+n,raw)},
       {done:true,q:'That’s the plan.'}],
     explain:`<p>${lans} LANs + 1 router link = <b class="g">${need}</b> subnets. 2<sup>${n}</sup> = ${2**n} ≥ ${need}${n>1?` (2<sup>${n-1}</sup> = ${2**(n-1)} is too few)`:''}, so borrow <b class="g">${n}</b> bits.</p><p class="mono">${8-n} host bits: 2<sup>${8-n}</sup> − 2 = <b class="g">${per}</b> ≥ ${H} ✓</p><p>/24 + ${n} = /${24+n} → <b class="g mono">${ipStr(m)}</b></p>`};
+}
+
+
+// One mask that has to fit the biggest LAN AND leave spare subnets for growth (like the Subnet an IPv4 Network lab):
+// exactly one mask meets both, so the answer is unique.
+function genMeetBoth(){
+  let a,b,spare,n,need,p;
+  for(;;){n=R(2,3);need=R(2**(n-1)+1,2**n);spare=need-2;p=24+n;const hi=2**(32-p)-2,lo=2**(32-p-1)-1;a=R(lo,hi);b=R(Math.max(2,Math.floor(a*.5)),a-1);if(spare>=1&&a>=2)break;}
+  const m=maskOf(p),per=2**(32-p)-2,base=parseIP(`192.168.${R(0,255)}.0`);
+  const hostsOK=q=>2**(32-q)-2>=a,subsOK=q=>2**(q-24)>=need;
+  const how=`Subnets: 2 LANs + ${spare} spare = ${need}, so you need 2<sup>n</sup> ≥ ${need}: at least /${p}. Hosts: ${a} needs 2<sup>h</sup> − 2 ≥ ${a}: at most /${p}. Only ${G('/'+p)} does both: ${G(ipStr(m))}.`;
+  function dNeed(raw){const u=toNum(raw);if(u===need)return null;const h2=`The 2 LANs you need now, plus ${spare} spare: ${G(need)}.`;
+    if(u==null)return badEntry(raw,'num')+' '+h2;if(u===2)return T('plan_count',`Count the spare subnets for future expansion too. ${h2}`);if(u===spare)return T('plan_count',`Add the two LANs you need now. ${h2}`);
+    if(u===2**n)return T('plan_count',`That’s how many the mask makes. The question asks for the minimum you need. ${h2}`);return T('plan_count',h2);}
+  function dMask(raw){const u=parseIP(raw);if(u===m)return null;if(u==null)return badEntry(raw,'ip')+' '+how;const q=maskPrefix(u);
+    if(q<0||q<24)return T('mask_build',`That isn’t a /25–/30 mask. ${how}`);
+    if(!subsOK(q))return T('meet_both',`/${q} fits the hosts but makes only ${2**(q-24)} subnets, fewer than ${need}. ${how}`);
+    if(!hostsOK(q))return T('meet_both',`/${q} makes enough subnets but gives only ${2**(32-q)-2} hosts each, fewer than ${a}. ${how}`);return T('meet_both',how);}
+  function dPer(raw){const u=toNum(raw);if(u===per)return null;const h2=`/${p} leaves ${32-p} host bits: 2<sup>${32-p}</sup> − 2 = ${G(per)}.`;
+    if(u==null)return badEntry(raw,'num')+' '+h2;if(u===2**(32-p))return T('minus2',`Subtract 2 for the network and broadcast. ${h2}`);if(u===a)return T('plan_fit',`${a} is what LAN-A needs; the subnet gives at least that. ${h2}`);return T('host_formula',h2);}
+  return {mode:'formulas',sub:8,title:'Meet both requirements',
+    prompt:`Subnet <b>${ipStr(base)}/24</b> with <b>one mask</b> for every subnet. LAN-A needs at least <b class="big">${a}</b> hosts, LAN-B at least <b>${b}</b>, and you need <b>${spare}</b> more subnet${spare>1?'s':''}, unused, for future expansion.`,
+    fields:[{type:'num',label:'Minimum subnets needed',answer:need},{type:'ip',label:'The mask that meets both',answer:m},{type:'num',label:'Usable hosts per subnet',answer:per}],
+    diag:x=>[dNeed(x[0]),dMask(x[1]),dPer(x[2])],
+    hint:'Subnets = LANs + spares → the mask must be at least that long. The biggest LAN must still fit → it can’t be longer than that. Pick the mask that is both.',
+    walk:()=>[{f:0,q:`Count the subnets: 2 LANs now, plus ${spare} spare = ?`,kind:'num',ans:need,bad:u=>u===2?'Add the spare subnets.':`2 + ${spare}.`},
+      {q:`Smallest n with 2<sup>n</sup> ≥ ${need}? That’s the fewest bits to borrow, so the mask is at least /24 + n.`,kind:'num',ans:n,bad:u=>u==null||u<1?'Enter a number of bits.':2**u<need?`2<sup>${u}</sup> = ${2**u}, too few.`:'That works, but fewer might too.'},
+      {q:`Smallest h with 2<sup>h</sup> − 2 ≥ ${a}? The mask can be at most 32 − h.`,kind:'num',ans:32-p,bad:u=>u==null||u<1?'Enter a number of bits.':2**u-2<a?`2<sup>${u}</sup> − 2 = ${2**u-2}, too few.`:'That works, but fewer might too.'},
+      {f:1,q:`At least /${p} and at most /${p}: write /${p} as a mask.`,kind:'ip',ans:m,bad:(u,raw)=>hMask(p,raw)},
+      {f:2,q:`Usable hosts = 2<sup>${32-p}</sup> − 2 = ?`,kind:'num',ans:per,bad:u=>u===2**(32-p)?'Now subtract 2.':`2<sup>${32-p}</sup> − 2.`},
+      {done:true,q:'That mask meets both.'}],
+    explain:`<p>Subnets: 2 + ${spare} = <b class="g">${need}</b> → borrow ${n} bits (2<sup>${n}</sup> = ${2**n}) → at least /${p}.</p><p>Hosts: ${a} needs ${32-p} host bits (2<sup>${32-p}</sup> − 2 = ${per}) → at most /${p}.</p><table class="sol"><tr><th>Mask</th><th>Subnets</th><th>Hosts</th><th></th></tr>${[25,26,27,28,29,30].map(q=>`<tr><td>/${q}</td><td>${2**(q-24)}</td><td>${2**(32-q)-2}</td><td>${q===p?'<b class="g">✓ both</b>':subsOK(q)?'subnets only':hostsOK(q)?'hosts only':''}</td></tr>`).join('')}</table><p>The answer: <b class="g mono">${ipStr(m)}</b> (/${p}), ${per} hosts each.</p>`};
 }
 
 /* ---------------- worksheet (the full class worksheet: mask, binary, increment, network, broadcast, role, totals, chart) ---------------- */
@@ -937,6 +970,7 @@ const WEAK={
   p2p_link:['Sizing a router-to-router link (/30)',[['formulas',6]]],
   plan_count:['Counting the subnets a network needs (router links too)',[['formulas',7]]],
   plan_fit:['Hosts per subnet versus hosts needed',[['formulas',7],['formulas',6]]],
+  meet_both:['Picking the one mask that meets the hosts and the subnets',[['formulas',8]]],
 };
 try{localStorage.removeItem('ss_sheet');localStorage.removeItem('ss_nohelp');}catch(e){}
 let weak={};{const raw=store.get('ss_weak',{});if(raw&&typeof raw==='object')for(const t of Object.keys(raw))if(Object.prototype.hasOwnProperty.call(WEAK,t)){const w=Number(raw[t]&&raw[t].w),n=Number(raw[t]&&raw[t].n);weak[t]={w:Number.isFinite(w)?Math.min(6,Math.max(0,w)):0,n:Number.isFinite(n)?Math.max(0,Math.floor(n)):0};}}
