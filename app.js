@@ -24,8 +24,6 @@ const store={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.
 const MODES=[{id:'worksheet',name:'Worksheet',g:'class'},{id:'vlsm',name:'VLSM',g:'class'},{id:'binary',name:'Binary',g:'drill'},{id:'prefix',name:'Prefix ↔ Mask',g:'drill'},{id:'anding',name:'ANDing',g:'drill'},{id:'detective',name:'Subnet Chart',g:'drill'},{id:'formulas',name:'Formulas',g:'drill'},{id:'mixed',name:'Mixed',g:'drill'},{id:'weak',name:'Weak spots',g:'drill'}];
 const TABGROUPS=[['class','Full problems','A whole problem, worked start to finish'],['drill','Quick drills','One skill at a time, fast']];
 const GUIDE_FOR={worksheet:'g-ws',vlsm:'g-vlsm',binary:'g-bin',prefix:'g-mask',anding:'g-and',detective:'g-chart',formulas:'g-form'};
-// Packet Tracer lab links (?lab=…&hosts=…&r1=…&r2=…) moved to No Shutdown with the lab; send them on, same values
-try{const sp=new URLSearchParams(location.search);if(sp.has('lab')){const o=new URLSearchParams();['lab','hosts','r1','r2'].forEach(k=>{if(sp.has(k))o.set(k,sp.get(k).slice(0,40));});location.replace('https://christianjkrantz.github.io/no-shutdown/?'+o.toString());}}catch(e){}
 const state={mode:'worksheet',level:'core',score:0,streak:0,best:Math.max(0,Math.floor(Number(store.get('ss_best',0)))||0),right:0,tried:0,per:{},q:null,checked:false,hinted:false,timed:null};
 MODES.forEach(m=>state.per[m.id]={r:0,t:0});
 const randPrefix=()=>state.level==='core'?R(24,30):R(16,30);

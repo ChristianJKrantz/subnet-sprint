@@ -6,11 +6,9 @@ Practice binary conversion, prefix ↔ subnet mask, ANDing, full subnet charts, 
 
 ### ▶ [Play it here](https://christianjkrantz.github.io/subnet-sprint/)
 
-Sister site: **[No Shutdown](https://christianjkrantz.github.io/no-shutdown/)** for practicing Cisco IOS configuration commands. The Packet Tracer **Subnetting Scenario** lab (11.7.5) lives there too, both parts.
-
 Works in any modern browser on desktop, tablet or phone. No install, no account, no tracking.
 
-It's styled as an oscilloscope. The page sits on the scope's screen, with a 10×8 graticule, a bezel and glass glare, and the panels are the instrument's menus. Behind them, the beam sweeps four phosphor traces that fade as they age. CH1 is a subnet mask drawn as a digital signal, one bit per step. CH3 is an IP address, and the MATH trace is CH1 AND CH3, which is the network address. Bus-decode labels show each octet. Every sweep picks a new address and prefix, and a readout strip under the main column shows the same values. The animation pauses when the tab is hidden, and if your device is set to reduce motion it shows one still frame. (Its sister site No Shutdown has a green-on-black terminal look.)
+It's styled as an oscilloscope. The page sits on the scope's screen, with a 10×8 graticule, a bezel and glass glare, and the panels are the instrument's menus. Behind them, the beam sweeps four phosphor traces that fade as they age. CH1 is a subnet mask drawn as a digital signal, one bit per step. CH3 is an IP address, and the MATH trace is CH1 AND CH3, which is the network address. Bus-decode labels show each octet. Every sweep picks a new address and prefix, and a readout strip under the main column shows the same values. The animation pauses when the tab is hidden, and if your device is set to reduce motion it shows one still frame.
 
 ![Desktop view: a subnet chart question, with the mask and IP octets written in binary on the scratchpad](docs/desktop.png)
 
@@ -70,9 +68,6 @@ Matches the class VLSM assignment: a /24 (usually 192.168.0.0/24) and four subne
 The last row is the network after the final subnet. Random problems often land right on the edges, like 15 hosts (one too many for 14) or 7 hosts (one too many for 6), so you practice the cases people miss. Feedback catches the usual VLSM mistakes: a block that's too small or bigger than needed, forgetting the − 2, the block size typed as the mask, adding the hosts needed instead of the block size, and starting a subnet on the previous broadcast.
 
 <img src="docs/vlsm.png" alt="VLSM one at a time: the bit grid and address table fill in as you answer" width="720">
-
-### Packet Tracer lab
-The Cisco Packet Tracer **Subnetting Scenario** lab (11.7.5) moved to [No Shutdown](https://christianjkrantz.github.io/no-shutdown/?tab=lab), so both parts are in one place: the subnetting and Addressing Table, then configuring the devices on the same network. Old lab links here (`?lab=…`) forward there automatically.
 
 ### For instructors
 - **Your own problem:** in Worksheet mode, type any IP and mask (`/25`–`/30` or dotted decimal, Class A, B or C) to load that exact worksheet, for example to walk through a textbook problem in class. It gives you a **share link** that opens the same problem for students. Add `&layout=sheet` to a link to open it as a full sheet instead of one at a time.
