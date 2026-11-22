@@ -535,6 +535,11 @@ body{background:#101a32}body::before,body::after{display:none}#scope{opacity:.12
 .fcard{background:#203251;border-color:#6380a7;box-shadow:none}.dock{background:#17243b}.dock button{border-radius:8px}
 @media(max-width:600px){.game>header{padding:16px;gap:12px}.game .stats{width:100%;grid-template-columns:repeat(4,1fr)}.game .stat{padding:4px}.game .stat b{font-size:18px}.brand-mark{width:34px;height:34px}.game>.bar:has(#tabs){padding:9px 12px}}
 }
+@media screen and (max-width:380px){
+  .fc-row:has(.fc-pre){display:grid;grid-template-columns:minmax(0,1fr) auto}
+  .fc-row .fc-pre{grid-column:1/-1;margin:0}
+  .fc-row #fin.oct{width:100%;min-width:0;max-width:100%;box-sizing:border-box}
+}
 </style>
 </head>
 <body>
