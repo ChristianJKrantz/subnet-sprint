@@ -513,6 +513,11 @@ body.present .readout{display:none}
 @media (prefers-reduced-motion: reduce){
   .shake,.pop,.fcard,.toast{animation:none}
 }
+@media(max-width:600px){
+  .trow{flex-wrap:wrap;overflow:visible;gap:4px}
+  .tgroup .tab{min-height:44px}
+  .tgroup:has([data-m="weak"]){border-inline-start:2px solid var(--accent2);padding-inline-start:8px}
+}
 </style>
 </head>
 <body>
