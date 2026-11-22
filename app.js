@@ -1328,7 +1328,8 @@ function renderFlow(){
   const si=$('#wsin');
   if(si){si.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();e.stopPropagation();flowStep(si.value);}});$('#wschk').onclick=()=>flowStep(si.value);$('#wsshow').onclick=()=>flowStep(null,true);}
 }
-function focusFlow(){const el=$('#wsin')||$('#fin')||$('#fcard .choice');if(!el)return;if(isDesktop())el.focus({preventScroll:true});$('#fcard').scrollIntoView({block:'nearest',behavior:studyScrollBehavior()});}
+let openingWorksheet=true;
+function focusFlow(){if(openingWorksheet)return;const el=$('#wsin')||$('#fin')||$('#fcard .choice');if(!el)return;if(isDesktop())el.focus({preventScroll:true});$('#fcard').scrollIntoView({block:'nearest',behavior:studyScrollBehavior()});}
 function flowAnswer(typed){
   const q=state.q,F=state.flow,i=F.k,f=q.fields[i];if(state.checked||!f)return;
   const raw=expandCell(f,typed);
@@ -1708,6 +1709,7 @@ const setDockH=()=>{const d=$('#dock');const h=d.offsetHeight;if(h)document.docu
 new ResizeObserver(setDockH).observe($('#dock'),{box:'border-box'});setTimeout(setDockH,500);window.addEventListener('resize',setDockH);setDockH();
 renderTabs();renderStats();
 {const up=problemFromURL();if(up&&up.kind==='vlsm'){state.mode='vlsm';renderTabs();next(genVlsm(up));state.custom=up;}else if(up){state.mode='worksheet';renderTabs();next(genSheet(up));state.custom=up;}else next();}
+openingWorksheet=false;
 if(isDesktop())openTool('scratch');
 
 /* ---------------- install + offline ---------------- */

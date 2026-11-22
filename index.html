@@ -7,16 +7,16 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Subnet Sprint — Network Addressing Study Game</title>
 <meta name="description" content="A study game for IPv4 subnetting: binary, masks, ANDing, subnet charts and formulas, with feedback on exactly what you got wrong.">
-<link rel="apple-touch-icon" href="apple-touch-icon.png?v=4">
-<link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png?v=4">
-<link rel="icon" href="icon-192.png?v=4" sizes="192x192" type="image/png">
-<link rel="icon" href="icon.svg?v=4" type="image/svg+xml">
-<link rel="manifest" href="manifest.webmanifest?v=4">
+<link rel="apple-touch-icon" href="apple-touch-icon.png?v=5">
+<link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png?v=5">
+<link rel="icon" href="icon-192.png?v=5" sizes="192x192" type="image/png">
+<link rel="icon" href="icon.svg?v=5" type="image/svg+xml">
+<link rel="manifest" href="manifest.webmanifest?v=5">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Subnet Sprint">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="theme-color" content="#05090d">
+<meta name="theme-color" content="#203df1">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://christianjkrantz.github.io/subnet-sprint/">
 <meta property="og:title" content="Subnet Sprint: IPv4 subnetting study game">
@@ -519,6 +519,22 @@ body.present .readout{display:none}
   .tgroup:has([data-m="weak"]){border-inline-start:2px solid var(--accent2);padding-inline-start:8px}
 }
 @media(max-width:1099px){html{scroll-padding-bottom:calc(78px + env(safe-area-inset-bottom))}#feedback,#fcard{scroll-margin-top:8px}}
+@media screen {
+:root{--bg:#111a32;--panel:#192743;--panel2:#223455;--line:#425576;--accent:#d0ff62;--accent2:#9ecaff;--text:#f3f6ff;--muted:#b9c6df}
+body{background:#101a32}body::before,body::after{display:none}#scope{opacity:.12}
+.game>header{background:#2841cf;color:white;border-radius:18px;padding:clamp(16px,2.4vw,32px);align-items:center;gap:18px;position:relative;isolation:isolate;overflow:hidden}
+.game>header::after{content:"";position:absolute;z-index:-1;right:-40px;inset-block:0;width:34%;opacity:.22;background:repeating-linear-gradient(122deg,transparent 0 18px,#a5baff 18px 28px)}
+.game h1{font-size:clamp(38px,4.5vw,66px);letter-spacing:-.035em;gap:0 .14em;text-shadow:none;font-style:italic}.game h1 span{color:#d0ff62;text-shadow:none}.game h1::after{display:none}
+.brand-mark{width:44px;height:44px;border-radius:10px;margin-right:7px}.game header .sub{color:#e5edff;font:500 14px/1.45 Inter,system-ui,sans-serif;margin-top:8px}
+.game .stats{gap:0;border:1px solid #7289ed;border-radius:8px;background:#172d9c;overflow:hidden}
+.game .stat{background:none;box-shadow:none;border:0;border-radius:0;border-inline-end:1px solid #667ee1;min-width:0;padding:7px 12px}.game .stat:last-child{border:0}.stat b{color:white;text-shadow:none}.stat small{color:#e6ecff}
+.game>.bar:has(#tabs){background:#18253e;border:1px solid var(--line);border-radius:12px;padding:12px 16px}
+.tgroup .tab{background:#233454;color:var(--text);border-color:#4b6285;border-radius:6px;box-shadow:none}.tgroup .tab.on{background:var(--accent);color:#172900;border-color:var(--accent);box-shadow:none}
+.game>.card,.tools{background:#182641;box-shadow:0 8px 24px #05102555;border:1px solid #445979;border-radius:16px}.game>.card{border-top:4px solid var(--accent)}
+.qtype,.tglab{color:#c4d6f2}.prompt .big{color:var(--accent);text-shadow:none}.btn.primary,.btn.primary:hover{background:var(--accent);box-shadow:none;border-color:var(--accent);color:#172900}
+.fcard{background:#203251;border-color:#6380a7;box-shadow:none}.dock{background:#17243b}.dock button{border-radius:8px}
+@media(max-width:600px){.game>header{padding:16px;gap:12px}.game .stats{width:100%;grid-template-columns:repeat(4,1fr)}.game .stat{padding:4px}.game .stat b{font-size:18px}.brand-mark{width:34px;height:34px}.game>.bar:has(#tabs){padding:9px 12px}}
+}
 </style>
 </head>
 <body>
@@ -527,8 +543,8 @@ body.present .readout{display:none}
 <main class="game">
   <header>
     <div>
-      <h1>Subnet <span>Sprint</span><button class="install" id="installBtn" hidden>⤓ Install app</button></h1>
-      <div class="sub">IPv4 subnetting practice: worksheets, binary, masks, ANDing, subnet charts &amp; formulas</div>
+      <h1><img class="brand-mark" src="icon.svg?v=5" alt="">Subnet <span>Sprint</span><button class="install" id="installBtn" hidden>⤓ Install app</button></h1>
+      <div class="sub">IPv4 worksheets, subnet charts and timed drills.</div>
     </div>
     <div class="stats">
       <div class="stat"><b id="sScore">0</b><small>Score</small></div>
