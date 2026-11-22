@@ -1234,7 +1234,8 @@ function walkAdvance(){
   if(st.f!=null){fillField(st.f,st.ans);w.filled[st.f]=st.ans;}
   w.i++;w.msg='';renderWalk();focusWalk();
 }
-function focusWalk(){const i=$('#winp')||$('#wcheck');if(i){if(isDesktop())i.focus();i.scrollIntoView({block:'nearest',behavior:'smooth'});}}
+function studyScrollBehavior(){return window.matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth';}
+function focusWalk(){const i=$('#winp')||$('#wcheck');if(i){if(isDesktop())i.focus();i.scrollIntoView({block:'nearest',behavior:studyScrollBehavior()});}}
 function walkCheck(){
   const w=state.walk,st=w.steps[w.i],raw=$('#winp').value;
   const u=parseStep(st,raw);
@@ -1327,7 +1328,7 @@ function renderFlow(){
   const si=$('#wsin');
   if(si){si.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();e.stopPropagation();flowStep(si.value);}});$('#wschk').onclick=()=>flowStep(si.value);$('#wsshow').onclick=()=>flowStep(null,true);}
 }
-function focusFlow(){const el=$('#wsin')||$('#fin')||$('#fcard .choice');if(!el)return;if(isDesktop())el.focus({preventScroll:true});$('#fcard').scrollIntoView({block:'nearest',behavior:'smooth'});}
+function focusFlow(){const el=$('#wsin')||$('#fin')||$('#fcard .choice');if(!el)return;if(isDesktop())el.focus({preventScroll:true});$('#fcard').scrollIntoView({block:'nearest',behavior:studyScrollBehavior()});}
 function flowAnswer(typed){
   const q=state.q,F=state.flow,i=F.k,f=q.fields[i];if(state.checked||!f)return;
   const raw=expandCell(f,typed);
@@ -1499,7 +1500,7 @@ const show=f=>f.type==='choice'?ROLES[f.answer]:f.type==='bin32'?f.answer:f.type
 function check(){
   if(state.walkView&&!state.checked)return;
   if(state.flow&&!state.checked&&state.flow.k<state.q.fields.length)return;
-  if(state.checked){next();if(!isDesktop())$('.card').scrollIntoView({block:'start',behavior:'smooth'});return;}
+  if(state.checked){next();if(!isDesktop())$('.card').scrollIntoView({block:'start',behavior:studyScrollBehavior()});return;}
   const q=state.q,F=state.flow;let all=true;const vals=q.fields.map((f,i)=>readField(f,$(`.field[data-i="${i}"]`)));const wrong=[];
   q.fields.forEach((f,i)=>{const el=$(`.field[data-i="${i}"]`);const ok=F?!F.miss[i]:isRight(f,vals[i]);if(!ok)wrong.push(i);
     el.classList.add(ok?'ok':'no');if(!ok){all=false;el.querySelector('.fix').textContent='→ '+show(f);}
@@ -1523,11 +1524,11 @@ function check(){
   $('#checkBtn').innerHTML='Next <span class="kbd">Enter</span>';$('#hintBtn').disabled=true;if(state.walk){$('#walk').querySelectorAll('input,button').forEach(x=>x.disabled=true);}
   if(F){$('#checkBtn').hidden=false;renderFlow();}
   renderStats();renderTabs();renderWeak();
-  if(!isDesktop())$('#feedback').scrollIntoView({block:'nearest',behavior:'smooth'});else $('#checkBtn').focus();
+  if(!isDesktop())$('#feedback').scrollIntoView({block:'nearest',behavior:studyScrollBehavior()});else $('#checkBtn').focus();
 }
 $('#checkBtn').onclick=check;
 $('#hintBtn').onclick=()=>{if(state.checked)return;
-  if(state.walk){setWalkView(!state.walkView);if(!state.walkView)$('#fields').scrollIntoView({block:'nearest',behavior:'smooth'});return;}
+  if(state.walk){setWalkView(!state.walkView);if(!state.walkView)$('#fields').scrollIntoView({block:'nearest',behavior:studyScrollBehavior()});return;}
   state.hinted=true;
   if(state.q.walk){state.walk=startWalk(state.q);setWalkView(true);return;}
   const h=$('#hint');h.innerHTML=`💡 ${state.q.hint}<br><button class="btn small" id="hintGuide">Open the guide →</button>`;h.hidden=false;
@@ -1577,7 +1578,7 @@ function openTool(name,sec){
   if(!isDesktop()){document.body.classList.add('sheet-open');if(!wasOpen&&!sec)showCard();}
   $$('#dock button').forEach(b=>b.classList.toggle('on',b.dataset.t===name));
   if(name==='scratch')requestAnimationFrame(sizePad);
-  if(sec){const d=document.getElementById(sec);if(d){d.open=true;setTimeout(()=>d.scrollIntoView({block:'start',behavior:'smooth'}),260);}}
+  if(sec){const d=document.getElementById(sec);if(d){d.open=true;setTimeout(()=>d.scrollIntoView({block:'start',behavior:studyScrollBehavior()}),260);}}
 }
 const TOOL_NAMES={scratch:'✏️ Scratchpad',calc:'🧮 Calculator',guide:'📋 Guide'};
 function setBig(big){tools.classList.toggle('big',big);store.set('ss_big',big);$('#tsizeLbl').textContent=big?'Smaller':'Bigger';
@@ -1586,7 +1587,7 @@ function setBig(big){tools.classList.toggle('big',big);store.set('ss_big',big);$
 $('#tsize').onclick=()=>setBig(!tools.classList.contains('big'));
 $('#grabBtn').onclick=()=>setBig(!tools.classList.contains('big'));
 setBig(store.get('ss_big',false));
-function showCard(){if(isDesktop())return;const c=$('.card');const y=c.getBoundingClientRect().top+window.scrollY-8;window.scrollTo({top:y,behavior:'smooth'});}
+function showCard(){if(isDesktop())return;const c=$('.card');const y=c.getBoundingClientRect().top+window.scrollY-8;window.scrollTo({top:y,behavior:studyScrollBehavior()});}
 function closeTools(){tools.classList.remove('open');document.body.classList.remove('sheet-open');$$('#dock button').forEach(b=>b.classList.remove('on'));if(document.activeElement)document.activeElement.blur();}
 $$('.ttab').forEach(b=>b.onclick=()=>openTool(b.dataset.t));
 

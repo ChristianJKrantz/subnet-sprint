@@ -510,6 +510,9 @@ body.present .readout{display:none}
   .tgroup{flex-direction:column;align-items:stretch;gap:4px}.tglab{flex:none;padding-top:0}
   .trow{flex-wrap:nowrap;overflow-x:auto;padding-bottom:4px;scrollbar-width:none;-webkit-overflow-scrolling:touch}.trow::-webkit-scrollbar{display:none}
 }
+@media (prefers-reduced-motion: reduce){
+  .shake,.pop,.fcard,.toast{animation:none}
+}
 </style>
 </head>
 <body>
@@ -553,7 +556,7 @@ body.present .readout{display:none}
       <button class="btn" id="hintBtn">Hint: step by step (½ points)</button>
       <button class="btn" id="skipBtn">Skip</button>
     </div>
-    <div class="feedback" id="feedback"></div>
+    <div class="feedback" id="feedback" role="status" aria-atomic="true"></div>
     <div class="work" id="work"></div>
   </div>
   <div class="foot">Use the <b>Scratchpad</b> to do your work, the <b>Calculator</b> for the math, and the <b>Guide</b> for step-by-step directions. <span class="keytip">In Binary mode, keys <span class="kbd">1</span>–<span class="kbd">8</span> flip bits.</span></div>
@@ -606,7 +609,7 @@ body.present .readout{display:none}
         <button class="btn small" id="insChart">+ Chart template</button>
         <button class="btn small" id="clearText">Clear</button>
       </div>
-      <textarea id="scratchText" spellcheck="false" autocapitalize="off" autocomplete="off" placeholder="Type your work here…&#10;&#10;e.g.&#10;/26 → 255.255.255.192&#10;inc = 256 − 192 = 64&#10;subnets: 0 64 128 192"></textarea>
+      <textarea id="scratchText" aria-label="Scratchpad notes" spellcheck="false" autocapitalize="off" autocomplete="off" placeholder="Type your work here…&#10;&#10;e.g.&#10;/26 → 255.255.255.192&#10;inc = 256 − 192 = 64&#10;subnets: 0 64 128 192"></textarea>
     </div>
   </section>
 
@@ -805,7 +808,7 @@ AND   00100000  (32)</pre></li>
   </section>
 </aside>
 
-<nav class="dock" id="dock">
+<nav class="dock" id="dock" aria-label="Study tools">
   <button data-t="scratch"><span>✏️</span>Scratchpad</button>
   <button data-t="calc"><span>🧮</span>Calculator</button>
   <button data-t="guide"><span>📋</span>Guide</button>
