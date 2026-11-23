@@ -1453,7 +1453,7 @@ function problemFromURL(){
 function renderTabs(){
   const tab=m=>{const c=state.per[m.id];const count=m.id==='weak'?Object.values(weak).filter(e=>e.w>0).length:0;return `<button class="tab ${state.mode===m.id?'on':''}" data-m="${m.id}" aria-pressed="${state.mode===m.id}" ${state.timed?'disabled':''}>${m.name}${count?' · '+count:''}${c.t?`<span class="ct">${c.r}/${c.t}</span>`:''}</button>`;};
   $('#tabs').innerHTML=TABGROUPS.map(([g,name,tip])=>`<div class="tgroup" role="group" aria-label="${name}"><span class="tglab" title="${tip}">${name}</span><div class="trow">${MODES.filter(m=>m.g===g).map(tab).join('')}</div></div>`).join('');
-  $$('#tabs .tab').forEach(b=>b.onclick=()=>{state.mode=b.dataset.m;renderTabs();next();});
+  $$('#tabs .tab').forEach(b=>b.onclick=()=>{state.mode=b.dataset.m;renderTabs();next();if(!isDesktop())$('.card').scrollIntoView({block:'start',behavior:studyScrollBehavior()});});
 }
 function renderStats(){
   $('#sScore').textContent=state.score;$('#sStreak').textContent=state.streak;$('#sBest').textContent=state.best;

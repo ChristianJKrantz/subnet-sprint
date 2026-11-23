@@ -1,4 +1,10 @@
+<img align="right" src="icon-192.png" alt="" width="64" height="64">
+
 # Subnet Sprint
+
+## About
+
+Practice IPv4 addressing on a cobalt workbench. Choose a drill to jump to its question on a phone, or use **Weak spots** to revisit saved mistakes. The bottom toolbar opens the scratchpad, calculator and guide.
 
 **An interactive study game for IPv4 network addressing and subnetting.**
 
@@ -8,9 +14,9 @@ Practice binary conversion, prefix ↔ subnet mask, ANDing, full subnet charts, 
 
 Works in any modern browser on desktop, tablet or phone. No install, no account, no tracking.
 
-It's styled as an oscilloscope. The page sits on the scope's screen, with a 10×8 graticule, a bezel and glass glare, and the panels are the instrument's menus. Behind them, the beam sweeps four phosphor traces that fade as they age. CH1 is a subnet mask drawn as a digital signal, one bit per step. CH3 is an IP address, and the MATH trace is CH1 AND CH3, which is the network address. Bus-decode labels show each octet. Every sweep picks a new address and prefix, and a readout strip under the main column shows the same values. The animation pauses when the tab is hidden, and if your device is set to reduce motion it shows one still frame.
+Behind the workbench, oscilloscope traces show how the network address follows from the IP address and mask.
 
-![Desktop view: a subnet chart question, with the mask and IP octets written in binary on the scratchpad](docs/desktop.png)
+![The desktop subnetting workbench with a worksheet and study tools](docs/desktop.png)
 
 ---
 
@@ -49,7 +55,7 @@ The questions come in the order that makes each one easiest, because each answer
 #### One at a time (default)
 Questions appear one at a time instead of the whole sheet at once. Each right answer drops into a growing answer sheet above, and the chart builds itself row by row as you fill it in, with the current cell highlighted. A wrong try gets a nudge toward the method (never the number) and you try again, or tap **Show the answer**. **Hint** opens the steps for just that one question. At the end you're scored on how many you got right on the first try, with an explanation of each first-try miss.
 
-<img src="docs/one-at-a-time.png" alt="One at a time: answered questions collect above as the chart builds, and a wrong broadcast gets a nudge without the answer" width="720">
+<img src="docs/one-at-a-time.png" alt="A worksheet question with feedback on the network increment" width="720">
 
 #### Full sheet
 Prefer the classic worksheet? Switch to **Full sheet** at the top of the question to see every box at once. The Tab key follows the same order. It's checked box by box, with feedback on exactly what went wrong in each one, including chart cells that are only wrong because of an earlier mistake. The choice is remembered.
@@ -67,7 +73,7 @@ Matches the class VLSM assignment: a /24 (usually 192.168.0.0/24) and four subne
 
 The last row is the network after the final subnet. Random problems often land right on the edges, like 15 hosts (one too many for 14) or 7 hosts (one too many for 6), so you practice the cases people miss. Feedback catches the usual VLSM mistakes: a block that's too small or bigger than needed, forgetting the − 2, the block size typed as the mask, adding the hosts needed instead of the block size, and starting a subnet on the previous broadcast.
 
-<img src="docs/vlsm.png" alt="VLSM one at a time: the bit grid and address table fill in as you answer" width="720">
+<img src="docs/vlsm.png" alt="Variable-length subnetting practice" width="720">
 
 ### For instructors
 - **Your own problem:** in Worksheet mode, type any IP and mask (`/25`–`/30` or dotted decimal, Class A, B or C) to load that exact worksheet, for example to walk through a textbook problem in class. It gives you a **share link** that opens the same problem for students. Add `&layout=sheet` to a link to open it as a full sheet instead of one at a time.
@@ -77,7 +83,7 @@ The last row is the network after the final subnet. Random problems often land r
 
 Total networks is counted from the IP's class default mask (10.x.x.x is Class A, /8). The /24-baseline answer is also accepted for the worksheet, since some classes count it that way.
 
-<img src="docs/worksheet.png" alt="A checked worksheet with two mistakes explained" width="720">
+<img src="docs/worksheet.png" alt="A checked worksheet with its address chart" width="720">
 
 ### Two difficulty levels
 - **Last octet (/24–/30):** subnetting inside the 4th octet. Start here.
@@ -88,7 +94,7 @@ Total networks is counted from the IP's class default mask (10.x.x.x is Class A,
 - A **Full walkthrough** is one tap away: the IP and mask lined up in binary (network bits blue, host bits yellow), the increment, and a small subnet table with your network highlighted.
 - **Hint** walks you through the question step by step (see below) for half points, and links to the matching section of the guide.
 
-<img src="docs/feedback.png" alt="Feedback after swapping the last usable and broadcast boxes, explaining each mistake" width="720">
+<img src="docs/feedback.png" alt="Feedback on two submitted worksheet values" width="720">
 
 ### Step-by-step hints
 Every question has a **Hint** that swaps the answer boxes for a step-by-step walkthrough built around the questions themselves. A small copy of the worksheet or chart stays at the top with the current question highlighted, and below it are the steps for that one question. Its last step is the answer, which goes straight into that box before moving on to the next question. Each step also shows a ⚡ shortcut for that specific step (for example, a mask octet is always 1s followed by 0s), and a shortcut is never shown if it would contain that step's answer. Each step is checked before you move on. The steps never state the answer they're asking for: a wrong try gets a nudge toward the method, not the number. **Show me** reveals a step only if you ask, and **Fill in the answers** (or **Back to the answer boxes**) brings the answer boxes back. For example:
@@ -102,7 +108,7 @@ Every question has a **Hint** that swaps the answer boxes for a step-by-step wal
 
 Using a hint makes that question worth half points.
 
-<img src="docs/walkthrough.png" alt="Step-by-step walkthrough with a wrong step explained" width="720">
+<img src="docs/walkthrough.png" alt="A guided hint for finding the increment" width="720">
 
 ### Weak spots
 Every mistake the feedback recognises is logged by type: rounding up, forgetting the − 2, swapping boxes, reading binary backwards, forgetting the router-to-router link and about 30 others. The **Weak spots** tab picks questions that target the mistakes you make most, labels what each one is drilling, and shrinks a weak spot as you get matching questions right. Your log is saved in your browser and can be reset at any time.
@@ -123,7 +129,7 @@ On phones, the tools open from a bottom bar as a half-height panel, so the quest
 
 <p>
   <img src="docs/phone-question.png" alt="Phone: question view" width="250">
-  <img src="docs/phone-scratchpad.png" alt="Phone: scratchpad open under the question, with the mask and IP octets written in binary" width="250">
+  <img src="docs/phone-scratchpad.png" alt="The scratchpad opened from the phone toolbar" width="250">
   <img src="docs/phone-calculator.png" alt="Phone: calculator" width="250">
 </p>
 
