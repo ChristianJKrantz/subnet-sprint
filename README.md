@@ -34,6 +34,12 @@ A fresh visit opens on the **Path**: twelve skills in the order you learn them, 
 - **Spaced review.** Each bar waits longer before the skill comes back for review: 1, 3, 7, 16, then 35 days. The Start button mixes due reviews in with new skills so nothing fades.
 - On a phone, the path replaces the mode tabs and a session hides everything but the question. Every classic mode is still one tap away under **Free practice**.
 
+<p align="center">
+  <img src="docs/path.png" alt="The learning path: twelve skills, signal bars and a Start button" width="560">
+  <img src="docs/phone-path.png" alt="Phone: the learning path" width="200">
+</p>
+<p align="center"><img src="docs/lesson.png" alt="A short lesson with a worked example before practice" width="560"></p>
+
 ### Practice modes
 The tabs are in two groups. **Full problems** are whole multi-part problems worked start to finish: Worksheet and VLSM. **Quick drills** practice one skill at a time.
 
