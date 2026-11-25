@@ -2,11 +2,11 @@
    Pages are network-first and skip the browser's HTTP cache (you always get the newest version when online, the saved copy when not).
    Fonts and icons are cache-first since they never change. Only this site's own files are ever handled or cached. */
 const CACHE_PREFIX = 'subnet-sprint-v';
-const CACHE = CACHE_PREFIX + '22';
+const CACHE = CACHE_PREFIX + '23';
 const FONTS = ['inter-latin-400', 'inter-latin-500', 'inter-latin-600', 'inter-latin-700', 'inter-latin-800',
   'jetbrains-mono-latin-400', 'jetbrains-mono-latin-600', 'jetbrains-mono-latin-700',
   'barlow-condensed-latin-500', 'barlow-condensed-latin-600', 'barlow-condensed-latin-700'].map(f => `fonts/${f}-normal.woff2`);
-const CORE = ['./', 'index.html', 'app.js', 'manifest.webmanifest?v=5', 'icon.svg?v=5', 'icon-192.png?v=5', 'icon-512.png?v=5', 'icon-maskable-512.png?v=5', 'apple-touch-icon.png?v=5', ...FONTS];
+const CORE = ['./', 'index.html', 'path.js', 'app.js', 'manifest.webmanifest?v=5', 'icon.svg?v=5', 'icon-192.png?v=5', 'icon-512.png?v=5', 'icon-maskable-512.png?v=5', 'apple-touch-icon.png?v=5', ...FONTS];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(CORE)).then(() => self.skipWaiting()));

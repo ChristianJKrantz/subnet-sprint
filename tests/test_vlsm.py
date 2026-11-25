@@ -1,6 +1,7 @@
 """VLSM mode: the class VLSM assignment (a /24 split biggest-first into subnets sized for their hosts, with a bit grid
 and an address table). Checks the handout example, hundreds of random problems, feedback for common mistakes, hints,
 both layouts, your-own-problem and share links, printing, and phones."""
+import worksheet_mode  # noqa: F401  (fresh pages open in Worksheet mode, not on the Path)
 import os, sys, re
 from playwright.sync_api import sync_playwright
 URL=os.environ.get('SUBNET_URL','file://'+os.path.abspath(os.path.join(os.path.dirname(__file__),'..','index.html')))

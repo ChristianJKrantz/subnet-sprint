@@ -1,6 +1,7 @@
 """One-at-a-time layout and the teaching tools: questions appear one by one in working order, answers are
 checked as you go, wrong tries get a nudge without the answer, per-question hints, the finished sheet is scored
 on first tries; plus your-own-problem, share links, printing and Present mode."""
+import worksheet_mode  # noqa: F401  (fresh pages open in Worksheet mode, not on the Path)
 import os, sys, re
 from playwright.sync_api import sync_playwright
 URL=os.environ.get('SUBNET_URL','file://'+os.path.abspath(os.path.join(os.path.dirname(__file__),'..','index.html')))

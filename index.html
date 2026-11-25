@@ -540,6 +540,56 @@ body{background:#101a32}body::before,body::after{display:none}#scope{opacity:.12
   .fc-row .fc-pre{grid-column:1/-1;margin:0}
   .fc-row #fin.oct{width:100%;min-width:0;max-width:100%;box-sizing:border-box}
 }
+
+/* ---------- learning path ---------- */
+body.pathmode .game>.bar:not(:has(#tabs)),body.pathmode #weakbox{display:none}
+.pathbox{background:#182641;border:1px solid #445979;border-top:4px solid var(--accent);border-radius:16px;padding:18px clamp(14px,2.4vw,26px);margin-bottom:14px;box-shadow:0 8px 24px #05102555}
+.pathbox:has(.pl-run){padding:10px 14px;border-top-width:1px}
+.pathbox h2{font:700 clamp(24px,3vw,32px)/1.1 var(--draft);letter-spacing:.01em;margin:2px 0 0}
+.pl-kicker{font:600 13px var(--draft);letter-spacing:.12em;text-transform:uppercase;color:var(--accent2)}
+.pl-head{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;margin-bottom:14px}
+.pl-streak{text-align:center;border:1px solid var(--line);border-radius:10px;padding:6px 12px;background:#203251}
+.pl-streak b{display:block;font:700 26px/1 var(--draft);color:var(--warn)}.pl-streak small{font-size:11px;color:var(--muted)}
+.pl-start{display:flex;flex-direction:column;align-items:flex-start;width:100%;font:700 22px/1.15 var(--draft);padding:12px 18px;border-radius:12px;text-align:left;letter-spacing:.01em}
+.pl-start small{font:700 12px Inter,system-ui,sans-serif;letter-spacing:.1em;text-transform:uppercase;opacity:.75}
+.pl-map{list-style:none;margin:16px 0 0;padding:0 0 0 22px;position:relative;display:grid;gap:8px}
+.pl-map::before{content:"";position:absolute;left:8px;top:14px;bottom:14px;width:2px;background:repeating-linear-gradient(var(--accent2) 0 6px,transparent 6px 10px);opacity:.45}
+.pl-node{position:relative}
+.pl-node::before{content:"";position:absolute;left:-19px;top:50%;width:10px;height:10px;margin-top:-5px;border-radius:50%;background:#182641;border:2px solid var(--accent2)}
+.pl-node.locked::before{border-color:var(--line)}.pl-node.next::before{background:var(--accent);border-color:var(--accent);box-shadow:0 0 0 4px #d0ff6233}
+.pl-node.due::before{background:var(--warn);border-color:var(--warn)}
+.pl-node button{display:flex;align-items:center;gap:12px;width:100%;text-align:left;background:#203251;border:1px solid #4b6285;border-radius:10px;padding:10px 12px;color:var(--text);min-height:52px}
+.pl-node button:hover:not(:disabled){border-color:var(--accent2)}
+.pl-node.next button{border-color:var(--accent);box-shadow:inset 3px 0 0 var(--accent)}
+.pl-node.locked button{opacity:.55;cursor:not-allowed}
+.pl-num{font-size:13px;color:var(--muted);width:22px}
+.pl-txt{flex:1;min-width:0}.pl-txt b{display:block;font-size:15px}.pl-txt small{color:var(--muted);font-size:12.5px}
+.pl-node.due .pl-txt small{color:var(--warn)}
+.pl-bars{display:inline-flex;align-items:flex-end;gap:2px;height:20px}
+.pl-bars i{display:block;width:5px;border-radius:1px;background:#3a4d6e}.pl-bars i.on{background:var(--accent)}
+.pl-lock{font-size:14px;opacity:.7}
+.pl-note{color:var(--muted);font-size:13px;margin:14px 0 0;line-height:1.5}
+.pl-back{background:none;border:0;color:var(--accent2);font-weight:600;padding:4px 0;margin-bottom:8px;min-height:32px}
+.pl-lesson .pl-body,.pl-unit,.pl-done{font-size:16px;line-height:1.55}
+.pl-body{margin:12px 0 6px;max-width:62ch}.pl-body p{margin:0 0 10px}.pl-body ul,.pl-body ol{margin:0 0 10px;padding-left:22px}.pl-body li{margin:3px 0}
+.pl-ex{background:#0e1830;border:1px solid var(--line);border-left:3px solid var(--accent2);border-radius:8px;padding:10px 12px;margin:8px 0 12px;font-size:14px;line-height:1.6;white-space:pre-wrap;overflow-x:auto}
+.pl-steps{display:flex;gap:5px;margin-top:10px}.pl-steps i{flex:1;height:4px;border-radius:2px;background:#3a4d6e}.pl-steps i.done{background:var(--accent2)}.pl-steps i.on{background:var(--accent)}
+.pl-q{font-weight:600;font-size:17px}
+.pl-opts{display:grid;gap:8px;margin:8px 0}.pl-opt{text-align:left;min-height:46px;font-size:15px}
+.pl-opt.ok{border-color:var(--good);background:#1d4a3a}.pl-opt.no{border-color:var(--bad);opacity:.6;text-decoration:line-through}
+.pl-why{min-height:1.5em;font-size:15px}.pl-why.good{color:var(--good)}.pl-why.bad{color:#ffb3bd}
+.pl-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}.pl-actions .btn{min-height:44px}
+.pl-run{display:flex;align-items:center;gap:12px}.pl-run .pl-back{margin:0;font-size:18px;width:32px}
+.pl-runtxt{min-width:0}.pl-runtxt b{display:block;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.pl-runtxt small{color:var(--muted);font-size:12px}
+.pl-prog{flex:1;height:8px;border-radius:4px;background:#2b3d5e;overflow:hidden;min-width:60px}.pl-prog i{display:block;height:100%;background:var(--accent);transition:width .3s}
+.pl-unitbars{display:flex;align-items:center;gap:10px;color:var(--muted);font-size:14px;margin:10px 0;flex-wrap:wrap}
+.pl-score b{font-size:40px;color:var(--accent);margin-right:8px}.pl-score span{color:var(--muted)}
+.pl-unlock{color:var(--accent2);margin:6px 0 0}
+@media(max-width:600px){.pathbox h2{font-size:24px}.pl-start{font-size:20px}.pl-run .pl-bars{display:none}}
+@media(prefers-reduced-motion:reduce){.pl-prog i{transition:none}}
+@media print{.pathbox{display:none!important}}
+.pl-free{margin-top:16px;border-top:1px solid var(--line);padding-top:12px}.pl-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}.pl-chips .btn{min-height:40px}
+@media(max-width:1099px){body.pathmode .game>.bar:has(#tabs){display:none}body.pl-focus .game>header{display:none}}
 </style>
 </head>
 <body>
@@ -568,6 +618,7 @@ body{background:#101a32}body::before,body::after{display:none}#scope{opacity:.12
     <button class="btn timed" id="timedBtn">⏱ 2-minute challenge</button>
   </div>
 
+  <section class="pathbox" id="pathbox" hidden aria-label="Learning path"></section>
   <div class="weakbox" id="weakbox" hidden></div>
   <div class="card">
     <div class="qhead"><div class="qtype" id="qtype"></div><div class="qtools"><button class="btn small ghost" id="ownBtn" hidden title="Load a specific IP and mask, and get a link to share it">✎ Your own problem</button><button class="btn small ghost" id="printBtn" hidden title="Print worksheets with an answer key">🖨 Print</button><button class="btn small ghost" id="presentBtn" aria-pressed="false" title="Larger text for a projector">⛶ Present</button><div class="seg mini" id="layoutSeg" hidden><button data-v="flow" title="Questions appear one at a time as you answer">One at a time</button><button data-v="sheet" title="All the boxes at once, like the paper worksheet">Full sheet</button></div></div><div class="timer" id="timer"></div></div>
@@ -852,6 +903,7 @@ AND   00100000  (32)</pre></li>
   </div>
 </div>
 
+<script src="path.js"></script>
 <script src="app.js"></script>
 <div id="printArea" aria-hidden="true"></div>
 </body>

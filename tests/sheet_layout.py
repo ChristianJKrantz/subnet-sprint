@@ -1,5 +1,6 @@
 """Imported by the older test suites: they type into the full-sheet answer boxes, so every page they open
 starts in the Full sheet layout (via the ?layout=sheet link option). test_flow.py covers the one-at-a-time layout."""
+import worksheet_mode  # noqa: F401  (fresh pages open in Worksheet mode, not on the Path)
 from playwright.sync_api._generated import Page
 _goto=Page.goto
 def _sheet_goto(self,url,*a,**k):

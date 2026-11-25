@@ -1,6 +1,7 @@
 """Formulas: "Size a LAN (VLSM)" and "Plan the subnets", the subnetting parts of the Packet Tracer labs
 (11.9.3 VLSM Design, 11.7.5 Subnetting Scenario). Right answers pass, common mistakes get named, the UI runs them,
 and weak spots link back. python3 tests/test_sizing.py"""
+import worksheet_mode  # noqa: F401  (fresh pages open in Worksheet mode, not on the Path)
 import os, sys
 from playwright.sync_api import sync_playwright
 URL=os.environ.get('SS_URL','file://'+os.path.abspath(os.path.join(os.path.dirname(__file__),'..','index.html')))

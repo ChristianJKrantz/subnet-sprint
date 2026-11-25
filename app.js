@@ -21,8 +21,8 @@ function binColored(n,p,dimHost){
 }
 const store={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v);}catch(e){return d;}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}}};
 
-const MODES=[{id:'worksheet',name:'Worksheet',g:'class'},{id:'vlsm',name:'VLSM',g:'class'},{id:'binary',name:'Binary',g:'drill'},{id:'prefix',name:'Prefix ↔ Mask',g:'drill'},{id:'anding',name:'ANDing',g:'drill'},{id:'detective',name:'Subnet Chart',g:'drill'},{id:'formulas',name:'Formulas',g:'drill'},{id:'mixed',name:'Mixed',g:'drill'},{id:'weak',name:'Weak spots',g:'drill'}];
-const TABGROUPS=[['class','Full problems','A whole problem, worked start to finish'],['drill','Quick drills','One skill at a time, fast']];
+const MODES=[{id:'path',name:'Path',g:'learn'},{id:'worksheet',name:'Worksheet',g:'class'},{id:'vlsm',name:'VLSM',g:'class'},{id:'binary',name:'Binary',g:'drill'},{id:'prefix',name:'Prefix ↔ Mask',g:'drill'},{id:'anding',name:'ANDing',g:'drill'},{id:'detective',name:'Subnet Chart',g:'drill'},{id:'formulas',name:'Formulas',g:'drill'},{id:'mixed',name:'Mixed',g:'drill'},{id:'weak',name:'Weak spots',g:'drill'}];
+const TABGROUPS=[['learn','Learn','A guided path: a short lesson for each skill, then practice until it sticks'],['class','Full problems','A whole problem, worked start to finish'],['drill','Quick drills','One skill at a time, fast']];
 const GUIDE_FOR={worksheet:'g-ws',vlsm:'g-vlsm',binary:'g-bin',prefix:'g-mask',anding:'g-and',detective:'g-chart',formulas:'g-form'};
 const state={mode:'worksheet',level:'core',score:0,streak:0,best:Math.max(0,Math.floor(Number(store.get('ss_best',0)))||0),right:0,tried:0,per:{},q:null,checked:false,hinted:false,timed:null};
 MODES.forEach(m=>state.per[m.id]={r:0,t:0});
@@ -1452,8 +1452,9 @@ function problemFromURL(){
 /* ---------------- game rendering ---------------- */
 function renderTabs(){
   const tab=m=>{const c=state.per[m.id];const count=m.id==='weak'?Object.values(weak).filter(e=>e.w>0).length:0;return `<button class="tab ${state.mode===m.id?'on':''}" data-m="${m.id}" aria-pressed="${state.mode===m.id}" ${state.timed?'disabled':''}>${m.name}${count?' · '+count:''}${c.t?`<span class="ct">${c.r}/${c.t}</span>`:''}</button>`;};
+  if(window.SSPath)SSPath.sync(state.mode);
   $('#tabs').innerHTML=TABGROUPS.map(([g,name,tip])=>`<div class="tgroup" role="group" aria-label="${name}"><span class="tglab" title="${tip}">${name}</span><div class="trow">${MODES.filter(m=>m.g===g).map(tab).join('')}</div></div>`).join('');
-  $$('#tabs .tab').forEach(b=>b.onclick=()=>{state.mode=b.dataset.m;renderTabs();next();if(!isDesktop())$('.card').scrollIntoView({block:'start',behavior:studyScrollBehavior()});});
+  $$('#tabs .tab').forEach(b=>b.onclick=()=>{state.mode=b.dataset.m;store.set('ss_mode',state.mode);renderTabs();next();if(!isDesktop())$('.card').scrollIntoView({block:'start',behavior:studyScrollBehavior()});});
 }
 function renderStats(){
   $('#sScore').textContent=state.score;$('#sStreak').textContent=state.streak;$('#sBest').textContent=state.best;
@@ -1469,6 +1470,7 @@ function fieldHTML(f,i){
   return `<div class="field${f.type==='bin32'?' wide':''}" data-i="${i}"><label for="f${i}">${f.label}</label><div class="inrow"><input id="f${i}" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" inputmode="${im}" enterkeyhint="${i<state.q.fields.length-1?'next':'done'}" placeholder="${ph}"><span class="fix"></span></div></div>`;
 }
 function next(force){
+  if(!force&&state.mode==='path'&&!state.timed&&window.SSPath){const pq=SSPath.nextQ();if(!pq)return;force=pq;}
   let mode=state.timed||state.mode==='mixed'?pick(['binary','prefix','anding','detective','formulas']):state.mode,sub,lvl,target=null;
   if(mode==='weak'){target=pickWeak();if(target){const g=pick(WEAK[target][1]);mode=g[0];sub=g[1]===''?undefined:g[1];lvl=g[2];}else mode=pick(['binary','prefix','anding','detective','formulas']);}
   const keep=state.level;if(lvl)state.level=lvl;const q=force||GEN[mode](sub);state.level=keep;q.target=target;
@@ -1524,6 +1526,7 @@ function check(){
   $('#work').style.display=all&&state.timed?'none':'block';
   $('#checkBtn').innerHTML='Next <span class="kbd">Enter</span>';$('#hintBtn').disabled=true;if(state.walk){$('#walk').querySelectorAll('input,button').forEach(x=>x.disabled=true);}
   if(F){$('#checkBtn').hidden=false;renderFlow();}
+  if(state.mode==='path'&&window.SSPath)SSPath.onCheck(q,all&&!state.hinted,F?{t:q.fields.length,r:q.fields.filter((f,i)=>!F.miss[i]&&!(F.hinted&&F.hinted[i])).length}:null);
   renderStats();renderTabs();renderWeak();
   if(!isDesktop())$('#feedback').scrollIntoView({block:'nearest',behavior:studyScrollBehavior()});else $('#checkBtn').focus();
 }
@@ -1534,7 +1537,7 @@ $('#hintBtn').onclick=()=>{if(state.checked)return;
   if(state.q.walk){state.walk=startWalk(state.q);setWalkView(true);return;}
   const h=$('#hint');h.innerHTML=`💡 ${state.q.hint}<br><button class="btn small" id="hintGuide">Open the guide →</button>`;h.hidden=false;
   $('#hintGuide').onclick=()=>openTool('guide',GUIDE_FOR[state.q.mode]);$('#hintBtn').disabled=true;};
-$('#skipBtn').onclick=()=>{if(!state.checked){state.streak=0;renderStats();}next();};
+$('#skipBtn').onclick=()=>{if(!state.checked){state.streak=0;renderStats();if(state.mode==='path'&&window.SSPath)SSPath.onSkip();}next();};
 $('#fields').addEventListener('keydown',e=>{
   if(e.key==='Enter'&&e.target.classList.contains('bit')){e.preventDefault();check();return;}
   if(/^[1-8]$/.test(e.key)&&e.target.classList.contains('bit')&&!state.checked){e.preventDefault();const b=e.target.closest('.field').querySelector(`.bit[data-k="${Number(e.key)-1}"]`);if(b)b.click();return;}
@@ -1707,6 +1710,7 @@ $('#partRows').innerHTML=[1,2,3,4,5,6,7,8].map(n=>{const v=(0xFF00>>n)&255;retur
 
 const setDockH=()=>{const d=$('#dock');const h=d.offsetHeight;if(h)document.documentElement.style.setProperty('--dock-h',h+'px');};
 new ResizeObserver(setDockH).observe($('#dock'),{box:'border-box'});setTimeout(setDockH,500);window.addEventListener('resize',setDockH);setDockH();
+if(window.SSPath){SSPath.init({GEN,state,next,renderTabs,openGuide:sec=>openTool('guide',sec)});const sm=store.get('ss_mode',null),dm=window.SS_DEFAULT_MODE;/* tests written before the path set SS_DEFAULT_MODE */state.mode=MODES.some(m=>m.id===sm)?sm:MODES.some(m=>m.id===dm)?dm:'path';}
 renderTabs();renderStats();
 {const up=problemFromURL();if(up&&up.kind==='vlsm'){state.mode='vlsm';renderTabs();next(genVlsm(up));state.custom=up;}else if(up){state.mode='worksheet';renderTabs();next(genSheet(up));state.custom=up;}else next();}
 openingWorksheet=false;

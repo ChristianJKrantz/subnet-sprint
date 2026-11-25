@@ -22,6 +22,15 @@ Behind the workbench, oscilloscope traces show how the network address follows f
 
 ## Features
 
+### Learning path (start here)
+A fresh visit opens on the **Path**: twelve skills in the order you learn them, from bits and octets through the prefix and mask, the increment, ANDing, address roles, the subnet chart, the formulas, sizing, the full worksheet, lab planning, VLSM, and subnetting beyond the last octet. One big button always shows what to do next.
+
+- **Learn, then check.** Each skill opens with a short lesson (two or three screens with a worked example) and ends in a quick check you have to get right before practice starts. A wrong pick sends you back to the lesson instead of giving the answer away.
+- **Practice to mastery.** A session is 4–6 questions from that skill's own generators (or one full worksheet or VLSM problem). A question you miss comes back at the end with new numbers.
+- **Signal bars.** 80% right on the first try, without a hint, adds a bar (up to five) and unlocks the next skill. Below 50% takes a bar away and suggests rereading the lesson.
+- **Spaced review.** Each bar waits longer before the skill comes back for review: 1, 3, 7, 16, then 35 days. The Start button mixes due reviews in with new skills so nothing fades.
+- On a phone, the path replaces the mode tabs and a session hides everything but the question. Every classic mode is still one tap away under **Free practice**.
+
 ### Practice modes
 The tabs are in two groups. **Full problems** are whole multi-part problems worked start to finish: Worksheet and VLSM. **Quick drills** practice one skill at a time.
 
@@ -180,14 +189,15 @@ The in-app Guide covers ANDing, binary, formulas and /16–/23 prefixes the same
 
 ## Running it locally
 
-The app is a few static files ([`index.html`](index.html), `app.js`, fonts and icons) with no build step and no dependencies. Download the repo and open `index.html` in a browser.
+The app is a few static files ([`index.html`](index.html), `app.js`, `path.js` (the learning path), fonts and icons) with no build step and no dependencies. Download the repo and open `index.html` in a browser.
 
 To host it yourself, any static host works (GitHub Pages, Netlify, a USB stick…).
 
 ## Tests
 
-The `tests/` folder has twelve [Playwright](https://playwright.dev/python/) scripts:
+The `tests/` folder has thirteen [Playwright](https://playwright.dev/python/) scripts:
 
+- **`test_path.py`** walks the learning path: a fresh visit opens on it, the lesson's quick check can't be skipped, only first tries count, a good session adds a bar and unlocks the next skill, misses come back at the end, progress survives a reload and can't be tampered with, every one of the twelve skills runs end to end, and it fits a 360px phone. The older suites open in Worksheet mode (`tests/worksheet_mode.py`).
 - **`test_answers.py`** generates hundreds of random questions in every mode and at both levels, computes the correct answers independently with Python's `ipaddress` module, types them in, and checks that the game marks them correct and that every explanation renders cleanly.
 - **`test_ui.py`** runs 93 checks of every control: hints, scoring, streaks, timed challenge, scratchpad drawing/erasing/undo, typed notes, calculator, guide, keyboard shortcuts, the phone layout and bottom panel, and running with browser storage blocked.
 - **`test_feedback.py`** feeds in 45 common mistakes and checks each gets the matching explanation, then answers 15,000 random questions with junk and near-miss input to make sure feedback appears for every wrong box and never for a right one.
@@ -204,6 +214,7 @@ The `tests/` folder has twelve [Playwright](https://playwright.dev/python/) scri
 ```bash
 pip install playwright
 playwright install chromium
+python tests/test_path.py
 python tests/test_answers.py      # N=200 python tests/test_answers.py for a longer run
 python tests/test_ui.py
 python tests/test_feedback.py
