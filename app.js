@@ -1575,6 +1575,7 @@ $('#tClose').onclick=()=>{$('#overlay').classList.remove('on');next();};
 /* ---------------- tools panel ---------------- */
 const tools=$('#tools');
 function openTool(name,sec){
+  if(name==='guide')return openGuide(sec);
   $$('.ttab').forEach(b=>b.classList.toggle('on',b.dataset.t===name));
   $$('.tpane').forEach(p=>p.hidden=p.id!=='t-'+name);
   const wasOpen=tools.classList.contains('open');
@@ -1584,7 +1585,23 @@ function openTool(name,sec){
   if(name==='scratch')requestAnimationFrame(sizePad);
   if(sec){const d=document.getElementById(sec);if(d){d.open=true;setTimeout(()=>d.scrollIntoView({block:'start',behavior:studyScrollBehavior()}),260);}}
 }
-const TOOL_NAMES={scratch:'✏️ Scratchpad',calc:'🧮 Calculator',guide:'📋 Guide'};
+const TOOL_NAMES={scratch:'✏️ Scratchpad',calc:'🧮 Calculator'};
+/* The guide has a page of its own, opened from the header. Pressing the button again (or Done) puts back exactly
+   what was on screen, scroll position included: the rest of the page is only hidden, never redrawn. */
+let guideBack=null;
+function openGuide(sec){
+  const gv=$('#guideView'),btn=$('#guideBtn');
+  if(!document.body.classList.contains('guide-open')){guideBack={y:window.scrollY};document.body.classList.add('guide-open');gv.hidden=false;btn.classList.add('on');btn.setAttribute('aria-pressed','true');if(!isDesktop())closeTools();}
+  const d=sec&&document.getElementById(sec);
+  if(d){d.open=true;requestAnimationFrame(()=>d.scrollIntoView({block:'start',behavior:'instant'}));}else window.scrollTo(0,0);
+}
+function closeGuide(){
+  if(!document.body.classList.contains('guide-open'))return;
+  document.body.classList.remove('guide-open');$('#guideView').hidden=true;const btn=$('#guideBtn');btn.classList.remove('on');btn.setAttribute('aria-pressed','false');
+  const y=guideBack?guideBack.y:0;guideBack=null;requestAnimationFrame(()=>window.scrollTo(0,y));
+}
+$('#guideBtn').onclick=()=>document.body.classList.contains('guide-open')?closeGuide():openGuide();
+$('#guideDone').onclick=closeGuide;
 function setBig(big){tools.classList.toggle('big',big);store.set('ss_big',big);$('#tsizeLbl').textContent=big?'Smaller':'Bigger';
   $('#tsize .ic').textContent=big?'⤡':'⤢';$('#tsize').setAttribute('aria-label',big?'Make panel smaller':'Make panel bigger');
   if(tools.dataset.cur==='scratch')setTimeout(sizePad,240);}
@@ -1624,7 +1641,8 @@ $$('.ttab').forEach(b=>b.onclick=()=>openTool(b.dataset.t));
   },{passive:true});
 })();
 
-$$('#dock button').forEach(b=>b.onclick=()=>{if(tools.classList.contains('open')&&tools.dataset.cur===b.dataset.t)closeTools();else openTool(b.dataset.t);});
+// phones and tablets: one button opens the sheet on the tool you used last; its tabs switch between them
+$('#toolsFab').onclick=()=>{if(tools.classList.contains('open'))closeTools();else openTool(tools.dataset.cur==='calc'?'calc':'scratch');};
 $('#tclose').onclick=closeTools;
 tools.dataset.cur='scratch';
 
@@ -1708,8 +1726,6 @@ cin.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key==='='){e.preventDef
 $('#cheatRows').innerHTML=[24,25,26,27,28,29,30].map(p=>{const v=oct(maskOf(p),3);return `<tr><td>/${p}</td><td>${ipStr(maskOf(p))}</td><td>${256-v}</td><td>${2**(32-p)-2}</td><td>${2**(p-24)}</td></tr>`;}).join('');
 $('#partRows').innerHTML=[1,2,3,4,5,6,7,8].map(n=>{const v=(0xFF00>>n)&255;return `<tr><td>${n}</td><td>${bin8(v)}</td><td>${v}</td><td>${n===8?'—':256-v}</td></tr>`;}).join('');
 
-const setDockH=()=>{const d=$('#dock');const h=d.offsetHeight;if(h)document.documentElement.style.setProperty('--dock-h',h+'px');};
-new ResizeObserver(setDockH).observe($('#dock'),{box:'border-box'});setTimeout(setDockH,500);window.addEventListener('resize',setDockH);setDockH();
 if(window.SSPath){SSPath.init({GEN,state,next,renderTabs,openGuide:sec=>openTool('guide',sec)});const sm=store.get('ss_mode',null),dm=window.SS_DEFAULT_MODE;/* tests written before the path set SS_DEFAULT_MODE */state.mode=MODES.some(m=>m.id===sm)?sm:MODES.some(m=>m.id===dm)?dm:'path';}
 renderTabs();renderStats();
 {const up=problemFromURL();if(up&&up.kind==='vlsm'){state.mode='vlsm';renderTabs();next(genVlsm(up));state.custom=up;}else if(up){state.mode='worksheet';renderTabs();next(genSheet(up));state.custom=up;}else next();}

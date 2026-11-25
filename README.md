@@ -4,7 +4,7 @@
 
 ## About
 
-Practice IPv4 addressing on a cobalt workbench. Choose a drill to jump to its question on a phone, or use **Weak spots** to revisit saved mistakes. The bottom toolbar opens the scratchpad, calculator and guide.
+Practice IPv4 addressing on a cobalt workbench. Choose a drill to jump to its question on a phone, or use **Weak spots** to revisit saved mistakes. The **Guide** button at the top opens the step-by-step guide (press it again to go back), and on a phone one **Scratchpad** button opens the scratchpad and calculator.
 
 **An interactive study game for IPv4 network addressing and subnetting.**
 
@@ -130,18 +130,18 @@ Every mistake the feedback recognises is logged by type: rounding up, forgetting
 ### Built-in tools
 - **✏️ Scratchpad:** draw with a mouse, finger or stylus over an optional 128 → 1 bit grid (four pen colours, eraser, undo). Or switch to **Type** mode, which has one-tap bit-header and subnet-chart templates. It can clear itself on each new question.
 - **🧮 Calculator:** + − × ÷, parentheses, **2ˣ**, **xʸ**, **Ans**, and a tappable history. It deliberately has no binary converter or subnet calculator, so it helps with the math without giving away answers.
-- **📋 Guide:** step-by-step directions for subnet charts, ANDing, the "round down" rule, binary, prefix ↔ mask, formulas and stretch mode, each with a worked example, plus a /24–/30 reference table.
+- **📋 Guide** (the book button at the top, or a hint's guide link): a page of its own with step-by-step directions for subnet charts, ANDing, the "round down" rule, binary, prefix ↔ mask, formulas and stretch mode, each with a worked example, plus a /24–/30 reference table. Press the button again, or **Done**, to go back to exactly where you were.
 
 ### Score & challenge
 - Score, streak, best streak and accuracy, plus per-mode counts on each tab.
 - **⏱ 2-minute challenge:** answer as many mixed questions as you can, then try to beat your personal best.
 
 ### Mobile-friendly
-On phones, the tools open from a bottom bar as a half-height panel, so the question stays visible while you work. Tap **Bigger** for a near-full-screen scratchpad (the question stays pinned at the top). Answer boxes bring up the number keyboard, and **Go** jumps to the next box.
+On phones, a single **Scratchpad** button floats at the bottom right. It opens a half-height panel with **Scratchpad** and **Calculator** tabs (it reopens on the one you used last), so the question stays visible while you work. Tap **Bigger** for a near-full-screen scratchpad (the question stays pinned at the top). Answer boxes bring up the number keyboard, and **Go** jumps to the next box.
 
 <p>
   <img src="docs/phone-question.png" alt="Phone: question view" width="250">
-  <img src="docs/phone-scratchpad.png" alt="The scratchpad opened from the phone toolbar" width="250">
+  <img src="docs/phone-scratchpad.png" alt="The scratchpad opened on a phone" width="250">
   <img src="docs/phone-calculator.png" alt="Phone: calculator" width="250">
 </p>
 
@@ -207,7 +207,7 @@ The `tests/` folder has thirteen [Playwright](https://playwright.dev/python/) sc
 - **`test_practice.py`** runs 80 full walkthroughs at both levels (with deliberate wrong steps), checks that mistakes are logged to the right weak spot, that the Weak spots tab drills them, that right answers shrink them, and that the walkthrough fits a phone screen.
 - **`test_offline.py`** serves the site locally, loads it once, cuts the network, and plays a full question offline. It also checks that a new version is picked up when back online, and that the install button works on Chrome and gives iPhone directions.
 - **`test_security.py`** tries to inject code through every input and through tampered saved data, checks the Content Security Policy blocks inline and outside scripts, confirms nothing loads from other sites, and checks the page refuses to run inside another site's frame.
-- **`test_touch.py`** uses simulated finger swipes on a phone and tablet to check the Guide and Calculator panels scroll (with momentum) without moving the page behind them, and that tapping keys and drawing on the scratchpad still work.
+- **`test_touch.py`** uses simulated finger swipes on a phone and tablet to check that swiping in the Calculator panel never moves the page behind it, and that tapping keys and drawing on the scratchpad still work.
 - **`test_worksheet.py`** loads the five problems from the class solutions guide and checks every worksheet answer and chart row matches it, then checks 15 common mistakes get the right explanation.
 - **`test_hints.py`** generates 15,000 questions across every question type and checks every hint's steps lead to the real answer and handle junk input, scans every step and nudge to make sure none states the answer it's asking for, then works through 40 hints on screen with deliberate wrong steps and answers each question for half points.
 - **`test_flow.py`** checks the one-at-a-time layout: questions appear in working order, the chart builds as you go, wrong tries get a nudge without the answer and are logged, per-question hints, Show the answer, first-try scoring, and switching to Full sheet. It also checks the instructor tools: loading your own problem (and rejecting invalid or malicious input), share links, a printed PDF with two problems per page plus the answer key, and Present mode. Finally it confirms a whole worksheet fits a 360px phone.

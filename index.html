@@ -625,6 +625,37 @@ body.pathmode .game>.bar:not(:has(#tabs)),body.pathmode #weakbox{display:none}
   #presentBtn{display:none}
 }
 @media(max-width:600px){.qstats{gap:2px 14px;font-size:12.5px}}
+
+/* bigger touch targets on phones for the small switches */
+@media(max-width:600px){.seg.mini button,#layoutSeg button{min-height:36px}.bar .seg button{min-height:38px}}
+
+/* ---------- guide: a header button and a page of its own; scratchpad + calculator: one button, one sheet ---------- */
+.game>header{justify-content:space-between}
+.hguide{display:inline-flex;align-items:center;gap:7px;flex:none;align-self:center;background:#ffffff14;border:1px solid #a5baffaa;border-radius:8px;color:#fff;padding:8px 14px;font:600 15px var(--draft);letter-spacing:.02em;min-height:42px;cursor:pointer}
+.hguide:hover{background:#ffffff26}.hguide.on{background:var(--accent);border-color:var(--accent);color:#172900}
+body.guide-open .game>*:not(header):not(#guideView){display:none!important}
+.guideview{background:#182641;border:1px solid #445979;border-top:4px solid var(--accent2);border-radius:16px;padding:16px clamp(14px,2.4vw,26px);margin-bottom:14px}
+.gv-head{display:flex;align-items:baseline;flex-wrap:wrap;gap:6px 14px;margin-bottom:12px}
+.gv-head h2{margin:0;font:700 clamp(24px,3vw,32px)/1.1 var(--draft)}.gv-sub{color:var(--muted);font-size:14px;flex:1}
+#guideDone{min-height:40px}
+.guideview{overflow-wrap:anywhere;min-width:0}.guideview pre,.guideview table{max-width:100%;overflow-x:auto;display:block}
+@media(max-width:1099px){
+  :root{--dock-h:0px}
+  .app,body .app{padding-bottom:calc(84px + env(safe-area-inset-bottom))}
+  .hguide span{display:none}.hguide{padding:8px;min-width:44px;justify-content:center}
+  /* the one tools button floats at the bottom right */
+  .dock{left:auto;right:14px;bottom:calc(14px + env(safe-area-inset-bottom));background:none;border:0;backdrop-filter:none;padding:0}
+  .dock button{flex:none;max-width:none;flex-direction:row;gap:8px;padding:12px 18px;border-radius:999px;font:700 15px var(--draft);letter-spacing:.02em;background:var(--accent);color:#172900;border:0;box-shadow:0 6px 20px #00000080}
+  .dock button span{font-size:17px}
+  body.sheet-open .dock,body.guide-open .dock,body.pathmode.pl-nocard .dock{display:none}
+  /* inside the sheet: Scratchpad | Calculator tabs instead of a title */
+  .tools{bottom:0;padding-bottom:env(safe-area-inset-bottom)}
+  .ttabs{display:flex!important;flex:1;margin-right:84px}
+  .thead-title{display:none!important}
+  .ttab{padding:8px 4px 10px;min-height:42px}
+  body.sheet-open .app{padding-bottom:calc(46dvh + 28px)}
+}
+@media print{.hguide,.guideview{display:none!important}}
 </style>
 </head>
 <body>
@@ -636,6 +667,7 @@ body.pathmode .game>.bar:not(:has(#tabs)),body.pathmode #weakbox{display:none}
       <h1><img class="brand-mark" src="icon.svg?v=5" alt="">Subnet <span>Sprint</span><button class="install" id="installBtn" hidden>⤓ Install app</button></h1>
       <div class="sub">IPv4 worksheets, subnet charts and timed drills.</div>
     </div>
+    <button class="hguide" id="guideBtn" type="button" aria-pressed="false" aria-controls="guideView" title="Step-by-step guide (press again to go back)"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5q5-2 9 1 4-3 9-1v14q-5-2-9 0-4-2-9 0z M12 6v13"/></svg><span>Guide</span></button>
   </header>
 
   <div class="bar"><div class="tabs" id="tabs"></div></div>
@@ -647,101 +679,8 @@ body.pathmode .game>.bar:not(:has(#tabs)),body.pathmode #weakbox{display:none}
     <button class="btn timed" id="timedBtn">⏱ 2-minute challenge</button>
   </div>
 
-  <section class="pathbox" id="pathbox" hidden aria-label="Learning path"></section>
-  <div class="weakbox" id="weakbox" hidden></div>
-  <div class="card">
-    <div class="qhead"><div class="qtype" id="qtype"></div><div class="qtools"><button class="btn small ghost" id="ownBtn" hidden title="Load a specific IP and mask, and get a link to share it">✎ Your own problem</button><button class="btn small ghost" id="printBtn" hidden title="Print worksheets with an answer key">🖨 Print</button><button class="btn small ghost" id="presentBtn" aria-pressed="false" title="Larger text for a projector">⛶ Present</button><div class="seg mini" id="layoutSeg" hidden><button data-v="flow" title="Questions appear one at a time as you answer">One at a time</button><button data-v="sheet" title="All the boxes at once, like the paper worksheet">Full sheet</button></div></div><div class="timer" id="timer"></div></div>
-    <div class="qstats" aria-live="polite"><span>Score <b id="sScore">0</b></span><span>Streak <b id="sStreak">0</b> <small>best <b id="sBest">0</b></small></span><span><b id="sAcc">–</b> right</span></div>
-    <div class="ownbox" id="ownbox" hidden></div>
-    <div class="ownbox" id="printbox" hidden></div>
-    <div class="prompt" id="prompt"></div>
-    <div class="fields" id="fields"></div>
-    <div class="flow" id="flow" hidden></div>
-    <div class="hintbox" id="hint" hidden></div>
-    <div class="walk" id="walk" hidden></div>
-    <div class="actions">
-      <button class="btn primary" id="checkBtn">Check <span class="kbd">Enter</span></button>
-      <button class="btn" id="hintBtn">Hint: step by step (½ points)</button>
-      <button class="btn" id="skipBtn">Skip</button>
-    </div>
-    <div class="feedback" id="feedback" role="status" aria-atomic="true"></div>
-    <div class="work" id="work"></div>
-  </div>
-  <div class="foot">Use the <b>Scratchpad</b> to do your work, the <b>Calculator</b> for the math, and the <b>Guide</b> for step-by-step directions. <span class="keytip">In Binary mode, keys <span class="kbd">1</span>–<span class="kbd">8</span> flip bits.</span></div>
-  <div class="readout" aria-hidden="true"><span class="run">RUN</span>
-    <span><span class="rk c1">CH1</span>mask <b id="roMask">255.255.255.0</b></span>
-    <span><span class="rk c3">CH3</span>IP <b id="roIp">192.168.1.77</b></span>
-    <span><span class="rk cm">MATH</span>CH1 AND CH3 = <b id="roNet">192.168.1.0</b></span>
-  </div>
-</main>
-
-<aside class="tools" id="tools">
-  <div class="tools-head">
-    <button class="grab-btn" id="grabBtn" aria-label="Resize tools panel"><div class="grab"></div></button>
-    <div class="thead-title" id="theadTitle">Scratchpad</div>
-    <div class="miniQ" id="miniQ"></div>
-    <button class="tsize" id="tsize" aria-label="Make panel bigger"><span class="ic">⤢</span><span id="tsizeLbl">Bigger</span></button>
-    <div class="trow">
-      <div class="ttabs" style="flex:1">
-        <button class="ttab on" data-t="scratch">✏️ Scratchpad</button>
-        <button class="ttab" data-t="calc">🧮 Calculator</button>
-        <button class="ttab" data-t="guide">📋 Guide</button>
-      </div>
-      <button class="tclose" id="tclose" aria-label="Close tools">✕</button>
-    </div>
-  </div>
-
-  <!-- Scratchpad -->
-  <section class="tpane" id="t-scratch">
-    <div class="ptools">
-      <div class="seg" id="padMode"><button data-p="draw" class="on">Draw</button><button data-p="type">Type</button></div>
-      <label class="chk"><input type="checkbox" id="autoClear" checked> Auto-clear on next question</label>
-    </div>
-    <div id="drawUI" style="display:contents">
-      <div class="ptools">
-        <button class="swatch on" data-c="#e6eef3" style="background:#e6eef3" aria-label="White pen"></button>
-        <button class="swatch" data-c="#5ec8ff" style="background:#5ec8ff" aria-label="Blue pen"></button>
-        <button class="swatch" data-c="#ffd23d" style="background:#ffd23d" aria-label="Yellow pen"></button>
-        <button class="swatch" data-c="#5eea9a" style="background:#5eea9a" aria-label="Green pen"></button>
-        <span class="sep"></span>
-        <button class="btn small" id="eraser">Erase</button>
-        <button class="btn small" id="undo">Undo</button>
-        <button class="btn small" id="clearPad">Clear</button>
-        <button class="btn small on" id="guideToggle" title="Show the 128…1 bit columns behind your writing">Grid</button>
-      </div>
-      <div class="padwrap" id="padwrap"><canvas id="grid"></canvas><canvas id="ink"></canvas></div>
-    </div>
-    <div id="typeUI" hidden style="flex:1;display:flex;flex-direction:column;gap:8px;min-height:0">
-      <div class="ptools">
-        <button class="btn small" id="insBits">+ Bit header</button>
-        <button class="btn small" id="insChart">+ Chart template</button>
-        <button class="btn small" id="clearText">Clear</button>
-      </div>
-      <textarea id="scratchText" aria-label="Scratchpad notes" spellcheck="false" autocapitalize="off" autocomplete="off" placeholder="Type your work here…&#10;&#10;e.g.&#10;/26 → 255.255.255.192&#10;inc = 256 − 192 = 64&#10;subnets: 0 64 128 192"></textarea>
-    </div>
-  </section>
-
-  <!-- Calculator -->
-  <section class="tpane" id="t-calc" hidden>
-    <div class="calc">
-      <div class="cdisp">
-        <div class="prev" id="cprev"></div>
-        <input id="cin" inputmode="none" autocomplete="off" spellcheck="false" aria-label="Calculator input" placeholder="0">
-      </div>
-      <div class="ckeys" id="ckeys">
-        <button class="clr" data-k="C">C</button><button class="fn" data-k="BS">⌫</button><button class="op" data-k="(">(</button><button class="op" data-k=")">)</button><button class="op" data-k="÷">÷</button>
-        <button data-k="7">7</button><button data-k="8">8</button><button data-k="9">9</button><button class="op" data-k="×">×</button><button class="fn" data-k="2^">2ˣ</button>
-        <button data-k="4">4</button><button data-k="5">5</button><button data-k="6">6</button><button class="op" data-k="−">−</button><button class="fn" data-k="^">xʸ</button>
-        <button data-k="1">1</button><button data-k="2">2</button><button data-k="3">3</button><button class="op" data-k="+">+</button><button class="fn" data-k="ANS">Ans</button>
-        <button class="zero" data-k="0">0</button><button data-k=".">.</button><button class="eq" data-k="=">=</button>
-      </div>
-      <div class="ctip">Handy ones: <span class="gmono">256−192</span> (increment), <span class="gmono">2^6−2</span> (usable hosts), <span class="gmono">128+64+32</span> (mask octet). Tap a history line to reuse it.</div>
-      <div class="chist" id="chist"></div>
-    </div>
-  </section>
-
-  <!-- Guide -->
-  <section class="tpane guide" id="t-guide" hidden>
+  <section class="guide guideview" id="guideView" hidden aria-labelledby="guideH">
+    <div class="gv-head"><h2 id="guideH">Guide</h2><span class="gv-sub">Step-by-step directions for every kind of problem.</span><button class="btn small" id="guideDone" type="button">Done</button></div>
     <details id="g-ws" open>
       <summary>Worksheet: start to finish</summary>
       <p>Given an IP and a mask (as <span class="mono">/27</span> or <span class="mono">255.255.255.224</span>), work it in this order:</p>
@@ -914,12 +853,102 @@ AND   00100000  (32)</pre></li>
       </div>
     </details>
   </section>
+  <section class="pathbox" id="pathbox" hidden aria-label="Learning path"></section>
+  <div class="weakbox" id="weakbox" hidden></div>
+  <div class="card">
+    <div class="qhead"><div class="qtype" id="qtype"></div><div class="qtools"><button class="btn small ghost" id="ownBtn" hidden title="Load a specific IP and mask, and get a link to share it">✎ Your own problem</button><button class="btn small ghost" id="printBtn" hidden title="Print worksheets with an answer key">🖨 Print</button><button class="btn small ghost" id="presentBtn" aria-pressed="false" title="Larger text for a projector">⛶ Present</button><div class="seg mini" id="layoutSeg" hidden><button data-v="flow" title="Questions appear one at a time as you answer">One at a time</button><button data-v="sheet" title="All the boxes at once, like the paper worksheet">Full sheet</button></div></div><div class="timer" id="timer"></div></div>
+    <div class="qstats" aria-live="polite"><span>Score <b id="sScore">0</b></span><span>Streak <b id="sStreak">0</b> <small>best <b id="sBest">0</b></small></span><span><b id="sAcc">–</b> right</span></div>
+    <div class="ownbox" id="ownbox" hidden></div>
+    <div class="ownbox" id="printbox" hidden></div>
+    <div class="prompt" id="prompt"></div>
+    <div class="fields" id="fields"></div>
+    <div class="flow" id="flow" hidden></div>
+    <div class="hintbox" id="hint" hidden></div>
+    <div class="walk" id="walk" hidden></div>
+    <div class="actions">
+      <button class="btn primary" id="checkBtn">Check <span class="kbd">Enter</span></button>
+      <button class="btn" id="hintBtn">Hint: step by step (½ points)</button>
+      <button class="btn" id="skipBtn">Skip</button>
+    </div>
+    <div class="feedback" id="feedback" role="status" aria-atomic="true"></div>
+    <div class="work" id="work"></div>
+  </div>
+  <div class="foot">Work it out on the <b>Scratchpad</b>, which has a <b>Calculator</b> tab too. The <b>Guide</b> button at the top has step-by-step directions. <span class="keytip">In Binary mode, keys <span class="kbd">1</span>–<span class="kbd">8</span> flip bits.</span></div>
+  <div class="readout" aria-hidden="true"><span class="run">RUN</span>
+    <span><span class="rk c1">CH1</span>mask <b id="roMask">255.255.255.0</b></span>
+    <span><span class="rk c3">CH3</span>IP <b id="roIp">192.168.1.77</b></span>
+    <span><span class="rk cm">MATH</span>CH1 AND CH3 = <b id="roNet">192.168.1.0</b></span>
+  </div>
+</main>
+
+<aside class="tools" id="tools">
+  <div class="tools-head">
+    <button class="grab-btn" id="grabBtn" aria-label="Resize tools panel"><div class="grab"></div></button>
+    <div class="thead-title" id="theadTitle">Scratchpad</div>
+    <div class="miniQ" id="miniQ"></div>
+    <button class="tsize" id="tsize" aria-label="Make panel bigger"><span class="ic">⤢</span><span id="tsizeLbl">Bigger</span></button>
+    <div class="trow">
+      <div class="ttabs" style="flex:1">
+        <button class="ttab on" data-t="scratch">✏️ Scratchpad</button>
+        <button class="ttab" data-t="calc">🧮 Calculator</button>
+      </div>
+      <button class="tclose" id="tclose" aria-label="Close tools">✕</button>
+    </div>
+  </div>
+
+  <!-- Scratchpad -->
+  <section class="tpane" id="t-scratch">
+    <div class="ptools">
+      <div class="seg" id="padMode"><button data-p="draw" class="on">Draw</button><button data-p="type">Type</button></div>
+      <label class="chk"><input type="checkbox" id="autoClear" checked> Auto-clear on next question</label>
+    </div>
+    <div id="drawUI" style="display:contents">
+      <div class="ptools">
+        <button class="swatch on" data-c="#e6eef3" style="background:#e6eef3" aria-label="White pen"></button>
+        <button class="swatch" data-c="#5ec8ff" style="background:#5ec8ff" aria-label="Blue pen"></button>
+        <button class="swatch" data-c="#ffd23d" style="background:#ffd23d" aria-label="Yellow pen"></button>
+        <button class="swatch" data-c="#5eea9a" style="background:#5eea9a" aria-label="Green pen"></button>
+        <span class="sep"></span>
+        <button class="btn small" id="eraser">Erase</button>
+        <button class="btn small" id="undo">Undo</button>
+        <button class="btn small" id="clearPad">Clear</button>
+        <button class="btn small on" id="guideToggle" title="Show the 128…1 bit columns behind your writing">Grid</button>
+      </div>
+      <div class="padwrap" id="padwrap"><canvas id="grid"></canvas><canvas id="ink"></canvas></div>
+    </div>
+    <div id="typeUI" hidden style="flex:1;display:flex;flex-direction:column;gap:8px;min-height:0">
+      <div class="ptools">
+        <button class="btn small" id="insBits">+ Bit header</button>
+        <button class="btn small" id="insChart">+ Chart template</button>
+        <button class="btn small" id="clearText">Clear</button>
+      </div>
+      <textarea id="scratchText" aria-label="Scratchpad notes" spellcheck="false" autocapitalize="off" autocomplete="off" placeholder="Type your work here…&#10;&#10;e.g.&#10;/26 → 255.255.255.192&#10;inc = 256 − 192 = 64&#10;subnets: 0 64 128 192"></textarea>
+    </div>
+  </section>
+
+  <!-- Calculator -->
+  <section class="tpane" id="t-calc" hidden>
+    <div class="calc">
+      <div class="cdisp">
+        <div class="prev" id="cprev"></div>
+        <input id="cin" inputmode="none" autocomplete="off" spellcheck="false" aria-label="Calculator input" placeholder="0">
+      </div>
+      <div class="ckeys" id="ckeys">
+        <button class="clr" data-k="C">C</button><button class="fn" data-k="BS">⌫</button><button class="op" data-k="(">(</button><button class="op" data-k=")">)</button><button class="op" data-k="÷">÷</button>
+        <button data-k="7">7</button><button data-k="8">8</button><button data-k="9">9</button><button class="op" data-k="×">×</button><button class="fn" data-k="2^">2ˣ</button>
+        <button data-k="4">4</button><button data-k="5">5</button><button data-k="6">6</button><button class="op" data-k="−">−</button><button class="fn" data-k="^">xʸ</button>
+        <button data-k="1">1</button><button data-k="2">2</button><button data-k="3">3</button><button class="op" data-k="+">+</button><button class="fn" data-k="ANS">Ans</button>
+        <button class="zero" data-k="0">0</button><button data-k=".">.</button><button class="eq" data-k="=">=</button>
+      </div>
+      <div class="ctip">Handy ones: <span class="gmono">256−192</span> (increment), <span class="gmono">2^6−2</span> (usable hosts), <span class="gmono">128+64+32</span> (mask octet). Tap a history line to reuse it.</div>
+      <div class="chist" id="chist"></div>
+    </div>
+  </section>
+
 </aside>
 
 <nav class="dock" id="dock" aria-label="Study tools">
-  <button data-t="scratch"><span>✏️</span>Scratchpad</button>
-  <button data-t="calc"><span>🧮</span>Calculator</button>
-  <button data-t="guide"><span>📋</span>Guide</button>
+  <button data-t="scratch" id="toolsFab" aria-label="Open the scratchpad and calculator"><span aria-hidden="true">✏️</span>Scratchpad</button>
 </nav>
 </div>
 

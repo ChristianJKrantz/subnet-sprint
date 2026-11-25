@@ -121,7 +121,7 @@ function dueText(x){const u=U(x.id);if(u.l===0)return '';const days=Math.ceil((u
 const $=s=>document.querySelector(s);
 function box(){return $('#pathbox');}
 function focus(on){document.body.classList.toggle('pl-focus',on);}
-function showCard(on){const c=document.querySelector('.game>.card');if(c)c.hidden=!on;const f=document.querySelector('.game>.foot');if(f)f.hidden=!on;}
+function showCard(on){document.body.classList.toggle('pl-nocard',!on);const c=document.querySelector('.game>.card');if(c)c.hidden=!on;const f=document.querySelector('.game>.foot');if(f)f.hidden=!on;}
 function sync(mode){
   const on=mode==='path'&&!(A&&A.state.timed);
   document.body.classList.toggle('pathmode',on);
