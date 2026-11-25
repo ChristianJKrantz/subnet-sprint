@@ -241,7 +241,7 @@ table.sol td:first-child{color:var(--muted);white-space:nowrap}table.sol th{colo
 .own-share{margin-top:10px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;font-size:13.5px}
 .own-share input{flex:1;min-width:220px;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:7px 9px;color:var(--text);font-family:var(--mono);font-size:12.5px}
 #printArea{display:none}
-body.present .app{grid-template-columns:minmax(0,1fr);max-width:1200px}body.present .tools,body.present .stats,body.present .dock,body.present #timedBtn{display:none!important}
+body.present .app{grid-template-columns:minmax(0,1fr);max-width:1200px}body.present .tools,body.present .stats,body.present .qstats,body.present .dock,body.present #timedBtn{display:none!important}
 body.present .card{font-size:1.18em}body.present .prompt .big{font-size:2.4em}body.present .fc-q{font-size:26px}body.present .fs-l,body.present .fs-v,body.present .fs-chart{font-size:18px}
 body.present .fc-row input{font-size:22px;padding:13px 14px}body.present .fc-msg{font-size:18px}
 @media print{
@@ -590,6 +590,41 @@ body.pathmode .game>.bar:not(:has(#tabs)),body.pathmode #weakbox{display:none}
 @media print{.pathbox{display:none!important}}
 .pl-free{margin-top:16px;border-top:1px solid var(--line);padding-top:12px}.pl-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}.pl-chips .btn{min-height:40px}
 @media(max-width:1099px){body.pathmode .game>.bar:has(#tabs){display:none}body.pl-focus .game>header{display:none}}
+
+/* ---------- simplified header, tabs and stats ---------- */
+.game>header{padding:clamp(12px,1.6vw,20px) clamp(16px,2.2vw,28px);margin-bottom:12px;flex-wrap:nowrap}
+.game h1{font-size:clamp(30px,3.4vw,46px)}
+.brand-mark{width:38px;height:38px}
+/* scores: one quiet line in the question card */
+.qstats{display:flex;flex-wrap:wrap;gap:4px 18px;margin:-2px 0 10px;font:500 13px Inter,system-ui,sans-serif;color:var(--muted)}
+.qstats b{font:700 14px var(--mono);color:var(--text)}.qstats small{font-size:12px}.qstats small b{font-size:12.5px;color:var(--muted)}
+/* every section in one row of tabs, no group boxes */
+.game>.bar:has(#tabs){padding:8px 10px}
+.tabs{flex-direction:row;flex-wrap:wrap;align-items:center;gap:6px}
+.tglab{display:none}
+.tgroup{display:contents}
+.trow{display:contents}
+.tgroup:has([data-m="weak"]){border:0;padding:0}
+.tab[data-m="path"]{border-color:var(--accent);color:var(--accent);background:transparent}
+.tab[data-m="path"].on{background:var(--accent);color:#172900}
+.tab[data-m="worksheet"],.tab[data-m="binary"]{margin-inline-start:10px;position:relative}
+.tab[data-m="worksheet"]::before,.tab[data-m="binary"]::before{content:"";position:absolute;left:-9px;top:20%;bottom:20%;width:1px;background:var(--line)}
+@media(max-width:1099px){
+  .game>header .sub{display:none}
+  .game>header{padding:10px 14px;border-radius:12px}
+  .game h1{font-size:28px}.brand-mark{width:30px;height:30px;border-radius:7px}
+  /* one row that scrolls sideways */
+  .game>.bar:has(#tabs){padding:6px;border-radius:10px}
+  .tabs{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;padding:0}
+  .tabs::-webkit-scrollbar{display:none}
+  .tgroup .tab,.tabs .tab{flex:none;min-height:40px;white-space:nowrap}
+  /* level and the challenge share one row */
+  .game>.bar:not(:has(#tabs)){flex-wrap:nowrap;gap:6px}
+  .bar .seg{flex:1;min-width:0}.bar .seg button{padding:7px 4px;font-size:12px;white-space:nowrap}
+  .btn.timed{width:auto;flex:none;padding:8px 10px;font-size:13px;white-space:nowrap}
+  #presentBtn{display:none}
+}
+@media(max-width:600px){.qstats{gap:2px 14px;font-size:12.5px}}
 </style>
 </head>
 <body>
@@ -600,12 +635,6 @@ body.pathmode .game>.bar:not(:has(#tabs)),body.pathmode #weakbox{display:none}
     <div>
       <h1><img class="brand-mark" src="icon.svg?v=5" alt="">Subnet <span>Sprint</span><button class="install" id="installBtn" hidden>⤓ Install app</button></h1>
       <div class="sub">IPv4 worksheets, subnet charts and timed drills.</div>
-    </div>
-    <div class="stats">
-      <div class="stat"><b id="sScore">0</b><small>Score</small></div>
-      <div class="stat"><b id="sStreak">0</b><small>Streak</small></div>
-      <div class="stat"><b id="sBest">0</b><small>Best</small></div>
-      <div class="stat"><b id="sAcc">–</b><small>Accuracy</small></div>
     </div>
   </header>
 
@@ -622,6 +651,7 @@ body.pathmode .game>.bar:not(:has(#tabs)),body.pathmode #weakbox{display:none}
   <div class="weakbox" id="weakbox" hidden></div>
   <div class="card">
     <div class="qhead"><div class="qtype" id="qtype"></div><div class="qtools"><button class="btn small ghost" id="ownBtn" hidden title="Load a specific IP and mask, and get a link to share it">✎ Your own problem</button><button class="btn small ghost" id="printBtn" hidden title="Print worksheets with an answer key">🖨 Print</button><button class="btn small ghost" id="presentBtn" aria-pressed="false" title="Larger text for a projector">⛶ Present</button><div class="seg mini" id="layoutSeg" hidden><button data-v="flow" title="Questions appear one at a time as you answer">One at a time</button><button data-v="sheet" title="All the boxes at once, like the paper worksheet">Full sheet</button></div></div><div class="timer" id="timer"></div></div>
+    <div class="qstats" aria-live="polite"><span>Score <b id="sScore">0</b></span><span>Streak <b id="sStreak">0</b> <small>best <b id="sBest">0</b></small></span><span><b id="sAcc">–</b> right</span></div>
     <div class="ownbox" id="ownbox" hidden></div>
     <div class="ownbox" id="printbox" hidden></div>
     <div class="prompt" id="prompt"></div>

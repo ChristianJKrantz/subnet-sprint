@@ -22,6 +22,9 @@ Behind the workbench, oscilloscope traces show how the network address follows f
 
 ## Features
 
+### Layout
+The header is one line. Every section is in one row of tabs: **Path**, then the full problems (Worksheet, VLSM), then the quick drills. On a phone that row scrolls sideways, and the level switch and the 2-minute challenge share one line under it. Score, streak, best and accuracy sit on one quiet line in the question card.
+
 ### Learning path (start here)
 A fresh visit opens on the **Path**: twelve skills in the order you learn them, from bits and octets through the prefix and mask, the increment, ANDing, address roles, the subnet chart, the formulas, sizing, the full worksheet, lab planning, VLSM, and subnetting beyond the last octet. One big button always shows what to do next.
 
